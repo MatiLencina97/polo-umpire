@@ -1,0 +1,40 @@
+name: Bootstrap Polo Umpire v0.3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".upload-v03/READY"
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: ${{ hashFiles('.upload-v03/READY') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and verify v0.3 archive
+        run: |
+          cat .upload-v03/part-*.txt | base64 -d > /tmp/polo-umpire-v0.3.zip
+          echo "b154d60e4f4032c429a647e69bd3e179c384ec99dfa5aca75d100be7c867179d  /tmp/polo-umpire-v0.3.zip" | sha256sum -c -
+          rm -rf /tmp/polo-v03
+          mkdir -p /tmp/polo-v03
+          unzip -q /tmp/polo-umpire-v0.3.zip -d /tmp/polo-v03
+
+      - name: Replace repository contents
+        run: |
+          rsync -a --delete --exclude='.git' --exclude='.upload-v03' /tmp/polo-v03/ ./
+          rm -rf .upload-v03 .bootstrap
+
+      - name: Commit v0.3
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: import Polo Umpire v0.3" || exit 0
+          git push
