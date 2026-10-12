@@ -10,7 +10,11 @@ import {
   relatedRuleNumbers,
   scenarioApplicationText,
   parseSubstitutionHandicaps,
+  parseSubstitutionNationality,
   substitutionEligibilityText,
+  localizedApplicationText,
+  localizedScenarioApplicationText,
+  substitutionAnalysisSections,
   scenarioDefs,
   scenarioQuestions,
   scoreRule,
@@ -19,6 +23,7 @@ import {
 import type {
   ChoiceValue,
   Discipline,
+  Language,
   Rule,
   RuleDb,
   ResolverMode,
@@ -30,19 +35,82 @@ import type {
 type Tab = "resolver" | "buscar" | "reglamento" | "estado";
 type SearchFilter = "all" | Discipline;
 
-const quickPlays = [
-  "Un jugador cruza delante del que venía siguiendo la línea y lo obliga a frenar.",
-  "Durante un ride-off un caballo pierde el equilibrio por el contacto.",
-  "Un atacante bloquea a un defensor para liberar a su compañero.",
-  "Un jugador intenta un hook y el swing pasa muy cerca del caballo rival.",
-];
+const quickPlays: Record<Language, string[]> = {
+  en: [
+    "A player crosses in front of the player following the line and forces him to check.",
+    "During a ride-off, a horse is knocked off balance by the contact.",
+    "An attacker blocks a defender to free a teammate.",
+    "A player attempts a hook and the swing passes very close to the opponent's horse.",
+  ],
+  es: [
+    "Un jugador cruza delante del que venía siguiendo la línea y lo obliga a frenar.",
+    "Durante un ride-off un caballo pierde el equilibrio por el contacto.",
+    "Un atacante bloquea a un defensor para liberar a su compañero.",
+    "Un jugador intenta un hook y el swing pasa muy cerca del caballo rival.",
+  ],
+};
 
-const quickRuleSituations = [
-  "En un torneo de 8 goles, se cae un jugador de 5 goles y tiene que ser reemplazado. ¿Qué condiciones debe tener su reemplazo para ser elegible?",
-  "Un jugador se lesiona durante el período y el equipo quiere reemplazar también a otro compañero.",
-  "El único sustituto disponible baja al equipo por debajo del límite inferior del evento.",
-  "Un jugador reemplazado por agotamiento se recupera y quiere volver a mitad del siguiente período.",
-];
+const quickRuleSituations: Record<Language, string[]> = {
+  en: [
+    "In an 8-goal tournament, a 5-goal player is injured and must be replaced. What conditions must the substitute meet to be eligible?",
+    "The injured player is the team's only countable American Player. Can a foreign substitute replace him?",
+    "The only available substitute would take the team below the event's lower handicap limit.",
+    "A player replaced for exhaustion recovers and wants to return halfway through the next period.",
+  ],
+  es: [
+    "En un torneo de 8 goles, se cae un jugador de 5 goles y tiene que ser reemplazado. ¿Qué condiciones debe tener su reemplazo para ser elegible?",
+    "El jugador lesionado es el único American Player computable del equipo. ¿Puede reemplazarlo un extranjero?",
+    "El único sustituto disponible baja al equipo por debajo del límite inferior del evento.",
+    "Un jugador reemplazado por agotamiento se recupera y quiere volver a mitad del siguiente período.",
+  ],
+};
+
+const defaultNationalityInputs = {
+  uspaNpcEvent: "unknown",
+  sponsorType: "unknown",
+  outgoingRole: "unknown",
+  outgoingAmerican: "unknown",
+  americanPlayersRemaining: null as number | null,
+  candidateAmerican: "unknown",
+  affiliateHostException: "unknown",
+  candidateImmediateFamily: "unknown",
+  candidateIsTeamOwner: "unknown",
+  gauntlet: "unknown",
+};
+
+const questionLabelsEn: Record<string, string> = {
+  risk: "Did the action force the player with the possible Right of Way to check, change course, or face collision risk?",
+  lineChanged: "Had the Line of the Ball changed immediately before the action?",
+  parallel: "Were the players parallel or nearly parallel at the relevant moment?",
+  balance: "Was either horse knocked off balance or displaced with force?",
+  speedAngle: "Was there a significant difference in speed, position, or a strong converging angle?",
+  blind: "Did the contact catch the opponent unprepared (blind-side) or create unnecessary risk?",
+  restartBlock: "Did this occur during a knock-in, Penalty 5.a/5.b, or a free hit from out of bounds?",
+  marking: "Did the attacker prevent the defender from marking a teammate who had a play on the ball?",
+  slow: "In open play, did the ball carrier slow to a slow canter/walk while the block occurred within two horse lengths?",
+  strokeDanger: "Did the swing or hook create danger to another player or horse?",
+  sameSide: "Was the hook made from the same side of the horse as the player making the stroke?",
+  deliberate: "Was the conduct deliberate, abusive, or contrary to the spirit of the game?",
+  repeat: "Was there a similar prior foul, warning, or card?",
+  dead: "Was the ball out of play or the clock stopped?",
+  early: "Did anyone hit or play before the Umpire called Play?",
+  endPeriod: "Is the substitution being made at the end of a period?",
+  unable: "If during a period, has the player being replaced been declared unable to continue?",
+  openSpot: "Is the position already open because the team has been playing short?",
+  doubleSub: "Is this an injury during the period and the team wants a double substitution?",
+  eligible: "Are the proposed substitutes otherwise eligible to play in this game/Event?",
+  upperLimit: "Would the substitution cause the team's aggregate handicap to exceed the event upper limit?",
+  penalty7: "Is the substitution related to a Penalty 7 removal?",
+};
+
+const topicLabelsEn: Record<string, string> = {
+  row: "Right of Way / Crossing",
+  dangerous: "Dangerous Riding",
+  blocking: "Improper Blocking",
+  mallet: "Mallet / Hook",
+  conduct: "Unsportsmanlike Conduct",
+  restart: "Restart / Dead Ball",
+};
 
 function pageLabel(rule: Rule) {
   return rule.pageEnd && rule.pageEnd !== rule.pageStart
@@ -94,8 +162,22 @@ export default function UmpireApp() {
   const [searchFilter, setSearchFilter] = useState<SearchFilter>("all");
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [updateStatus, setUpdateStatus] = useState("");
+  const [language, setLanguage] = useState<Language>("en");
+  const [nationalityInputs, setNationalityInputs] = useState({ ...defaultNationalityInputs });
   const [followUpText, setFollowUpText] = useState("");
   const [followUps, setFollowUps] = useState<Array<{ question: string; answer: string; ruleIds: string[] }>>([]);
+
+  const tr = (en: string, es: string) => language === "en" ? en : es;
+  const optionLabel = (value: string, fallback: string) => {
+    if (language === "es") return fallback;
+    if (value === "yes") return "Yes";
+    if (value === "no") return "No";
+    if (value === "unknown") return "Not sure";
+    if (value === "na") return "Not applicable";
+    return fallback;
+  };
+  const questionLabel = (key: string, fallback: string) => language === "en" ? (questionLabelsEn[key] ?? fallback) : fallback;
+  const topicLabel = (id: string, fallback: string) => language === "en" ? (topicLabelsEn[id] ?? fallback) : fallback;
 
   useEffect(() => {
     setNetworkOnline(navigator.onLine);
@@ -118,7 +200,7 @@ export default function UmpireApp() {
         setManifest(nextManifest);
         setDb(nextDb);
       } catch {
-        setLoadError("No pude abrir la copia local del Rulebook. Volvé a abrir la app una vez con conexión para completar la instalación offline.");
+        setLoadError("Could not open the local Rulebook copy. Open the app once with a connection to finish the offline installation.");
       }
     };
 
@@ -171,6 +253,16 @@ export default function UmpireApp() {
     };
   }, []);
 
+  useEffect(() => {
+    const saved = localStorage.getItem("polo-umpire-language");
+    if (saved === "en" || saved === "es") setLanguage(saved);
+  }, []);
+
+  function changeLanguage(next: Language) {
+    setLanguage(next);
+    localStorage.setItem("polo-umpire-language", next);
+  }
+
   const searchedRules = useMemo(() => {
     if (!db) return [];
     return db.rules
@@ -212,11 +304,25 @@ export default function UmpireApp() {
   const mainRule = resolverMode === "play" ? resolutionRules[0] : scenarioRules[0] ?? genericSituationRules[0];
   const answerCount = Object.keys(answers).length;
   const questionCount = activeQuestions.length;
-  const confidence = answerCount === questionCount && questionCount > 0
-    ? "Alta"
+  const completeness = answerCount === questionCount && questionCount > 0
+    ? "high"
     : answerCount >= Math.ceil(questionCount / 2) && questionCount > 0
-      ? "Media"
-      : "Baja";
+      ? "medium"
+      : "low";
+
+  const handicapValues = {
+    eventUpper: substitutionInputs.eventUpper === "" ? null : Number(substitutionInputs.eventUpper),
+    teamTotalBefore: substitutionInputs.teamTotalBefore === "" ? null : Number(substitutionInputs.teamTotalBefore),
+    outgoingHandicap: substitutionInputs.outgoingHandicap === "" ? null : Number(substitutionInputs.outgoingHandicap),
+    candidateHandicap: substitutionInputs.candidateHandicap === "" ? null : Number(substitutionInputs.candidateHandicap),
+  };
+
+  const substitutionSections = scenario === "substitutes"
+    ? substitutionAnalysisSections(discipline, handicapValues, nationalityInputs, answers, language)
+    : [];
+
+  const unresolvedQuestions = activeQuestions.filter((question) => !answers[question.key] || answers[question.key] === "unknown");
+  const answeredQuestions = activeQuestions.filter((question) => answers[question.key] && answers[question.key] !== "unknown");
 
   function analyze() {
     if (!situation.trim() || !db) return;
@@ -224,6 +330,7 @@ export default function UmpireApp() {
     setShowResolution(false);
     setFollowUpText("");
     setFollowUps([]);
+    setNationalityInputs({ ...defaultNationalityInputs });
 
     if (resolverMode === "play") {
       const ranked = classify(situation);
@@ -239,12 +346,14 @@ export default function UmpireApp() {
       setTopic(null);
       if (detected === "substitutes") {
         const parsed = parseSubstitutionHandicaps(situation);
+        const nationality = parseSubstitutionNationality(situation);
         setSubstitutionInputs({
           eventUpper: parsed.eventUpper != null ? String(parsed.eventUpper) : "",
           teamTotalBefore: parsed.teamTotalBefore != null ? String(parsed.teamTotalBefore) : "",
           outgoingHandicap: parsed.outgoingHandicap != null ? String(parsed.outgoingHandicap) : "",
           candidateHandicap: parsed.candidateHandicap != null ? String(parsed.candidateHandicap) : "",
         });
+        setNationalityInputs({ ...defaultNationalityInputs, ...nationality });
       }
       const rankedRules = db.rules
         .filter((rule) => rule.discipline === discipline)
@@ -268,19 +377,26 @@ export default function UmpireApp() {
 
     if (resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor") {
       const parsed = parseSubstitutionHandicaps(question);
+      const parsedNationality = parseSubstitutionNationality(question);
       const merged = {
         eventUpper: parsed.eventUpper != null ? String(parsed.eventUpper) : substitutionInputs.eventUpper,
         teamTotalBefore: parsed.teamTotalBefore != null ? String(parsed.teamTotalBefore) : substitutionInputs.teamTotalBefore,
         outgoingHandicap: parsed.outgoingHandicap != null ? String(parsed.outgoingHandicap) : substitutionInputs.outgoingHandicap,
         candidateHandicap: parsed.candidateHandicap != null ? String(parsed.candidateHandicap) : substitutionInputs.candidateHandicap,
       };
+      const mergedNationality = { ...nationalityInputs, ...parsedNationality };
       setSubstitutionInputs(merged);
-      answer = substitutionEligibilityText(discipline, {
+      setNationalityInputs(mergedNationality);
+      const sections = substitutionAnalysisSections(discipline, {
         eventUpper: merged.eventUpper === "" ? null : Number(merged.eventUpper),
         teamTotalBefore: merged.teamTotalBefore === "" ? null : Number(merged.teamTotalBefore),
         outgoingHandicap: merged.outgoingHandicap === "" ? null : Number(merged.outgoingHandicap),
         candidateHandicap: merged.candidateHandicap === "" ? null : Number(merged.candidateHandicap),
-      });
+      }, mergedNationality, answers, language);
+      answer = sections
+        .filter((section) => section.id === "decision" || section.id === "american" || section.id === "missing")
+        .flatMap((section) => section.items)
+        .join(" ");
       rules = scenarioRules;
     } else {
       const context = [situation, ...followUps.flatMap((turn) => [turn.question, turn.answer]), question].join(" ");
@@ -295,9 +411,11 @@ export default function UmpireApp() {
       const best = rules[0];
       const application = best ? bestMatchingApplication(best, context) : null;
       if (best) {
-        answer = `Con el contexto anterior, esta repregunta apunta principalmente a ${discipline === "outdoor" ? "Outdoor" : "Arena"} Rule ${best.rule} · ${best.title}. ${application?.text ?? "No encontré una Interpretation/Example específica para esta variante; abrí el artículo relacionado para confirmar el texto oficial."}`;
+        answer = language === "en"
+          ? "With the previous context, this follow-up points mainly to " + (discipline === "outdoor" ? "Outdoor" : "Arena") + " Rule " + best.rule + " · " + best.title + ". " + (application?.text ?? "I did not find a specific Interpretation/Example for this variation; open the related article to confirm the official text.")
+          : "Con el contexto anterior, esta repregunta apunta principalmente a " + (discipline === "outdoor" ? "Outdoor" : "Arena") + " Rule " + best.rule + " · " + best.title + ". " + (application?.text ?? "No encontré una Interpretation/Example específica para esta variante; abrí el artículo relacionado para confirmar el texto oficial.");
       } else {
-        answer = "No puedo cerrar esta repregunta con suficiente respaldo local todavía. Reformulala agregando el hecho que cambia respecto de la situación anterior.";
+        answer = tr("I cannot close this follow-up with enough local support yet. Rephrase it by adding the fact that changes from the previous situation.", "No puedo cerrar esta repregunta con suficiente respaldo local todavía. Reformulala agregando el hecho que cambia respecto de la situación anterior.");
       }
     }
 
@@ -308,16 +426,16 @@ export default function UmpireApp() {
 
   async function checkUpdates() {
     if (!navigator.onLine) {
-      setUpdateStatus("Sin conexión: la copia local instalada sigue activa.");
+      setUpdateStatus(tr("No connection: the installed local copy remains active.", "Sin conexión: la copia local instalada sigue activa."));
       return;
     }
-    setUpdateStatus("Comprobando versión publicada…");
+    setUpdateStatus(tr("Checking published version…", "Comprobando versión publicada…"));
     try {
-      const response = await fetch(`/data/manifest.json?ts=${Date.now()}`, { cache: "no-store" });
+      const response = await fetch("/data/manifest.json?ts=" + Date.now(), { cache: "no-store" });
       const remote = (await response.json()) as RuleManifest;
-      setUpdateStatus(`Versión publicada: ${remote.activeVersion}. El Rulebook local está disponible sin conexión.`);
+      setUpdateStatus(tr("Published version: " + remote.activeVersion + ". The local Rulebook remains available offline.", "Versión publicada: " + remote.activeVersion + ". El Rulebook local está disponible sin conexión."));
     } catch {
-      setUpdateStatus("No pude comprobar actualizaciones ahora. La copia local sigue disponible.");
+      setUpdateStatus(tr("Could not check updates right now. The local copy remains available.", "No pude comprobar actualizaciones ahora. La copia local sigue disponible."));
     }
   }
 
@@ -331,28 +449,34 @@ export default function UmpireApp() {
             <div className="brandSub">USPA Rulebook Assistant</div>
           </div>
         </div>
-        <div className="statusStack">
-          <span className={`badge ${networkOnline ? "online" : "offline"}`}>● {networkOnline ? "ONLINE" : "OFFLINE"}</span>
-          <span className={`offlineIndicator ${offlineReady ? "ready" : "warming"}`}>
-            {offlineReady ? "✓ OFFLINE READY" : "Preparando offline…"}
-          </span>
+        <div className="topbarActions">
+          <div className="languageSwitch" aria-label={tr("Language", "Idioma")}>
+            <button className={language === "en" ? "active" : ""} onClick={() => changeLanguage("en")}>EN</button>
+            <button className={language === "es" ? "active" : ""} onClick={() => changeLanguage("es")}>ES</button>
+          </div>
+          <div className="statusStack">
+            <span className={"badge " + (networkOnline ? "online" : "offline")}>● {networkOnline ? "ONLINE" : "OFFLINE"}</span>
+            <span className={"offlineIndicator " + (offlineReady ? "ready" : "warming")}>
+              {offlineReady ? "✓ OFFLINE READY" : tr("Preparing offline…", "Preparando offline…")}
+            </span>
+          </div>
         </div>
       </header>
 
       <section className="hero">
-        <p className="eyebrow">REGLAMENTO OFICIAL · COPIA LOCAL</p>
-        <h1>Decidí la regla. Aun sin señal.</h1>
-        <p className="heroText">El motor crítico funciona en el teléfono: reglas, búsqueda, preguntas guiadas y referencias siguen disponibles en modo avión.</p>
+        <p className="eyebrow">{tr("OFFICIAL RULEBOOK · LOCAL COPY", "REGLAMENTO OFICIAL · COPIA LOCAL")}</p>
+        <h1>{tr("Resolve the rule. Even without signal.", "Resolvé la regla. Aun sin señal.")}</h1>
+        <p className="heroText">{tr("The critical engine runs on the device: rules, local search, guided questions and references stay available in airplane mode.", "El motor crítico funciona en el dispositivo: reglas, búsqueda local, preguntas guiadas y referencias siguen disponibles en modo avión.")}</p>
         <div className="versionPill">
           <strong>Rulebook {manifest?.activeVersion ?? "2026"}</strong>
-          <span>{manifest ? `${manifest.counts.outdoor} Outdoor · ${manifest.counts.arena} Arena` : "Cargando reglas…"}</span>
+          <span>{manifest ? manifest.counts.outdoor + " Outdoor · " + manifest.counts.arena + " Arena" : tr("Loading rules…", "Cargando reglas…")}</span>
         </div>
       </section>
 
-      <nav className="tabs" aria-label="Secciones">
+      <nav className="tabs" aria-label={tr("Sections", "Secciones")}>
         {(["resolver", "buscar", "reglamento", "estado"] as Tab[]).map((item) => (
           <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>
-            {item === "resolver" ? "Resolver" : item === "buscar" ? "Buscar" : item === "reglamento" ? "Reglamento" : "Offline"}
+            {item === "resolver" ? tr("Resolve", "Resolver") : item === "buscar" ? tr("Search", "Buscar") : item === "reglamento" ? tr("Rulebook", "Reglamento") : "Offline"}
           </button>
         ))}
       </nav>
@@ -364,10 +488,10 @@ export default function UmpireApp() {
           <div className="card primaryCard">
             <div className="sectionHeading">
               <div>
-                <p className="eyebrow">PASO 1</p>
-                <h2>{resolverMode === "play" ? "¿Qué ocurrió en la jugada?" : "¿Qué situación reglamentaria necesitás resolver?"}</h2>
+                <p className="eyebrow">{tr("STEP 1", "PASO 1")}</p>
+                <h2>{resolverMode === "play" ? tr("What happened in the play?", "¿Qué ocurrió en la jugada?") : tr("What rule situation do you need to resolve?", "¿Qué situación reglamentaria necesitás resolver?")}</h2>
               </div>
-              <div className="segmented" role="group" aria-label="Disciplina">
+              <div className="segmented" role="group" aria-label={tr("Discipline", "Disciplina")}>
                 {(["outdoor", "arena"] as Discipline[]).map((d) => (
                   <button key={d} className={discipline === d ? "active" : ""} onClick={() => setDiscipline(d)}>
                     {d === "outdoor" ? "Outdoor" : "Arena"}
@@ -376,49 +500,166 @@ export default function UmpireApp() {
               </div>
             </div>
 
-            <div className="segmented resolverMode" role="group" aria-label="Tipo de consulta">
-              <button className={resolverMode === "play" ? "active" : ""} onClick={() => { setResolverMode("play"); setTopic(null); setScenario(null); setShowResolution(false); }}>Jugada</button>
-              <button className={resolverMode === "situation" ? "active" : ""} onClick={() => { setResolverMode("situation"); setTopic(null); setScenario(null); setShowResolution(false); }}>Situación reglamentaria</button>
+            <div className="segmented resolverMode" role="group" aria-label={tr("Query type", "Tipo de consulta")}>
+              <button className={resolverMode === "play" ? "active" : ""} onClick={() => { setResolverMode("play"); setTopic(null); setScenario(null); setShowResolution(false); }}>{tr("Play", "Jugada")}</button>
+              <button className={resolverMode === "situation" ? "active" : ""} onClick={() => { setResolverMode("situation"); setTopic(null); setScenario(null); setShowResolution(false); }}>{tr("Rule situation", "Situación reglamentaria")}</button>
             </div>
 
             <textarea
               value={situation}
               onChange={(event) => setSituation(event.target.value)}
-              placeholder={resolverMode === "play" ? "Ej.: Azul venía siguiendo la línea y Rojo cruzó adelante, obligándolo a frenar…" : "Ej.: Un jugador lesionado es reemplazado y luego quiere volver a mitad del siguiente chukker…"}
+              placeholder={resolverMode === "play" ? tr("Example: Blue was following the line and Red crossed in front, forcing Blue to check…", "Ej.: Azul venía siguiendo la línea y Rojo cruzó adelante, obligándolo a frenar…") : tr("Example: A player is injured and must be replaced. What makes the substitute eligible?", "Ej.: Un jugador se lesiona y debe ser reemplazado. ¿Qué hace elegible al sustituto?")}
               rows={5}
             />
             <div className="quickchips">
-              {(resolverMode === "play" ? quickPlays : quickRuleSituations).map((text, index) => (
-                <button key={text} onClick={() => setSituation(text)}>Ejemplo {index + 1}</button>
+              {(resolverMode === "play" ? quickPlays[language] : quickRuleSituations[language]).map((text, index) => (
+                <button key={text} onClick={() => setSituation(text)}>{tr("Example", "Ejemplo")} {index + 1}</button>
               ))}
             </div>
-            <button className="primaryAction" onClick={analyze} disabled={!db}>{resolverMode === "play" ? "Analizar jugada" : "Analizar situación"}</button>
+            <button className="primaryAction" onClick={analyze} disabled={!db}>{resolverMode === "play" ? tr("Analyze play", "Analizar jugada") : tr("Analyze situation", "Analizar situación")}</button>
           </div>
 
           {resolverMode === "situation" && !scenario && genericSituationRules.length > 0 && (
             <div className="card" id="questions">
-              <p className="eyebrow">ANÁLISIS LOCAL</p>
-              <h2>Encontré reglas relacionadas</h2>
-              <p className="muted">Todavía no hay un árbol guiado específico para esta familia, pero el buscador local encontró los artículos con mayor coincidencia. Podés aplicar el reglamento y abrir el texto oficial.</p>
+              <p className="eyebrow">{tr("LOCAL ANALYSIS", "ANÁLISIS LOCAL")}</p>
+              <h2>{tr("Related rules found", "Encontré reglas relacionadas")}</h2>
+              <p className="muted">{tr("There is not yet a dedicated guided tree for this family, but local retrieval found the closest Rulebook provisions. You can apply the rules and open the official text.", "Todavía no hay un árbol guiado específico para esta familia, pero el buscador local encontró los artículos con mayor coincidencia. Podés aplicar el reglamento y abrir el texto oficial.")}</p>
               <div className="candidateList">
                 {genericSituationRules.slice(0, 3).map((rule) => <RuleCard key={rule.id} rule={rule} onOpen={setSelectedRule} />)}
               </div>
-              <button className="primaryAction" onClick={() => { setShowResolution(true); setTimeout(() => document.getElementById("resolution")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20); }}>Aplicar reglamento</button>
+              <button className="primaryAction" onClick={() => { setShowResolution(true); setTimeout(() => document.getElementById("resolution")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20); }}>{tr("Apply rulebook", "Aplicar reglamento")}</button>
             </div>
           )}
 
           {((resolverMode === "play" && topic) || (resolverMode === "situation" && scenario)) && (
             <div className="card" id="questions">
-              <p className="eyebrow">PASO 2</p>
-              <h2>{resolverMode === "play" ? "Necesito precisar la jugada" : "Necesito precisar la situación"}</h2>
+              <p className="eyebrow">{tr("STEP 2", "PASO 2")}</p>
+              <h2>{resolverMode === "play" ? tr("I need a few facts about the play", "Necesito precisar la jugada") : tr("I need a few facts about the situation", "Necesito precisar la situación")}</h2>
               <p className="muted">{resolverMode === "play"
-                ? `Posibles familias: ${rankedTopics.filter((item) => item.score > 0).slice(0, 3).map((item) => item.label).join(" · ") || (topic ? topicDefs[topic].label : "")}`
-                : `Familia detectada: ${scenario ? scenarioDefs[scenario].label : rankedScenarios[0]?.label ?? "Regla general"}`}</p>
+                ? tr("Possible families: ", "Posibles familias: ") + (rankedTopics.filter((item) => item.score > 0).slice(0, 3).map((item) => topicLabel(item.id, item.label)).join(" · ") || (topic ? topicLabel(topic, topicDefs[topic].label) : ""))
+                : tr("Detected family: ", "Familia detectada: ") + (scenario ? scenarioDefs[scenario].label : rankedScenarios[0]?.label ?? tr("General rule", "Regla general"))}</p>
               {resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor" ? (
-                <div className="callout secondaryCallout">
-                  <strong>Chequeo de handicap del reemplazo</strong>
-                  <p>La app aplica dos límites distintos: el máximo individual de la 3/4 Rule y el máximo agregado del equipo después de la sustitución.</p>
-                  <div className="questionList">
+                <>
+                  <div className="callout secondaryCallout">
+                    <strong>{tr("Handicap eligibility", "Elegibilidad por handicap")}</strong>
+                    <p>{tr("The app checks both the individual 3/4 Rule and the team's aggregate handicap after the substitution.", "La app controla tanto la 3/4 Rule individual como el handicap agregado del equipo después de la sustitución.")}</p>
+                    <div className="questionList compactGrid">
+                      {[
+                        ["eventUpper", tr("Event upper limit", "Límite superior del torneo")],
+                        ["teamTotalBefore", tr("Original team handicap", "Handicap original del equipo")],
+                        ["outgoingHandicap", tr("Outgoing player handicap", "Handicap del jugador que sale")],
+                        ["candidateHandicap", tr("Proposed substitute handicap (optional)", "Handicap del sustituto propuesto (opcional)")],
+                      ].map(([key, label]) => (
+                        <div className="question" key={key}>
+                          <strong>{label}</strong>
+                          <input
+                            className="searchInput"
+                            inputMode="decimal"
+                            type="number"
+                            step="0.5"
+                            value={substitutionInputs[key as keyof typeof substitutionInputs]}
+                            onChange={(event) => setSubstitutionInputs((current) => ({ ...current, [key]: event.target.value }))}
+                            placeholder="8"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="callout nationalityCallout">
+                    <strong>{tr("Hidden eligibility check: American Rule / nationality", "Control de elegibilidad oculto: American Rule / nacionalidad")}</strong>
+                    <p>{tr("Substitution eligibility is not only about handicap. The app cross-checks Outdoor Rule 1.f, sponsor structure, the player's role, and the Affiliate Member Club exception in the Tournament Conditions.", "La elegibilidad del sustituto no depende sólo del handicap. La app cruza Outdoor Rule 1.f, la estructura de sponsor, el rol del jugador y la excepción de Affiliate Member Club de las Tournament Conditions.")}</p>
+                    <div className="questionList">
+                      <div className="question">
+                        <strong>{tr("Is this a USPA or NPC Event?", "¿Es un USPA o NPC Event?")}</strong>
+                        <div className="choices">
+                          {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                            <button key={value} className={nationalityInputs.uspaNpcEvent === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, uspaNpcEvent: value }))}>{label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="question">
+                        <strong>{tr("Team sponsorship structure", "Estructura de sponsor del equipo")}</strong>
+                        <div className="choices">
+                          {[["playing", tr("Playing sponsor", "Playing sponsor")], ["nonplaying", tr("Non-playing sponsor", "Non-playing sponsor")], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                            <button key={value} className={nationalityInputs.sponsorType === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, sponsorType: value }))}>{label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="question">
+                        <strong>{tr("Role of the player being replaced", "Rol del jugador que sale")}</strong>
+                        <div className="choices">
+                          {[["regular", tr("Other player", "Otro jugador")], ["teamOwner", "Team owner"], ["designatedSponsor", "Designated sponsor"], ["playingSponsor", "Playing sponsor"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                            <button key={value} className={nationalityInputs.outgoingRole === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, outgoingRole: value }))}>{label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="question">
+                        <strong>{tr("Does the outgoing player qualify as an American Player under Rule 1.f?", "¿El jugador que sale califica como American Player bajo Rule 1.f?")}</strong>
+                        <div className="choices">
+                          {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                            <button key={value} className={nationalityInputs.outgoingAmerican === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, outgoingAmerican: value }))}>{label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="question">
+                        <strong>{tr("How many countable American Players remain after this player leaves?", "¿Cuántos American Players computables quedan cuando sale este jugador?")}</strong>
+                        <p className="muted">{tr("If there is a playing sponsor, do not count that sponsor toward Rule 1.f(1).", "Si hay playing sponsor, no cuentes a ese sponsor para Rule 1.f(1).")}</p>
+                        <input className="searchInput" type="number" min="0" max="4" step="1" value={nationalityInputs.americanPlayersRemaining ?? ""} onChange={(event) => setNationalityInputs((current) => ({ ...current, americanPlayersRemaining: event.target.value === "" ? null : Number(event.target.value) }))} placeholder="0" />
+                      </div>
+                      <div className="question">
+                        <strong>{tr("Does the proposed substitute qualify as an American Player under Rule 1.f?", "¿El sustituto propuesto califica como American Player bajo Rule 1.f?")}</strong>
+                        <p className="muted">{tr("Defined status: a Registered Player Member qualifies; a Canadian citizen who is an Affiliate Player Member also qualifies. Do not decide this from passport/nationality alone.", "Status definido: califica un Registered Player Member; también un ciudadano canadiense que sea Affiliate Player Member. No lo decidas sólo por pasaporte/nacionalidad.")}</p>
+                        <div className="choices">
+                          {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                            <button key={value} className={nationalityInputs.candidateAmerican === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, candidateAmerican: value }))}>{label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="question">
+                        <strong>{tr("Does the National/Circuit Affiliate Member Club host-country exception apply?", "¿Aplica la excepción del país anfitrión para National/Circuit Event en un Affiliate Member Club?")}</strong>
+                        <p className="muted">{tr("This can allow the Rule 1.f Registered Player requirement to be satisfied by an Affiliate Player Member who is a citizen of the host country.", "Esto puede permitir que el requisito de Registered Player de Rule 1.f sea cubierto por un Affiliate Player Member ciudadano del país anfitrión.")}</p>
+                        <div className="choices">
+                          {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                            <button key={value} className={nationalityInputs.affiliateHostException === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, affiliateHostException: value }))}>{label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      {(nationalityInputs.outgoingRole === "teamOwner" || nationalityInputs.outgoingRole === "designatedSponsor") ? (
+                        <>
+                          <div className="question">
+                            <strong>{tr("Is the proposed substitute an immediate family member of the team owner?", "¿El sustituto propuesto es familiar inmediato del team owner?")}</strong>
+                            <div className="choices">
+                              {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                                <button key={value} className={nationalityInputs.candidateImmediateFamily === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, candidateImmediateFamily: value }))}>{label}</button>
+                              ))}
+                            </div>
+                          </div>
+                          {nationalityInputs.outgoingRole === "designatedSponsor" ? (
+                            <div className="question">
+                              <strong>{tr("Is the proposed substitute the team owner?", "¿El sustituto propuesto es el team owner?")}</strong>
+                              <div className="choices">
+                                {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                                  <button key={value} className={nationalityInputs.candidateIsTeamOwner === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, candidateIsTeamOwner: value }))}>{label}</button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                          <div className="question">
+                            <strong>{tr("Is this the Gauntlet of Polo?", "¿Es Gauntlet of Polo?")}</strong>
+                            <div className="choices">
+                              {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
+                                <button key={value} className={nationalityInputs.gauntlet === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, gauntlet: value }))}>{label}</button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                </>
+              ) : null}
+              <div className="questionList">
                     {[
                       ["eventUpper", "Límite superior del torneo"],
                       ["teamTotalBefore", "Handicap total del equipo antes del cambio"],
@@ -450,7 +691,7 @@ export default function UmpireApp() {
               <div className="questionList">
                 {activeQuestions.map((question) => (
                   <div className="question" key={question.key}>
-                    <strong>{question.label}</strong>
+                    <strong>{questionLabel(question.key, question.label)}</strong>
                     <div className="choices">
                       {question.options.map(([value, label]) => (
                         <button
@@ -458,7 +699,7 @@ export default function UmpireApp() {
                           className={answers[question.key] === value ? "selected" : ""}
                           onClick={() => setAnswers((current) => ({ ...current, [question.key]: value }))}
                         >
-                          {label}
+                          {optionLabel(value, label)}
                         </button>
                       ))}
                     </div>
@@ -468,7 +709,7 @@ export default function UmpireApp() {
               <button className="primaryAction" onClick={() => {
                 setShowResolution(true);
                 setTimeout(() => document.getElementById("resolution")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
-              }}>Aplicar reglamento</button>
+              }}>{tr("Apply rulebook", "Aplicar reglamento")}</button>
             </div>
           )}
 
@@ -476,62 +717,76 @@ export default function UmpireApp() {
             <div className="card resultCard" id="resolution">
               <div className="analysisHeader">
                 <div>
-                  <p className="eyebrow">RESULTADO</p>
-                  <h2>{mainRule ? `${discipline === "outdoor" ? "Outdoor" : "Arena"} Rule ${mainRule.rule} · ${mainRule.title}` : "Regla relacionada"}</h2>
+                  <p className="eyebrow">{tr("RESULT", "RESULTADO")}</p>
+                  <h2>{mainRule ? (discipline === "outdoor" ? "Outdoor" : "Arena") + " Rule " + mainRule.rule + " · " + mainRule.title : tr("Related rule", "Regla relacionada")}</h2>
                 </div>
-                <span className="confidence">Confianza {confidence}</span>
+                <span className="confidence">{tr("Input completeness", "Datos completos")}: {completeness === "high" ? tr("High", "Alta") : completeness === "medium" ? tr("Medium", "Media") : tr("Low", "Baja")}</span>
               </div>
-              <div className="callout">
-                <strong>{resolverMode === "play" ? "Cómo se aplica a esta jugada" : "Cómo se aplica a esta situación"}</strong>
-                <p>{resolverMode === "play" && topic
-                  ? applicationText(topic, answers)
-                  : scenario
-                    ? scenarioApplicationText(scenario, discipline, answers)
-                    : "La app encontró las reglas con mayor coincidencia textual. Revisá el artículo principal y la interpretación/ejemplo relacionado para confirmar los hechos que cambian la aplicación."}</p>
-              </div>
-              {resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor" ? (
-                <div className="callout secondaryCallout">
-                  <strong>Elegibilidad por handicap</strong>
-                  <p>{substitutionEligibilityText(discipline, {
-                    eventUpper: substitutionInputs.eventUpper === "" ? null : Number(substitutionInputs.eventUpper),
-                    teamTotalBefore: substitutionInputs.teamTotalBefore === "" ? null : Number(substitutionInputs.teamTotalBefore),
-                    outgoingHandicap: substitutionInputs.outgoingHandicap === "" ? null : Number(substitutionInputs.outgoingHandicap),
-                    candidateHandicap: substitutionInputs.candidateHandicap === "" ? null : Number(substitutionInputs.candidateHandicap),
-                  })}</p>
+
+              {resolverMode === "situation" && scenario === "substitutes" ? (
+                <div className="resultSections">
+                  {substitutionSections.map((section) => (
+                    <section className={"resultSection " + (section.tone ?? "info")} key={section.id}>
+                      <h3>{section.title}</h3>
+                      <ul>
+                        {section.items.map((item, index) => <li key={index}>{item}</li>)}
+                      </ul>
+                    </section>
+                  ))}
                 </div>
-              ) : null}
-              <p className="muted">{resolverMode === "play"
-                ? "La app no fuerza una penalidad cuando el Rulebook deja discreción al Umpire. Muestra la regla sustantiva y la regla de selección de penalidad para mantener trazabilidad."
-                : "Para situaciones administrativas o de elegibilidad, la app prioriza el artículo aplicable y sus Interpretations/Examples; cuando todavía no existe un árbol guiado específico, muestra las mejores coincidencias del Rulebook local."}</p>
+              ) : (
+                <div className="resultSections">
+                  <section className="resultSection info">
+                    <h3>{tr("Interpretation", "Interpretación")}</h3>
+                    <p>{resolverMode === "play" && topic
+                      ? localizedApplicationText(topic, answers, language)
+                      : scenario
+                        ? localizedScenarioApplicationText(scenario, discipline, answers, language)
+                        : tr("The app found the closest rules in the local Rulebook. Review the official provision and related Interpretation/Example before closing the ruling.", "La app encontró las reglas más cercanas en el Rulebook local. Revisá la disposición oficial y la Interpretation/Example relacionada antes de cerrar la decisión.")}</p>
+                  </section>
+                  {answeredQuestions.length ? (
+                    <section className="resultSection pass">
+                      <h3>{tr("Facts used", "Hechos utilizados")}</h3>
+                      <ul>
+                        {answeredQuestions.map((question) => <li key={question.key}><b>{questionLabel(question.key, question.label)}</b>: {optionLabel(answers[question.key], answers[question.key])}</li>)}
+                      </ul>
+                    </section>
+                  ) : null}
+                  {unresolvedQuestions.length ? (
+                    <section className="resultSection warning">
+                      <h3>{tr("Facts still unclear", "Datos todavía no claros")}</h3>
+                      <ul>{unresolvedQuestions.map((question) => <li key={question.key}>{questionLabel(question.key, question.label)}</li>)}</ul>
+                    </section>
+                  ) : null}
+                </div>
+              )}
+
               {resolverMode === "situation" && mainRule && bestMatchingApplication(mainRule, situation) ? (
-                <div className="callout secondaryCallout">
-                  <strong>Interpretation / Example más cercano</strong>
+                <section className="resultSection officialExample">
+                  <h3>{tr("Closest official Interpretation / Example", "Interpretation / Example oficial más cercana")}</h3>
                   <p>{bestMatchingApplication(mainRule, situation)?.text}</p>
-                </div>
+                </section>
               ) : null}
-              <h3>Artículos relacionados</h3>
+
+              <h3>{tr("Related provisions", "Artículos relacionados")}</h3>
               <div className="candidateList">
                 {(resolverMode === "play" ? resolutionRules : (scenarioRules.length ? scenarioRules : genericSituationRules)).map((rule) => <RuleCard key={rule.id} rule={rule} onOpen={setSelectedRule} />)}
               </div>
 
               <div className="callout secondaryCallout" id="follow-up">
-                <strong>¿Quedó alguna duda? Repreguntá sin empezar de nuevo.</strong>
-                <p className="muted">La app conserva la situación, tus respuestas y los datos ya cargados. Podés preguntar, por ejemplo: “¿Y si el equipo era de 7?”, “¿Puede entrar uno de 6?” o “¿Qué cambia si fue entre chukkers?”.</p>
+                <strong>{tr("Still unclear? Ask a follow-up without starting over.", "¿Quedó alguna duda? Repreguntá sin empezar de nuevo.")}</strong>
+                <p className="muted">{tr("The app keeps the original situation, your answers, handicap data and nationality/eligibility facts.", "La app conserva la situación original, tus respuestas, los datos de handicap y los datos de nacionalidad/elegibilidad.")}</p>
                 {followUps.length ? (
                   <div className="questionList">
                     {followUps.map((turn, index) => (
-                      <div className="question" key={`${turn.question}-${index}`}>
-                        <strong>Vos: {turn.question}</strong>
+                      <div className="question" key={turn.question + "-" + index}>
+                        <strong>{tr("You", "Vos")}: {turn.question}</strong>
                         <p>{turn.answer}</p>
                         {turn.ruleIds.length ? (
                           <div className="quickchips">
                             {turn.ruleIds.map((id) => {
                               const rule = db?.rules.find((candidate) => candidate.id === id);
-                              return rule ? (
-                                <button key={id} onClick={() => setSelectedRule(rule)}>
-                                  Rule {rule.rule}
-                                </button>
-                              ) : null;
+                              return rule ? <button key={id} onClick={() => setSelectedRule(rule)}>Rule {rule.rule}</button> : null;
                             })}
                           </div>
                         ) : null}
@@ -539,17 +794,11 @@ export default function UmpireApp() {
                     ))}
                   </div>
                 ) : null}
-                <textarea
-                  value={followUpText}
-                  onChange={(event) => setFollowUpText(event.target.value)}
-                  placeholder="Ej.: ¿Y si el equipo originalmente era de 7 goles?"
-                  rows={3}
-                />
-                <button className="primaryAction" onClick={submitFollowUp} disabled={!followUpText.trim()}>
-                  Repreguntar
-                </button>
+                <textarea value={followUpText} onChange={(event) => setFollowUpText(event.target.value)} placeholder={tr("Example: What if the team originally totaled 7 goals? What if the substitute is Argentine but a USPA Registered Player Member?", "Ej.: ¿Y si el equipo originalmente era de 7? ¿Y si el sustituto es argentino pero es USPA Registered Player Member?")} rows={3} />
+                <button className="primaryAction" onClick={submitFollowUp} disabled={!followUpText.trim()}>{tr("Ask follow-up", "Repreguntar")}</button>
               </div>
             </div>
+          )}
           )}
         </section>
       )}
@@ -557,25 +806,25 @@ export default function UmpireApp() {
       {tab === "buscar" && (
         <section className="view">
           <div className="card">
-            <p className="eyebrow">BÚSQUEDA LOCAL</p>
-            <h2>Buscá por regla o por situación</h2>
+            <p className="eyebrow">{tr("LOCAL SEARCH", "BÚSQUEDA LOCAL")}</p>
+            <h2>{tr("Search by rule or situation", "Buscá por regla o por situación")}</h2>
             <input
               className="searchInput"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="crossing, ride-off, hook, Rule 24, bloquear…"
+              placeholder={tr("crossing, ride-off, hook, Rule 24, substitute…", "crossing, ride-off, hook, Rule 24, bloquear…")}
             />
             <div className="segmented searchSegmented">
               {(["all", "outdoor", "arena"] as SearchFilter[]).map((filter) => (
                 <button key={filter} className={searchFilter === filter ? "active" : ""} onClick={() => setSearchFilter(filter)}>
-                  {filter === "all" ? "Todas" : filter === "outdoor" ? "Outdoor" : "Arena"}
+                  {filter === "all" ? tr("All", "Todas") : filter === "outdoor" ? "Outdoor" : "Arena"}
                 </button>
               ))}
             </div>
           </div>
           <div className="candidateList searchResults">
             {searchedRules.map((rule) => <RuleCard key={rule.id} rule={rule} onOpen={setSelectedRule} />)}
-            {!searchedRules.length && <div className="card muted">No encontré coincidencias. Probá con otras palabras.</div>}
+            {!searchedRules.length && <div className="card muted">{tr("No matches found. Try different terms.", "No encontré coincidencias. Probá con otras palabras.")}</div>}
           </div>
         </section>
       )}
@@ -601,29 +850,29 @@ export default function UmpireApp() {
       {tab === "estado" && (
         <section className="view">
           <div className="card offlineCard">
-            <p className="eyebrow">ESTADO DEL DISPOSITIVO</p>
-            <h2>{offlineReady ? "Listo para arbitrar sin señal" : "Preparando copia offline"}</h2>
+            <p className="eyebrow">{tr("DEVICE STATUS", "ESTADO DEL DISPOSITIVO")}</p>
+            <h2>{offlineReady ? tr("Ready to umpire without signal", "Listo para arbitrar sin señal") : tr("Preparing offline copy", "Preparando copia offline")}</h2>
             <div className="statusRows">
-              <div><span>Aplicación</span><strong>{offlineReady ? "✓ Cacheada" : "Preparando"}</strong></div>
+              <div><span>{tr("Application", "Aplicación")}</span><strong>{offlineReady ? tr("✓ Cached", "✓ Cacheada") : tr("Preparing", "Preparando")}</strong></div>
               <div><span>Rulebook</span><strong>{manifest?.activeVersion ?? "2026"}</strong></div>
               <div><span>Outdoor Rules</span><strong>{manifest ? `✓ ${manifest.counts.outdoor}` : "…"}</strong></div>
               <div><span>Arena Rules</span><strong>{manifest ? `✓ ${manifest.counts.arena}` : "…"}</strong></div>
               <div><span>Umpire Guide</span><strong>{manifest ? `✓ ${manifest.counts.umpireGuidePages} págs.` : "…"}</strong></div>
-              <div><span>Conexión actual</span><strong>{networkOnline ? "Online" : "Offline"}</strong></div>
+              <div><span>{tr("Current connection", "Conexión actual")}</span><strong>{networkOnline ? "Online" : "Offline"}</strong></div>
             </div>
             <div className="offlineTest">
-              <strong>Prueba recomendada</strong>
-              <p>Cuando diga “OFFLINE READY”, activá modo avión, cerrá la pestaña, volvé a abrir la app y resolvé una jugada. El core no debe depender de Vercel, Supabase ni un LLM.</p>
+              <strong>{tr("Recommended test", "Prueba recomendada")}</strong>
+              <p>{tr("When it says OFFLINE READY, enable airplane mode, close the tab, reopen the app, and resolve a play. The core should not depend on Vercel, Supabase, or an LLM.", "Cuando diga OFFLINE READY, activá modo avión, cerrá la pestaña, volvé a abrir la app y resolvé una jugada. El core no debe depender de Vercel, Supabase ni un LLM.")}</p>
             </div>
-            <button className="secondaryAction" onClick={() => void checkUpdates()}>Comprobar versión publicada</button>
+            <button className="secondaryAction" onClick={() => void checkUpdates()}>{tr("Check published version", "Comprobar versión publicada")}</button>
             {updateStatus && <p className="updateStatus">{updateStatus}</p>}
           </div>
         </section>
       )}
 
       <footer>
-        <span>Polo Umpire v0.5</span>
-        <span>Fuente instalada: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
+        <span>Polo Umpire v0.6</span>
+        <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
       {selectedRule && (
@@ -631,14 +880,14 @@ export default function UmpireApp() {
           if (event.target === event.currentTarget) setSelectedRule(null);
         }}>
           <article className="ruleModal" role="dialog" aria-modal="true" aria-label={`Rule ${selectedRule.rule}`}>
-            <button className="modalClose" onClick={() => setSelectedRule(null)} aria-label="Cerrar">×</button>
+            <button className="modalClose" onClick={() => setSelectedRule(null)} aria-label={tr("Close", "Cerrar")}>×</button>
             <p className="eyebrow">{selectedRule.discipline.toUpperCase()} · RULEBOOK {manifest?.activeVersion ?? "2026"}</p>
             <h2>Rule {selectedRule.rule} · {selectedRule.title}</h2>
-            <div className="sourceMeta">USPA Rulebook {manifest?.activeVersion ?? "2026"} · página {pageLabel(selectedRule)}</div>
+            <div className="sourceMeta">USPA Rulebook {manifest?.activeVersion ?? "2026"} · {tr("page", "página")} {pageLabel(selectedRule)}</div>
             <pre className="officialText">{selectedRule.text}</pre>
             {selectedRule.applications?.length ? (
               <div className="interpretations">
-                <h3>Interpretations & Examples detectados</h3>
+                <h3>{tr("Detected Interpretations & Examples", "Interpretations & Examples detectados")}</h3>
                 {selectedRule.applications.map((item, index) => (
                   <details key={`${item.label}-${index}`}>
                     <summary>{item.label}</summary>
