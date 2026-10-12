@@ -127,8 +127,8 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
     facts: [
       fact("lineCreatedBy","What created the current Line of the Ball?","¿Qué creó la Line of the Ball actual?","ROW analysis starts from the actual Line of the Ball.","El análisis de ROW parte de la Line of the Ball real.","text",undefined),
       fact("rowHolder","Who had the apparent Right of Way?","¿Quién tenía el aparente Right of Way?","The legality of entry/crossing depends on the ROW holder.","La legalidad del ingreso/cruce depende de quién tenía ROW.","text",undefined),
-      fact("lineChanged","Did the line change immediately before the action?","¿Cambió la línea inmediatamente antes de la acción?","A line change affects the time an opponent must be given to clear."),
-      fact("riskCreated","Did the action create collision risk or force a check/course change?","¿La acción creó riesgo de colisión u obligó a frenar/cambiar curso?","Speed and distance are central to whether entry/crossing is legal."),
+      fact("lineChanged","Did the line change immediately before the action?","¿Cambió la línea inmediatamente antes de la acción?","A line change affects the time an opponent must be given to clear.","Un cambio de línea afecta el tiempo que debe darse al oponente para despejar."),
+      fact("riskCreated","Did the action create collision risk or force a check/course change?","¿La acción creó riesgo de colisión u obligó a frenar/cambiar curso?","Speed and distance are central to whether entry/crossing is legal.","Velocidad y distancia son centrales para decidir si el ingreso/cruce es legal."),
       fact("relativeSpeedDistance","Relative speed and distance","Velocidad y distancia relativas","ROW legality depends on the actual risk created by speed and distance.","La legalidad del ROW depende del riesgo real creado por velocidad y distancia.","text",undefined),
     ],
   },
@@ -142,9 +142,9 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
       fact("contactType","Type of contact / maneuver","Tipo de contacto / maniobra","Different dangerous-riding and blocking provisions target different actions.","Distintas disposiciones de dangerous riding y blocking apuntan a maniobras distintas.","text",undefined),
       fact("relativeSpeed","Relative speed","Velocidad relativa","Relative speed is an express dangerous-riding factor.","La velocidad relativa es un factor expreso de dangerous riding.","text",undefined),
       fact("contactAngle","Angle and relative position","Ángulo y posición relativa","Angle and position are express dangerous-riding factors.","Ángulo y posición son factores expresos de dangerous riding.","text",undefined),
-      fact("horseBalance","Was a horse knocked off balance?","¿Un caballo perdió el equilibrio?","A horse knocked off balance is a strong indicator under the interpretation."),
+      fact("horseBalance","Was a horse knocked off balance?","¿Un caballo perdió el equilibrio?","A horse knocked off balance is a strong indicator under the interpretation.","Que un caballo pierda el equilibrio es un indicador fuerte según la interpretación."),
       fact("blockingContext","Was this a restart block or open-play slow-can­ter block?","¿Fue bloqueo en restart o bloqueo en juego abierto con slow canter?","Rule 26A applies differently by context.","Rule 26A aplica distinto según el contexto.","text",undefined),
-      fact("repeatDangerous","Was the conduct repeated or deliberate?","¿La conducta fue reiterada o deliberada?","Repeated or deliberate conduct can bring Rule 33/34 and penalty escalation into the graph."),
+      fact("repeatDangerous","Was the conduct repeated or deliberate?","¿La conducta fue reiterada o deliberada?","Repeated or deliberate conduct can bring Rule 33/34 and penalty escalation into the graph.","La reiteración o deliberación puede incorporar Rule 33/34 y escalamiento de penalidad al grafo."),
     ],
   },
   {
@@ -155,10 +155,10 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
     terms: ["mallet","hook","stroke","dismounted","appeal","carry ball","outside assistance","taco","enganche","desmontado","apelar","asistencia externa"],
     facts: [
       fact("actionType","Action involved","Acción involucrada","Hook, stroke, dismount, appeal, carrying and assistance are governed by different articles.","Hook, stroke, desmontarse, apelar, llevar la pelota y asistencia se rigen por artículos distintos.","text",undefined),
-      fact("malletDanger","Did the mallet action create danger?","¿La acción con el mallet creó peligro?","Danger changes both foul analysis and penalty selection."),
+      fact("malletDanger","Did the mallet action create danger?","¿La acción con el mallet creó peligro?","Danger changes both foul analysis and penalty selection.","El peligro cambia tanto el análisis de la falta como la selección de penalidad."),
       fact("hookPosition","Relative position / side of the hook","Posición relativa / lado del hook","Hook legality depends on relative position and execution.","La legalidad del hook depende de posición relativa y ejecución.","text",undefined),
       fact("appealBehavior","How was the appeal made?","¿Cómo se hizo el reclamo?","An appeal can itself become a conduct issue depending on behavior.","Un reclamo puede convertirse en conducta antideportiva según cómo se haga.","text",undefined),
-      fact("outsideHelp","Was outside assistance given?","¿Hubo asistencia externa?","Outside assistance can trigger its own rule and potentially conduct/penalty provisions."),
+      fact("outsideHelp","Was outside assistance given?","¿Hubo asistencia externa?","Outside assistance can trigger its own rule and potentially conduct/penalty provisions.","La asistencia externa puede activar su propia regla y también disposiciones de conducta/penalidad."),
     ],
   },
   {
@@ -169,10 +169,10 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
     terms: ["unsportsmanlike","abuse","language","card","yellow","red","repeat foul","misconduct","conducta","insulto","tarjeta","reiterada"],
     facts: [
       fact("conductType","Conduct involved","Conducta involucrada","The rule distinguishes several forms of unsportsmanlike conduct.","La regla distingue distintas formas de conducta antideportiva.","text",undefined),
-      fact("deliberateConduct","Was it deliberate?","¿Fue deliberada?","Intent and flagrancy can affect sanction severity."),
-      fact("priorWarning","Prior warning/card/foul?","¿Hubo advertencia/tarjeta/falta previa?","Repetition can require escalation under Rule 34."),
-      fact("offFieldConduct","Did it occur off the field / after play?","¿Ocurrió fuera de la cancha / después del juego?","Some conduct issues can extend beyond the immediate on-field foul procedure."),
-      fact("injuryOrDanger","Did it create danger or injury?","¿Generó peligro o lesión?","Danger/injury can affect both foul characterization and penalty severity."),
+      fact("deliberateConduct","Was it deliberate?","¿Fue deliberada?","Intent and flagrancy can affect sanction severity.","La intención y flagrancia pueden afectar la severidad de la sanción."),
+      fact("priorWarning","Prior warning/card/foul?","¿Hubo advertencia/tarjeta/falta previa?","Repetition can require escalation under Rule 34.","La reiteración puede requerir escalamiento bajo Rule 34."),
+      fact("offFieldConduct","Did it occur off the field / after play?","¿Ocurrió fuera de la cancha / después del juego?","Some conduct issues can extend beyond the immediate on-field foul procedure.","Algunas cuestiones de conducta pueden exceder el procedimiento inmediato de faltas en cancha."),
+      fact("injuryOrDanger","Did it create danger or injury?","¿Generó peligro o lesión?","Danger/injury can affect both foul characterization and penalty severity.","El peligro o lesión puede afectar tanto la caracterización de la falta como la severidad de la penalidad."),
     ],
   },
   {
@@ -187,7 +187,7 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
       fact("fieldLocation","Location on the field","Ubicación en la cancha","Field location is an express penalty-selection factor.","La ubicación es un factor expreso de selección de penalidad.","text",undefined),
       fact("playerPosition","Position of the players","Posición de los jugadores","Player position is an express penalty-selection factor.","La posición de los jugadores es un factor expreso de selección de penalidad.","text",undefined),
       fact("foulFrequency","Frequency / repetition","Frecuencia / reiteración","Repeated fouls can justify escalation.","Las faltas reiteradas pueden justificar escalamiento.","text",undefined),
-      fact("simultaneousFouls","Were fouls simultaneous?","¿Hubo faltas simultáneas?","Simultaneous fouls can alter the restart/penalty procedure."),
+      fact("simultaneousFouls","Were fouls simultaneous?","¿Hubo faltas simultáneas?","Simultaneous fouls can alter the restart/penalty procedure.","Las faltas simultáneas pueden alterar el procedimiento de reanudación/penalidad."),
     ],
   },
 
@@ -201,7 +201,7 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
       fact("arenaFormat","Standard or alternative-format arena?","¿Arena estándar o formato alternativo?","Alternative-format conditions can replace corresponding Arena provisions.","Las condiciones de formato alternativo pueden reemplazar disposiciones Arena correspondientes.","choice",[["standard","Standard arena","Arena estándar"],["alternative","Alternative format","Formato alternativo"],["unknown","Not sure","No estoy seguro"]]),
       fact("facilityIssue","Facility condition involved","Condición de la instalación","The exact facility requirement depends on the issue.","El requisito exacto depende del problema.","text",undefined),
       fact("equipmentIssue","Mount/equipment issue","Problema de caballo/equipo","Mount and tack conditions can affect safety and eligibility to continue.","Las condiciones del caballo y aperos pueden afectar seguridad y continuidad.","text",undefined),
-      fact("medicationIssue","Medication issue?","¿Hay cuestión de medicación?","Equine Medication Rules are a separate controlling section."),
+      fact("medicationIssue","Medication issue?","¿Hay cuestión de medicación?","Equine Medication Rules are a separate controlling section.","Las Equine Medication Rules son una sección de control separada."),
     ],
   },
   {
@@ -228,7 +228,7 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
       fact("arenaFormatType","Game format","Formato de juego","Standard, round-robin and special formats can use different timing/scoring procedures.","Formatos estándar, round robin y especiales pueden usar tiempos/scoring distintos.","text",undefined),
       fact("arenaPeriod","Period involved","Período involucrado","Period number/timing may affect the procedure.","El número/momento del período puede afectar el procedimiento.","number",undefined),
       fact("arenaScore","Score and handicap state","Tanteador y handicap","Scoring questions require the current score/handicap context.","Las cuestiones de scoring requieren contexto de tanteador/handicap.","text",undefined),
-      fact("arenaTie","Is the game tied at regulation?","¿El partido está empatado al final?","Tie procedures depend on the format."),
+      fact("arenaTie","Is the game tied at regulation?","¿El partido está empatado al final?","Tie procedures depend on the format.","Los procedimientos de desempate dependen del formato."),
     ],
   },
   {
@@ -240,7 +240,7 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
     facts: [
       fact("arenaStopReason","Why did play stop?","¿Por qué se detuvo el juego?","The restart depends on the stoppage reason.","La reanudación depende de la causa.","text",undefined),
       fact("arenaBallSpot","Ball / player position at stoppage","Posición de pelota/jugadores al detenerse","Position can change the restart.","La posición puede cambiar la reanudación.","text",undefined),
-      fact("arenaPenaltyRestart","Was the stoppage caused by a foul/penalty?","¿La detención fue por falta/penalidad?","Penalty restart rules may control instead of ordinary dead-ball rules."),
+      fact("arenaPenaltyRestart","Was the stoppage caused by a foul/penalty?","¿La detención fue por falta/penalidad?","Penalty restart rules may control instead of ordinary dead-ball rules.","Las reglas de reanudación por penalidad pueden prevalecer sobre las reglas ordinarias de dead ball."),
       fact("arenaClock","Clock status","Estado del reloj","Clock treatment depends on the interruption.","El tratamiento del reloj depende de la interrupción.","text",undefined),
     ],
   },
@@ -254,7 +254,7 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
       fact("arenaUnderlyingFoul","Underlying foul","Falta subyacente","Penalty selection starts with the actual violation.","La selección de penalidad parte de la infracción real.","text",undefined),
       fact("arenaDanger","Degree of danger / advantage","Grado de peligro / ventaja","Arena Rule 10 also gives discretion based on the circumstances.","Arena Rule 10 también da discreción según las circunstancias.","text",undefined),
       fact("arenaLocation","Location in the arena","Ubicación en la arena","Position/location can change available penalties.","La posición/ubicación puede cambiar las penalidades disponibles.","text",undefined),
-      fact("arenaRepeat","Repeated foul?","¿Falta reiterada?","Repetition can escalate sanction."),
+      fact("arenaRepeat","Repeated foul?","¿Falta reiterada?","Repetition can escalate sanction.","La reiteración puede escalar la sanción."),
     ],
   },
   {
@@ -266,8 +266,8 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
     facts: [
       fact("arenaLine","Current Line of the Ball","Line of the Ball actual","ROW starts from the actual line.","ROW parte de la línea real.","text",undefined),
       fact("arenaRowHolder","Apparent ROW holder","Aparente titular del ROW","Crossing/entry depends on who held ROW.","Cruce/ingreso depende de quién tenía ROW.","text",undefined),
-      fact("arenaRisk","Risk / forced check","Riesgo / frenada forzada","Risk is central to ROW infringement."),
-      fact("arenaLineChange","Did the line change?","¿Cambió la línea?","A change can affect clearance time."),
+      fact("arenaRisk","Risk / forced check","Riesgo / frenada forzada","Risk is central to ROW infringement.","El riesgo es central para determinar una infracción de ROW."),
+      fact("arenaLineChange","Did the line change?","¿Cambió la línea?","A change can affect clearance time.","Un cambio puede afectar el tiempo para despejar."),
     ],
   },
   {
@@ -279,8 +279,8 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
     facts: [
       fact("arenaContact","Contact / maneuver","Contacto / maniobra","Different improper-play clauses depend on the maneuver.","Distintas cláusulas dependen de la maniobra.","text",undefined),
       fact("arenaSpeedAngle","Speed / angle / position","Velocidad / ángulo / posición","These facts control danger assessment.","Estos hechos controlan la evaluación del peligro.","text",undefined),
-      fact("arenaHorseBalance","Horse knocked off balance?","¿Caballo perdió equilibrio?","Balance is a strong danger indicator."),
-      fact("arenaDeliberate","Deliberate or repeated?","¿Deliberado o reiterado?","This can connect Rule 13 to conduct and penalty escalation."),
+      fact("arenaHorseBalance","Horse knocked off balance?","¿Caballo perdió equilibrio?","Balance is a strong danger indicator.","La pérdida de equilibrio es un indicador fuerte de peligro."),
+      fact("arenaDeliberate","Deliberate or repeated?","¿Deliberado o reiterado?","This can connect Rule 13 to conduct and penalty escalation.","Esto puede conectar Rule 13 con conducta y escalamiento de penalidad."),
     ],
   },
   {
@@ -291,8 +291,8 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
     terms: ["unsportsmanlike","conduct","card","abuse","language","misconduct","conducta","tarjeta","insulto"],
     facts: [
       fact("arenaConductType","Conduct involved","Conducta involucrada","Different conduct can trigger different sanctions.","Distintas conductas pueden activar sanciones distintas.","text",undefined),
-      fact("arenaPriorConduct","Prior warning/card?","¿Advertencia/tarjeta previa?","Prior conduct can matter to escalation."),
-      fact("arenaOffField","On-field or off-field?","¿En cancha o fuera de cancha?","The applicable process can change by context."),
+      fact("arenaPriorConduct","Prior warning/card?","¿Advertencia/tarjeta previa?","Prior conduct can matter to escalation.","La conducta previa puede importar para el escalamiento."),
+      fact("arenaOffField","On-field or off-field?","¿En cancha o fuera de cancha?","The applicable process can change by context.","El procedimiento aplicable puede cambiar según el contexto."),
     ],
   },
   {
@@ -304,7 +304,7 @@ export const ruleGraphFamilies: RuleGraphFamily[] = [
     facts: [
       fact("arenaMalletAction","Mallet action","Acción con el mallet","Hook/stroke rules depend on the action.","Las reglas de hook/stroke dependen de la acción.","text",undefined),
       fact("arenaMalletPosition","Relative position / side","Posición relativa / lado","Position determines legality.","La posición determina legalidad.","text",undefined),
-      fact("arenaMalletDanger","Danger created?","¿Creó peligro?","Danger connects the mallet rule to penalty selection."),
+      fact("arenaMalletDanger","Danger created?","¿Creó peligro?","Danger connects the mallet rule to penalty selection.","El peligro conecta la regla del mallet con la selección de penalidad."),
     ],
   },
 ];
