@@ -1,4 +1,5 @@
 export type Discipline = "outdoor" | "arena";
+export type Language = "en" | "es";
 
 export type Rule = {
   id: string;
