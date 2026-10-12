@@ -1,12 +1,11 @@
-const CACHE = "umpire-polo-assistant-v0.10-2026";
+const CACHE = "umpire-polo-assistant-v0.11-2026";
 const CORE = [
   "/",
   "/manifest.webmanifest",
-  "/logo.svg",
+  "/logo.png",
   "/data/manifest.json",
   "/data/rules-2026.json",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png"
+  "/logo.png"
 ];
 
 self.addEventListener("install", (event) => {

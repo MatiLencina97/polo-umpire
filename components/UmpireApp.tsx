@@ -501,7 +501,7 @@ export default function UmpireApp() {
     <main className={"appShell font-" + fontSize}>
       <header className="topbar">
         <div className="brandBlock">
-          <img className="brandLogo" src="/logo.svg" alt="Umpire Polo Assistant" />
+          <img className="brandLogo" src="/logo.png" alt="Umpire Polo Assistant" />
           <div>
             <div className="brandName">UMPIRE POLO ASSISTANT</div>
             <div className="brandSub">Rulebook Assistant</div>
@@ -1044,7 +1044,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.10</span>
+        <span>Umpire Polo Assistant v0.11</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
