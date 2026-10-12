@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Umpire Polo Assistant</title>
+  <desc id="desc">Minimal polo emblem combining a shield, horse head, mallet and ball.</desc>
+  <g fill="none" stroke="#0B2A4B" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M126 162 256 104l130 58v111c0 76-49 139-130 176-81-37-130-100-130-176Z" stroke-width="20"/>
+    <path d="M202 190c29-34 66-54 111-54 22 0 43 5 62 14-24 10-42 30-51 57-9 25-6 54 9 80 12 20 28 37 44 51-31 7-60 2-85-14-24-15-41-37-49-64-8 20-12 42-10 65-22-30-33-64-31-102Z" fill="#0B2A4B" stroke-width="12"/>
+    <path d="M326 210c12 12 18 28 18 46 0 34-24 62-57 69-13 3-28 1-39-4" stroke-width="14"/>
+    <path d="M310 183c25-11 50-11 76-4" stroke-width="14"/>
+    <path d="M111 113 364 397" stroke-width="18"/>
+    <path d="M85 91 139 43" stroke-width="22"/>
+    <path d="M101 71 151 126" stroke-width="22"/>
+  </g>
+  <g fill="#B7A58E">
+    <rect x="117" y="95" width="15" height="36" rx="5" transform="rotate(-42 124.5 113)"/>
+    <rect x="335" y="357" width="16" height="37" rx="5" transform="rotate(-42 343 375.5)"/>
+    <circle cx="325" cy="333" r="24"/>
+  </g>
+</svg>

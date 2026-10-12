@@ -1,7 +1,8 @@
-const CACHE = "polo-umpire-v0.2-2026";
+const CACHE = "umpire-polo-assistant-v0.10-2026";
 const CORE = [
   "/",
   "/manifest.webmanifest",
+  "/logo.svg",
   "/data/manifest.json",
   "/data/rules-2026.json",
   "/icons/icon-192.png",
