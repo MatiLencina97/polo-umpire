@@ -9,6 +9,8 @@ import {
   questions,
   relatedRuleNumbers,
   scenarioApplicationText,
+  parseSubstitutionHandicaps,
+  substitutionEligibilityText,
   scenarioDefs,
   scenarioQuestions,
   scoreRule,
@@ -36,7 +38,7 @@ const quickPlays = [
 ];
 
 const quickRuleSituations = [
-  "Un jugador llega dos minutos después de empezado el segundo chukker. ¿Puede entrar inmediatamente?",
+  "En un torneo de 8 goles, se cae un jugador de 5 goles y tiene que ser reemplazado. ¿Qué condiciones debe tener su reemplazo para ser elegible?",
   "Un jugador se lesiona durante el período y el equipo quiere reemplazar también a otro compañero.",
   "El único sustituto disponible baja al equipo por debajo del límite inferior del evento.",
   "Un jugador reemplazado por agotamiento se recupera y quiere volver a mitad del siguiente período.",
@@ -74,6 +76,12 @@ export default function UmpireApp() {
   const [networkOnline, setNetworkOnline] = useState(true);
   const [offlineReady, setOfflineReady] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [substitutionInputs, setSubstitutionInputs] = useState({
+    eventUpper: "",
+    teamTotalBefore: "",
+    outgoingHandicap: "",
+    candidateHandicap: "",
+  });
   const [situation, setSituation] = useState("");
   const [topic, setTopic] = useState<TopicId | null>(null);
   const [rankedTopics, setRankedTopics] = useState<ReturnType<typeof classify>>([]);
@@ -225,6 +233,15 @@ export default function UmpireApp() {
       const detected = ranked[0]?.score ? ranked[0].id : null;
       setScenario(detected);
       setTopic(null);
+      if (detected === "substitutes") {
+        const parsed = parseSubstitutionHandicaps(situation);
+        setSubstitutionInputs({
+          eventUpper: parsed.eventUpper != null ? String(parsed.eventUpper) : "",
+          teamTotalBefore: parsed.teamTotalBefore != null ? String(parsed.teamTotalBefore) : "",
+          outgoingHandicap: parsed.outgoingHandicap != null ? String(parsed.outgoingHandicap) : "",
+          candidateHandicap: parsed.candidateHandicap != null ? String(parsed.candidateHandicap) : "",
+        });
+      }
       const rankedRules = db.rules
         .filter((rule) => rule.discipline === discipline)
         .map((rule) => ({ rule, score: scoreRule(rule, situation) }))
@@ -346,6 +363,39 @@ export default function UmpireApp() {
               <p className="muted">{resolverMode === "play"
                 ? `Posibles familias: ${rankedTopics.filter((item) => item.score > 0).slice(0, 3).map((item) => item.label).join(" · ") || (topic ? topicDefs[topic].label : "")}`
                 : `Familia detectada: ${scenario ? scenarioDefs[scenario].label : rankedScenarios[0]?.label ?? "Regla general"}`}</p>
+              {resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor" ? (
+                <div className="callout secondaryCallout">
+                  <strong>Chequeo de handicap del reemplazo</strong>
+                  <p>La app aplica dos límites distintos: el máximo individual de la 3/4 Rule y el máximo agregado del equipo después de la sustitución.</p>
+                  <div className="questionList">
+                    {[
+                      ["eventUpper", "Límite superior del torneo"],
+                      ["teamTotalBefore", "Handicap total del equipo antes del cambio"],
+                      ["outgoingHandicap", "Handicap del jugador que sale"],
+                      ["candidateHandicap", "Handicap del reemplazante (opcional)"],
+                    ].map(([key, label]) => (
+                      <div className="question" key={key}>
+                        <strong>{label}</strong>
+                        <input
+                          className="searchInput"
+                          inputMode="decimal"
+                          type="number"
+                          step="0.5"
+                          value={substitutionInputs[key as keyof typeof substitutionInputs]}
+                          onChange={(event) => setSubstitutionInputs((current) => ({ ...current, [key]: event.target.value }))}
+                          placeholder="Ej.: 8"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p>{substitutionEligibilityText(discipline, {
+                    eventUpper: substitutionInputs.eventUpper === "" ? null : Number(substitutionInputs.eventUpper),
+                    teamTotalBefore: substitutionInputs.teamTotalBefore === "" ? null : Number(substitutionInputs.teamTotalBefore),
+                    outgoingHandicap: substitutionInputs.outgoingHandicap === "" ? null : Number(substitutionInputs.outgoingHandicap),
+                    candidateHandicap: substitutionInputs.candidateHandicap === "" ? null : Number(substitutionInputs.candidateHandicap),
+                  })}</p>
+                </div>
+              ) : null}
               <div className="questionList">
                 {activeQuestions.map((question) => (
                   <div className="question" key={question.key}>
@@ -388,6 +438,17 @@ export default function UmpireApp() {
                     ? scenarioApplicationText(scenario, discipline, answers)
                     : "La app encontró las reglas con mayor coincidencia textual. Revisá el artículo principal y la interpretación/ejemplo relacionado para confirmar los hechos que cambian la aplicación."}</p>
               </div>
+              {resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor" ? (
+                <div className="callout secondaryCallout">
+                  <strong>Elegibilidad por handicap</strong>
+                  <p>{substitutionEligibilityText(discipline, {
+                    eventUpper: substitutionInputs.eventUpper === "" ? null : Number(substitutionInputs.eventUpper),
+                    teamTotalBefore: substitutionInputs.teamTotalBefore === "" ? null : Number(substitutionInputs.teamTotalBefore),
+                    outgoingHandicap: substitutionInputs.outgoingHandicap === "" ? null : Number(substitutionInputs.outgoingHandicap),
+                    candidateHandicap: substitutionInputs.candidateHandicap === "" ? null : Number(substitutionInputs.candidateHandicap),
+                  })}</p>
+                </div>
+              ) : null}
               <p className="muted">{resolverMode === "play"
                 ? "La app no fuerza una penalidad cuando el Rulebook deja discreción al Umpire. Muestra la regla sustantiva y la regla de selección de penalidad para mantener trazabilidad."
                 : "Para situaciones administrativas o de elegibilidad, la app prioriza el artículo aplicable y sus Interpretations/Examples; cuando todavía no existe un árbol guiado específico, muestra las mejores coincidencias del Rulebook local."}</p>
@@ -474,7 +535,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Polo Umpire v0.3</span>
+        <span>Polo Umpire v0.4</span>
         <span>Fuente instalada: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 

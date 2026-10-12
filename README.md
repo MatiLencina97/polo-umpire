@@ -1,4 +1,4 @@
-# Polo Umpire v0.2
+# Polo Umpire v0.4
 
 Offline-first PWA for polo umpires, built with Next.js + TypeScript and a local dataset extracted from the current USPA Rulebook.
 
@@ -72,3 +72,14 @@ Planned next layers:
 3. Optional cloud sync
 4. Optional AI interpretation when connected
 5. Admin change-review screen for new Rulebook versions
+
+
+## Situation rules
+
+Substitutions now include a handicap eligibility calculator. For Outdoor play it combines:
+
+- Rule 2.d individual-player handicap limits (the “3/4 Rule”).
+- Rule 3.c post-substitution aggregate team handicap.
+- General player eligibility checks from Rule 2 and Rule 3 interpretations.
+
+If the question gives the tournament upper limit and outgoing player handicap but not the original team total, the app asks for the missing team handicap before calculating the exact maximum substitute.

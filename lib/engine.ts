@@ -118,7 +118,7 @@ export function relatedRuleNumbers(topic: TopicId, discipline: Discipline) {
 export const scenarioDefs = {
   substitutes: {
     label: "Substitutions / Alternates",
-    outdoor: ["3"],
+    outdoor: ["3", "2"],
     arena: ["3"],
     terms: [
       "substitute", "substitution", "sustituto", "suplente", "reemplazo", "reemplazar",
@@ -149,6 +149,102 @@ export function classifyScenario(text: string) {
       return { id, score, label: def.label };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+
+export type SubstitutionHandicapInputs = {
+  eventUpper?: number | null;
+  teamTotalBefore?: number | null;
+  outgoingHandicap?: number | null;
+  candidateHandicap?: number | null;
+};
+
+function parsedNumber(value?: string) {
+  if (!value) return null;
+  const n = Number(value.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+export function parseSubstitutionHandicaps(text: string): SubstitutionHandicapInputs {
+  const n = normalize(text).replace(/,/g, ".");
+
+  const eventUpper =
+    parsedNumber(n.match(/torneo\s+de\s+(-?\d+(?:\.\d+)?)\s+goles?/)?.[1]) ??
+    parsedNumber(n.match(/(?:limite superior|upper limit)\s+(?:de\s+)?(-?\d+(?:\.\d+)?)/)?.[1]) ??
+    parsedNumber(n.match(/(-?\d+(?:\.\d+)?)\s*[- ]?goal\s+tournament/)?.[1]);
+
+  const teamTotalBefore =
+    parsedNumber(n.match(/equipo\s+(?:de|con|esta en|tiene)\s+(-?\d+(?:\.\d+)?)\s+goles?/)?.[1]) ??
+    parsedNumber(n.match(/team\s+(?:of\s+)?(-?\d+(?:\.\d+)?)\s*[- ]?goals?/)?.[1]);
+
+  const outgoingHandicap =
+    parsedNumber(n.match(/jugador\s+de\s+(-?\d+(?:\.\d+)?)\s+goles?/)?.[1]) ??
+    parsedNumber(n.match(/(-?\d+(?:\.\d+)?)\s*[- ]?goal\s+player/)?.[1]);
+
+  const candidateHandicap =
+    parsedNumber(n.match(/(?:reemplazante|sustituto|suplente|replacement|substitute).{0,35}?(-?\d+(?:\.\d+)?)\s+(?:goles?|goals?)/)?.[1]) ??
+    parsedNumber(n.match(/reemplazad[oa]\s+por\s+(?:un\s+)?(-?\d+(?:\.\d+)?)/)?.[1]);
+
+  return { eventUpper, teamTotalBefore, outgoingHandicap, candidateHandicap };
+}
+
+export function substitutionEligibilityText(
+  discipline: Discipline,
+  inputs: SubstitutionHandicapInputs,
+) {
+  if (discipline !== "outdoor") {
+    return "Para Arena, la elegibilidad del reemplazo debe resolverse con Arena Rule 3 y las Tournament Conditions aplicables. Este calculador de 3/4 Rule corresponde al reglamento Outdoor.";
+  }
+
+  const upper = inputs.eventUpper ?? null;
+  const teamBefore = inputs.teamTotalBefore ?? null;
+  const outgoing = inputs.outgoingHandicap ?? null;
+  const candidate = inputs.candidateHandicap ?? null;
+
+  const individualMax = upper !== null && upper >= 4 ? Math.floor(upper * 0.75 + 1e-9) : null;
+  const remaining = teamBefore !== null && outgoing !== null ? teamBefore - outgoing : null;
+  const aggregateMax = upper !== null && remaining !== null ? upper - remaining : null;
+  const maxReplacement =
+    individualMax !== null && aggregateMax !== null
+      ? Math.min(individualMax, aggregateMax)
+      : individualMax ?? aggregateMax;
+
+  const parts: string[] = [];
+
+  if (upper !== null) {
+    if (individualMax !== null) {
+      parts.push(`Con límite superior de ${upper} goles, la 3/4 Rule de Outdoor Rule 2.d limita a cualquier jugador individual a un máximo de ${individualMax} goles.`);
+    }
+    parts.push(`Outdoor Rule 3.c exige además que el handicap agregado del equipo después del cambio no supere ${upper} goles; sí puede quedar por debajo del límite inferior del evento.`);
+  } else {
+    parts.push("Necesito el límite superior de handicap del torneo para aplicar la 3/4 Rule y el límite agregado del equipo.");
+  }
+
+  if (teamBefore !== null && outgoing !== null && remaining !== null && upper !== null) {
+    parts.push(`El equipo tenía ${teamBefore} y sale un jugador de ${outgoing}: los otros tres suman ${remaining}. Por límite agregado, el reemplazo puede tener como máximo ${aggregateMax} goles.`);
+  } else if (upper !== null && outgoing !== null) {
+    parts.push(`Sé que sale un jugador de ${outgoing} goles, pero para calcular el máximo exacto del reemplazante necesito el handicap total del equipo antes del cambio (o la suma de los otros tres jugadores).`);
+  }
+
+  if (maxReplacement !== null) {
+    parts.push(`Máximo permitido por handicap en este caso: ${maxReplacement} goles, sujeto a las demás condiciones de elegibilidad.`);
+  }
+
+  if (candidate !== null && maxReplacement !== null) {
+    parts.push(
+      candidate <= maxReplacement
+        ? `Un candidato de ${candidate} goles cumple los límites de handicap calculados.`
+        : `Un candidato de ${candidate} goles NO cumple: supera el máximo de ${maxReplacement} para esta combinación.`,
+    );
+  }
+
+  parts.push("Además, el sustituto debe haber sido elegible para comenzar el partido: membresía/credenciales y handicap en orden, no estar suspendido y no haber jugado para otro equipo en el mismo Event, salvo una Tournament Condition específica que autorice una excepción.");
+
+  if (upper === 8 && outgoing === 5 && teamBefore === null) {
+    parts.push("Ejemplo: si el equipo era exactamente de 8 goles, los otros tres suman 3 y el reemplazante puede ser como máximo de 5. Si el equipo era de 7, los otros tres suman 2 y podría entrar hasta un 6-goaler.");
+  }
+
+  return parts.join(" ");
 }
 
 export function scenarioApplicationText(
