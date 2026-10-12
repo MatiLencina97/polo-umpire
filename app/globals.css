@@ -20,7 +20,7 @@ body {
   background: var(--bg);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
-button, input, textarea { font: inherit; }
+button, input, textarea, select { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 
 .appShell { min-height: 100vh; padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
@@ -277,4 +277,98 @@ footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8p
 @media (max-width:720px) {
   .universalNodes { grid-template-columns:1fr 1fr; }
   .graphCatalog { grid-template-columns:1fr; }
+}
+
+/* Accessible text sizing */
+.appShell {
+  --font-scale: 1;
+  font-size: calc(16px * var(--font-scale));
+}
+.appShell.font-small { --font-scale: .9; }
+.appShell.font-normal { --font-scale: 1; }
+.appShell.font-large { --font-scale: 1.28; }
+
+.fontSizeSwitch {
+  display: flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.10);
+}
+.fontSizeSwitch button {
+  min-width: 29px;
+  border: 0;
+  border-radius: 7px;
+  padding: 6px 7px;
+  background: transparent;
+  color: #b8c7d9;
+  font-size: calc(10px * var(--font-scale));
+  font-weight: 900;
+  cursor: pointer;
+}
+.fontSizeSwitch button.active {
+  background: white;
+  color: var(--navy);
+}
+
+/* Scale explicit pixel text without changing the interaction model. */
+.brandName { font-size: calc(14px * var(--font-scale)); }
+.brandSub { font-size: calc(10px * var(--font-scale)); }
+.badge { font-size: calc(10px * var(--font-scale)); }
+.offlineIndicator { font-size: calc(9px * var(--font-scale)); }
+.hero h1 { font-size: clamp(calc(31px * var(--font-scale)), 6vw, calc(52px * var(--font-scale))); }
+.versionPill { font-size: calc(12px * var(--font-scale)); }
+.eyebrow { font-size: calc(10px * var(--font-scale)); }
+h2 { font-size: clamp(calc(21px * var(--font-scale)), 4vw, calc(27px * var(--font-scale))); }
+h3 { font-size: calc(17px * var(--font-scale)); }
+.muted { font-size: calc(13px * var(--font-scale)); }
+.quickchips button { font-size: calc(12px * var(--font-scale)); }
+.confidence { font-size: calc(10px * var(--font-scale)); }
+.ruleTag { font-size: calc(10px * var(--font-scale)); }
+.candidateExcerpt { font-size: calc(13px * var(--font-scale)); }
+.ruleItem span { font-size: calc(12px * var(--font-scale)); }
+.offlineTest p, .updateStatus, .errorBanner { font-size: calc(13px * var(--font-scale)); }
+footer { font-size: calc(10px * var(--font-scale)); }
+.modalClose { font-size: calc(25px * var(--font-scale)); }
+.sourceMeta { font-size: calc(12px * var(--font-scale)); }
+.officialText { font-size: calc(13px * var(--font-scale)); }
+.languageSwitch button { font-size: calc(10px * var(--font-scale)); }
+.resultSection h3 { font-size: calc(15px * var(--font-scale)); }
+.crossStatus { font-size: calc(10px * var(--font-scale)); }
+.ruleGraphNode b { font-size: calc(12px * var(--font-scale)); }
+.ruleGraphNode span { font-size: calc(11px * var(--font-scale)); }
+.crossCheckSource { font-size: calc(10px * var(--font-scale)); }
+.crossCheck strong { font-size: calc(13px * var(--font-scale)); }
+.crossCheck p { font-size: calc(12px * var(--font-scale)); }
+.nextFactCard h3 { font-size: calc(18px * var(--font-scale)); }
+.nextFactCount { font-size: calc(11px * var(--font-scale)); }
+.resultRulePath strong { font-size: calc(12px * var(--font-scale)); }
+.resultRulePath span { font-size: calc(11px * var(--font-scale)); }
+.graphFamilyBadge, .graphCoverageBadge { font-size: calc(10px * var(--font-scale)); }
+.missingFactPicker label, .missingFactSelect { font-size: calc(12px * var(--font-scale)); }
+.coverageSummary span { font-size: calc(11px * var(--font-scale)); }
+.graphCatalogItem strong { font-size: calc(13px * var(--font-scale)); }
+.graphCatalogItem span, .graphCatalogItem small { font-size: calc(11px * var(--font-scale)); }
+
+/* Inputs and action controls inherit the selected text size. */
+textarea,
+.searchInput,
+.missingFactPicker select,
+.missingFactSelect select,
+.segmented button,
+.choices button,
+.primaryAction,
+.secondaryAction,
+.candidate,
+.ruleItem,
+.tabs button {
+  font-size: 1em;
+}
+
+@media (max-width: 720px) {
+  .topbarActions { gap: 4px; }
+  .fontSizeSwitch button { min-width: 26px; padding: 5px 5px; }
+  .appShell.font-large .brandSub { display: none; }
+  .appShell.font-large .statusStack { display: none; }
+  .appShell.font-large .hero h1 { font-size: calc(34px * var(--font-scale)); }
+  .appShell.font-large .tabs button { font-size: calc(11px * var(--font-scale)); }
 }

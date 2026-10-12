@@ -48,6 +48,7 @@ import type {
 
 type Tab = "resolver" | "buscar" | "reglamento" | "estado";
 type SearchFilter = "all" | Discipline;
+type FontSizePreference = "small" | "normal" | "large";
 
 const quickPlays: Record<Language, string[]> = {
   en: [
@@ -166,6 +167,7 @@ export default function UmpireApp() {
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [updateStatus, setUpdateStatus] = useState("");
   const [language, setLanguage] = useState<Language>("en");
+  const [fontSize, setFontSize] = useState<FontSizePreference>("normal");
   const [nationalityInputs, setNationalityInputs] = useState<SubstitutionCrossFacts>({ ...defaultNationalityInputs });
   const [followUpText, setFollowUpText] = useState("");
   const [followUps, setFollowUps] = useState<Array<{ question: string; answer: string; ruleIds: string[] }>>([]);
@@ -259,13 +261,23 @@ export default function UmpireApp() {
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem("polo-umpire-language");
-    if (saved === "en" || saved === "es") setLanguage(saved);
+    const savedLanguage = localStorage.getItem("polo-umpire-language");
+    if (savedLanguage === "en" || savedLanguage === "es") setLanguage(savedLanguage);
+
+    const savedFontSize = localStorage.getItem("polo-umpire-font-size");
+    if (savedFontSize === "small" || savedFontSize === "normal" || savedFontSize === "large") {
+      setFontSize(savedFontSize);
+    }
   }, []);
 
   function changeLanguage(next: Language) {
     setLanguage(next);
     localStorage.setItem("polo-umpire-language", next);
+  }
+
+  function changeFontSize(next: FontSizePreference) {
+    setFontSize(next);
+    localStorage.setItem("polo-umpire-font-size", next);
   }
 
   const searchedRules = useMemo(() => {
@@ -486,7 +498,7 @@ export default function UmpireApp() {
   }
 
   return (
-    <main className="appShell">
+    <main className={"appShell font-" + fontSize}>
       <header className="topbar">
         <div className="brandBlock">
           <div className="brandMark">PU</div>
@@ -496,6 +508,32 @@ export default function UmpireApp() {
           </div>
         </div>
         <div className="topbarActions">
+          <div className="fontSizeSwitch" role="group" aria-label={tr("Text size", "Tamaño de texto")}>
+            <button
+              className={fontSize === "small" ? "active" : ""}
+              onClick={() => changeFontSize("small")}
+              aria-pressed={fontSize === "small"}
+              title={tr("Smaller text", "Texto más chico")}
+            >
+              A−
+            </button>
+            <button
+              className={fontSize === "normal" ? "active" : ""}
+              onClick={() => changeFontSize("normal")}
+              aria-pressed={fontSize === "normal"}
+              title={tr("Default text size", "Tamaño de texto normal")}
+            >
+              A
+            </button>
+            <button
+              className={fontSize === "large" ? "active" : ""}
+              onClick={() => changeFontSize("large")}
+              aria-pressed={fontSize === "large"}
+              title={tr("Larger text", "Texto más grande")}
+            >
+              A+
+            </button>
+          </div>
           <div className="languageSwitch" aria-label={tr("Language", "Idioma")}>
             <button className={language === "en" ? "active" : ""} onClick={() => changeLanguage("en")}>EN</button>
             <button className={language === "es" ? "active" : ""} onClick={() => changeLanguage("es")}>ES</button>
@@ -1006,7 +1044,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Polo Umpire v0.8</span>
+        <span>Polo Umpire v0.9</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
