@@ -255,3 +255,26 @@ footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8p
   .ruleGraphNodes { grid-template-columns: 1fr 1fr; }
   .ruleGraphNode i { display: none; }
 }
+
+.universalGraphSummary { display:flex; flex-wrap:wrap; gap:8px; margin: 12px 0; }
+.graphFamilyBadge, .graphCoverageBadge { display:inline-flex; align-items:center; padding:6px 9px; border-radius:999px; font-size:10px; font-weight:900; }
+.graphFamilyBadge { background:#e8eef6; color:var(--navy); }
+.graphCoverageBadge { background:#e7f6ef; color:var(--green); }
+.universalNodes { grid-template-columns: repeat(3,minmax(0,1fr)); margin: 12px 0; }
+.graphRuleButton { text-align:left; cursor:pointer; color:inherit; }
+.externalNode { border-style:dashed; background:#f9f4ff; }
+.missingFactPicker { margin:14px 0; padding:15px; border:2px solid #d6b566; border-radius:16px; background:#fffaf1; }
+.missingFactPicker label, .missingFactSelect { display:grid; gap:6px; margin-bottom:12px; color:var(--muted); font-size:12px; font-weight:700; }
+.missingFactPicker select, .missingFactSelect select { width:100%; padding:11px 12px; border:1px solid #d1dbe6; border-radius:11px; background:white; color:var(--text); }
+.compactRuleGraph { margin:14px 0; }
+.graphCatalogCard { margin-top:14px; }
+.coverageSummary { display:flex; gap:8px; margin:12px 0; }
+.coverageSummary span { padding:7px 10px; border-radius:999px; background:#e7f6ef; color:var(--green); font-size:11px; font-weight:900; }
+.graphCatalog { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.graphCatalogItem { border:1px solid var(--line); border-radius:12px; padding:11px; display:grid; gap:4px; background:#fbfcfd; }
+.graphCatalogItem strong { color:var(--navy); font-size:13px; }
+.graphCatalogItem span, .graphCatalogItem small { color:var(--muted); font-size:11px; line-height:1.4; }
+@media (max-width:720px) {
+  .universalNodes { grid-template-columns:1fr 1fr; }
+  .graphCatalog { grid-template-columns:1fr; }
+}

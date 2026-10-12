@@ -24,6 +24,16 @@ import {
   parseSubstitutionCrossFacts,
   type SubstitutionCrossFacts,
 } from "@/lib/cross-rule";
+import {
+  buildUniversalRuleGraph,
+  factLabel,
+  factOptionLabel,
+  factWhy,
+  graphCoverage,
+  ruleGraphFamilies,
+  type CaseFactDefinition,
+  type CaseFactValue,
+} from "@/lib/rule-graphs";
 import type {
   ChoiceValue,
   Discipline,
@@ -159,6 +169,8 @@ export default function UmpireApp() {
   const [nationalityInputs, setNationalityInputs] = useState<SubstitutionCrossFacts>({ ...defaultNationalityInputs });
   const [followUpText, setFollowUpText] = useState("");
   const [followUps, setFollowUps] = useState<Array<{ question: string; answer: string; ruleIds: string[] }>>([]);
+  const [caseFacts, setCaseFacts] = useState<Record<string, CaseFactValue>>({});
+  const [selectedMissingFactKey, setSelectedMissingFactKey] = useState("");
 
   const tr = (en: string, es: string) => language === "en" ? en : es;
   const optionLabel = (value: string, fallback: string) => {
@@ -322,6 +334,29 @@ export default function UmpireApp() {
 
   const substitutionSections = crossRuleState?.sections ?? [];
 
+  const universalSeedRules = resolverMode === "play"
+    ? resolutionRules.map((rule) => rule.rule)
+    : (scenarioRules.length ? scenarioRules : genericSituationRules).map((rule) => rule.rule);
+
+  const universalGraph = db && situation.trim()
+    ? buildUniversalRuleGraph({
+        db,
+        discipline,
+        query: situation,
+        seedRules: universalSeedRules,
+        facts: caseFacts,
+        language,
+      })
+    : null;
+
+  const availableMissingFacts: CaseFactDefinition[] = scenario === "substitutes" && crossRuleState
+    ? []
+    : (universalGraph?.missingFacts ?? []);
+
+  const selectedGenericFact = availableMissingFacts.find((item) => item.key === selectedMissingFactKey)
+    ?? availableMissingFacts[0]
+    ?? null;
+
   const unresolvedQuestions = activeQuestions.filter((question) => !answers[question.key] || answers[question.key] === "unknown");
   const answeredQuestions = activeQuestions.filter((question) => answers[question.key] && answers[question.key] !== "unknown");
 
@@ -332,6 +367,8 @@ export default function UmpireApp() {
     setFollowUpText("");
     setFollowUps([]);
     setNationalityInputs({ ...defaultNationalityInputs });
+    setCaseFacts({});
+    setSelectedMissingFactKey("");
 
     if (resolverMode === "play") {
       const ranked = classify(situation);
@@ -528,15 +565,90 @@ export default function UmpireApp() {
             <button className="primaryAction" onClick={analyze} disabled={!db}>{resolverMode === "play" ? tr("Analyze play", "Analizar jugada") : tr("Analyze situation", "Analizar situación")}</button>
           </div>
 
-          {resolverMode === "situation" && !scenario && genericSituationRules.length > 0 && (
+          {resolverMode === "situation" && !scenario && genericSituationRules.length > 0 && universalGraph && (
             <div className="card" id="questions">
-              <p className="eyebrow">{tr("LOCAL ANALYSIS", "ANÁLISIS LOCAL")}</p>
-              <h2>{tr("Related rules found", "Encontré reglas relacionadas")}</h2>
-              <p className="muted">{tr("There is not yet a dedicated guided tree for this family, but local retrieval found the closest Rulebook provisions. You can apply the rules and open the official text.", "Todavía no hay un árbol guiado específico para esta familia, pero el buscador local encontró los artículos con mayor coincidencia. Podés aplicar el reglamento y abrir el texto oficial.")}</p>
-              <div className="candidateList">
-                {genericSituationRules.slice(0, 3).map((rule) => <RuleCard key={rule.id} rule={rule} onOpen={setSelectedRule} />)}
+              <p className="eyebrow">{tr("CROSS-RULE ANALYSIS", "ANÁLISIS DE REGLAS CRUZADAS")}</p>
+              <h2>{universalGraph.label}</h2>
+              <p className="muted">{tr(
+                "The engine found the closest rule family, expanded its direct Rulebook references and added external controlling sections that can change the answer.",
+                "El motor encontró la familia de reglas más cercana, expandió sus referencias directas del Rulebook y agregó secciones externas que pueden cambiar la respuesta.",
+              )}</p>
+
+              <div className="universalGraphSummary">
+                <div className="graphFamilyBadge">{universalGraph.family.rules.map((r) => "Rule " + r).join(" · ")}</div>
+                <div className="graphCoverageBadge">{universalGraph.coverage.covered.length}/{universalGraph.coverage.total} {tr("rules mapped", "reglas mapeadas")}</div>
               </div>
-              <button className="primaryAction" onClick={() => { setShowResolution(true); setTimeout(() => document.getElementById("resolution")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20); }}>{tr("Apply rulebook", "Aplicar reglamento")}</button>
+
+              <div className="ruleGraphNodes universalNodes">
+                {universalGraph.rules.slice(0,10).map((rule) => (
+                  <button className="ruleGraphNode graphRuleButton" key={rule.id} onClick={() => setSelectedRule(rule)}>
+                    <b>{rule.discipline === "outdoor" ? "Outdoor" : "Arena"} Rule {rule.rule}</b>
+                    <span>{rule.title}</span>
+                  </button>
+                ))}
+                {universalGraph.external.map((external) => (
+                  <div className="ruleGraphNode externalNode" key={external}>
+                    <b>{external}</b>
+                    <span>{tr("External controlling section", "Sección externa de control")}</span>
+                  </div>
+                ))}
+              </div>
+
+              {selectedGenericFact ? (
+                <div className="missingFactPicker">
+                  <p className="eyebrow">{tr("FACTS THAT CAN CHANGE THE RULING", "DATOS QUE PUEDEN CAMBIAR LA DECISIÓN")}</p>
+                  <label>
+                    <span>{tr("Choose a missing fact to complete", "Elegí un dato faltante para completar")}</span>
+                    <select
+                      value={selectedGenericFact.key}
+                      onChange={(event) => setSelectedMissingFactKey(event.target.value)}
+                    >
+                      {availableMissingFacts.map((item) => <option key={item.key} value={item.key}>{factLabel(item, language)}</option>)}
+                    </select>
+                  </label>
+                  <h3>{factLabel(selectedGenericFact, language)}</h3>
+                  <p className="muted">{factWhy(selectedGenericFact, language)}</p>
+                  {selectedGenericFact.kind === "choice" ? (
+                    <div className="choices">
+                      {selectedGenericFact.options?.map((option) => (
+                        <button
+                          key={option[0]}
+                          className={caseFacts[selectedGenericFact.key] === option[0] ? "selected" : ""}
+                          onClick={() => {
+                            setCaseFacts((current) => ({ ...current, [selectedGenericFact.key]: option[0] }));
+                            setSelectedMissingFactKey("");
+                          }}
+                        >
+                          {factOptionLabel(option, language)}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <input
+                      className="searchInput"
+                      type={selectedGenericFact.kind === "number" ? "number" : "text"}
+                      value={caseFacts[selectedGenericFact.key] ?? ""}
+                      onChange={(event) => setCaseFacts((current) => ({
+                        ...current,
+                        [selectedGenericFact.key]: selectedGenericFact.kind === "number"
+                          ? (event.target.value === "" ? null : Number(event.target.value))
+                          : event.target.value,
+                      }))}
+                      onBlur={() => setSelectedMissingFactKey("")}
+                      placeholder={tr("Enter the fact if you know it", "Completá el dato si lo sabés")}
+                    />
+                  )}
+                  <p className="nextFactCount">{availableMissingFacts.length} {tr("decision-changing fact(s) still open", "dato(s) potencialmente decisivos todavía abiertos")}.</p>
+                </div>
+              ) : (
+                <div className="nextFactCard resolved"><strong>{tr("All critical facts in this graph have been completed.", "Todos los datos críticos de este grafo fueron completados.")}</strong></div>
+              )}
+
+              <h3>{tr("Closest provisions after the facts entered", "Artículos más cercanos con los datos cargados")}</h3>
+              <div className="candidateList">
+                {universalGraph.evidenceRules.slice(0,4).map((rule) => <RuleCard key={rule.id} rule={rule} onOpen={setSelectedRule} />)}
+              </div>
+              <button className="primaryAction" onClick={() => { setShowResolution(true); setTimeout(() => document.getElementById("resolution")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20); }}>{tr("Apply cross-rule analysis", "Aplicar análisis cruzado")}</button>
             </div>
           )}
 
@@ -608,52 +720,57 @@ export default function UmpireApp() {
                     ))}
                   </div>
 
-                  {crossRuleState.nextQuestion ? (
-                    <div className="nextFactCard">
-                      <p className="eyebrow">{tr("NEXT FACT NEEDED", "SIGUIENTE DATO NECESARIO")}</p>
-                      <h3>{crossRuleState.nextQuestion.label}</h3>
-                      <p className="muted">{crossRuleState.nextQuestion.why}</p>
-                      {crossRuleState.nextQuestion.kind === "number" ? (
-                        <input
-                          className="searchInput"
-                          type="number"
-                          step="1"
-                          value={(nationalityInputs[crossRuleState.nextQuestion.key] as number | null) ?? ""}
-                          onChange={(event) => setNationalityInputs((current) => ({
-                            ...current,
-                            [crossRuleState.nextQuestion!.key]: event.target.value === "" ? null : Number(event.target.value),
-                          }))}
-                          placeholder="0"
-                        />
-                      ) : (
-                        <div className="choices">
-                          {crossRuleState.nextQuestion.options?.map(([value, label]) => (
-                            <button
-                              key={value}
-                              className={nationalityInputs[crossRuleState.nextQuestion!.key] === value ? "selected" : ""}
-                              onClick={() => setNationalityInputs((current) => ({
-                                ...current,
-                                [crossRuleState.nextQuestion!.key]: value,
-                              }))}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {crossRuleState.nextQuestions.length > 1 ? (
-                        <p className="nextFactCount">{tr(
-                          crossRuleState.nextQuestions.length - 1 + " additional fact(s) may still be required after this answer.",
-                          "Después de esta respuesta todavía pueden faltar " + (crossRuleState.nextQuestions.length - 1) + " dato(s).",
-                        )}</p>
-                      ) : null}
-                    </div>
-                  ) : (
+                  {crossRuleState.nextQuestions.length ? (() => {
+                    const selectedCrossFact = crossRuleState.nextQuestions.find((item) => String(item.key) === selectedMissingFactKey)
+                      ?? crossRuleState.nextQuestions[0];
+                    return (
+                      <div className="nextFactCard">
+                        <p className="eyebrow">{tr("MISSING FACTS", "DATOS FALTANTES")}</p>
+                        <label className="missingFactSelect">
+                          <span>{tr("Choose which missing fact you want to complete", "Elegí qué dato faltante querés completar")}</span>
+                          <select value={String(selectedCrossFact.key)} onChange={(event) => setSelectedMissingFactKey(event.target.value)}>
+                            {crossRuleState.nextQuestions.map((item) => <option key={String(item.key)} value={String(item.key)}>{item.label}</option>)}
+                          </select>
+                        </label>
+                        <h3>{selectedCrossFact.label}</h3>
+                        <p className="muted">{selectedCrossFact.why}</p>
+                        {selectedCrossFact.kind === "number" ? (
+                          <input
+                            className="searchInput"
+                            type="number"
+                            step="1"
+                            value={(nationalityInputs[selectedCrossFact.key] as number | null) ?? ""}
+                            onChange={(event) => setNationalityInputs((current) => ({
+                              ...current,
+                              [selectedCrossFact.key]: event.target.value === "" ? null : Number(event.target.value),
+                            }))}
+                            onBlur={() => setSelectedMissingFactKey("")}
+                            placeholder="0"
+                          />
+                        ) : (
+                          <div className="choices">
+                            {selectedCrossFact.options?.map(([value, label]) => (
+                              <button
+                                key={value}
+                                className={nationalityInputs[selectedCrossFact.key] === value ? "selected" : ""}
+                                onClick={() => {
+                                  setNationalityInputs((current) => ({ ...current, [selectedCrossFact.key]: value }));
+                                  setSelectedMissingFactKey("");
+                                }}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <p className="nextFactCount">{crossRuleState.nextQuestions.length} {tr("fact(s) still open", "dato(s) todavía abiertos")}.</p>
+                      </div>
+                    );
+                  })() : (
                     <div className="nextFactCard resolved">
                       <strong>{tr("All currently triggered cross-rule questions are answered.", "Todas las preguntas cruzadas activadas actualmente están respondidas.")}</strong>
                     </div>
-                  )}
-                </div>
+                  )}                </div>
               ) : null}
               <div className="questionList">
                 {activeQuestions.map((question) => (
@@ -673,6 +790,24 @@ export default function UmpireApp() {
                   </div>
                 ))}
               </div>
+              {universalGraph && resolverMode === "play" ? (
+                <div className="ruleGraph compactRuleGraph">
+                  <div className="ruleGraphHeader">
+                    <div>
+                      <p className="eyebrow">{tr("RELATED RULE GRAPH", "GRAFO DE REGLAS RELACIONADAS")}</p>
+                      <h3>{universalGraph.label}</h3>
+                    </div>
+                    <span className="graphCoverageBadge">{universalGraph.coverage.covered.length}/{universalGraph.coverage.total}</span>
+                  </div>
+                  <div className="ruleGraphNodes">
+                    {universalGraph.rules.slice(0,8).map((rule) => (
+                      <button className="ruleGraphNode graphRuleButton" key={rule.id} onClick={() => setSelectedRule(rule)}>
+                        <b>Rule {rule.rule}</b><span>{rule.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <button className="primaryAction" onClick={() => {
                 setShowResolution(true);
                 setTimeout(() => document.getElementById("resolution")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
@@ -689,6 +824,13 @@ export default function UmpireApp() {
                 </div>
                 <span className="confidence">{tr("Input completeness", "Datos completos")}: {completeness === "high" ? tr("High", "Alta") : completeness === "medium" ? tr("Medium", "Media") : tr("Low", "Baja")}</span>
               </div>
+
+              {universalGraph && !(resolverMode === "situation" && scenario === "substitutes") ? (
+                <div className="resultRulePath">
+                  <strong>{tr("Rule interaction graph", "Grafo de interacción de reglas")}: {universalGraph.label}</strong>
+                  <span>{universalGraph.family.rules.map((rule) => "Rule " + rule).join("  →  ")}{universalGraph.external.length ? "  →  " + universalGraph.external.join(" / ") : ""}</span>
+                </div>
+              ) : null}
 
               {resolverMode === "situation" && scenario === "substitutes" && crossRuleState ? (
                 <>
@@ -816,6 +958,27 @@ export default function UmpireApp() {
               </div>
             </div>
           ))}
+          <div className="card graphCatalogCard">
+            <p className="eyebrow">{tr("RULE INTERACTION CATALOG", "CATÁLOGO DE INTERACCIONES")}</p>
+            <h2>{tr("All mapped rule graphs", "Todos los grafos de reglas mapeados")}</h2>
+            <p className="muted">{tr(
+              "Every Outdoor and Arena rule is assigned to at least one interaction graph. Cross-references in the local Rulebook are expanded automatically during analysis.",
+              "Cada regla Outdoor y Arena está asignada al menos a un grafo de interacción. Las referencias cruzadas del Rulebook local se expanden automáticamente durante el análisis.",
+            )}</p>
+            <div className="coverageSummary">
+              <span>Outdoor {graphCoverage("outdoor").covered.length}/{graphCoverage("outdoor").total}</span>
+              <span>Arena {graphCoverage("arena").covered.length}/{graphCoverage("arena").total}</span>
+            </div>
+            <div className="graphCatalog">
+              {ruleGraphFamilies.map((family) => (
+                <div className="graphCatalogItem" key={family.id}>
+                  <strong>{language === "en" ? family.titleEn : family.titleEs}</strong>
+                  <span>{family.discipline === "outdoor" ? "Outdoor" : "Arena"} · {family.rules.map((rule) => "Rule " + rule).join(", ")}</span>
+                  {family.external.length ? <small>+ {family.external.join(" · ")}</small> : null}
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       )}
 
@@ -843,7 +1006,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Polo Umpire v0.7</span>
+        <span>Polo Umpire v0.8</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
