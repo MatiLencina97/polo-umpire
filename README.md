@@ -1,16 +1,16 @@
-# Polo Umpire v0.3
+# Polo Umpire v0.2
 
 Offline-first PWA for polo umpires, built with Next.js + TypeScript and a local dataset extracted from the current USPA Rulebook.
 
-## Core modes
+## What works offline
 
-- **Resolver una jugada**: guided analysis for in-play situations such as Line of the Ball, Right of Way, Dangerous Riding, Blocking and Mallet use.
-- **Interpretar una situación reglamentaria**: guided questions for rules that are not tied to a single play, starting with substitutions / alternates and expanding to eligibility, handicap, equipment, officials, mounts, Tournament Conditions and protests.
-- **Buscar reglas**: local keyword search across the installed Rulebook.
+- Outdoor and Arena rules
+- Rule lookup and keyword search
+- Guided play-resolution flow
+- Rule references and detected interpretations/examples
+- Offline status / readiness test
 
-## Offline-first
-
-The critical rules engine and Rulebook dataset are stored locally in the PWA. After the first successful load, the app is designed to keep rule lookup and guided resolution available without network access.
+The app deliberately keeps the critical rules engine local. Future AI features should enhance natural-language understanding, but rule citations and the deterministic fallback must remain available without network access.
 
 ## Local development
 
@@ -19,23 +19,56 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 and wait for **OFFLINE READY** before testing without connectivity.
+Open `http://localhost:3000`, wait for **OFFLINE READY**, then test with airplane mode / network disabled.
 
-## Production
+## Production build
 
 ```bash
 npm run build
 ```
 
-The app uses Next.js static export and can be deployed to Vercel.
+`next.config.ts` uses `output: "export"`, so the app can be served statically and deployed to Vercel.
 
-## Rulebook updates
+## Rulebook data
 
-The current offline dataset lives in:
+Current offline dataset:
 
 - `public/data/manifest.json`
 - `public/data/rules-2026.json`
 
-The repository includes scripts to detect a changed official Rulebook PDF, regenerate the dataset and commit the new version. Configure the GitHub repository variable `USPA_RULEBOOK_URL` with the direct official PDF URL.
+To rebuild from a Rulebook PDF:
 
-For safety, a future production version should add an admin review/approval step before activating materially changed rules.
+```bash
+sudo apt-get install poppler-utils   # Linux
+python scripts/extract_rulebook.py /path/to/rulebook.pdf
+```
+
+The parser discovers the Outdoor, Arena and Umpire Guide sections from headings rather than fixed PDF page numbers.
+
+## Automatic Rulebook updates
+
+`.github/workflows/update-rulebook.yml` runs weekly and executes `scripts/check_rulebook.py`.
+
+Configure a GitHub repository variable:
+
+- `USPA_RULEBOOK_URL` = direct URL of the official current USPA Rulebook PDF
+
+When the PDF SHA-256 changes, the workflow regenerates `public/data`, commits the change, and a Git-linked Vercel project can deploy the new version automatically.
+
+For safety, production should eventually add an admin approval step before activating a materially changed Rulebook version.
+
+## Architecture
+
+- Next.js 16 / React 19 / TypeScript
+- Static export
+- Service Worker (`public/sw.js`)
+- Local JSON ruleset
+- No backend required for critical use
+
+Planned next layers:
+
+1. More granular sub-rule decision trees (`24.c`, `26.a`, etc.)
+2. Local query/history storage in IndexedDB
+3. Optional cloud sync
+4. Optional AI interpretation when connected
+5. Admin change-review screen for new Rulebook versions
