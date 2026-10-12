@@ -1,0 +1,13 @@
+{
+  "activeVersion": "2026",
+  "year": 2026,
+  "rulesFile": "data/rules-2026.json",
+  "sha256": "dd1e4bf60bb8cfb82e2f33539de45f459e0bed97827949445bacd256b90ed025",
+  "generatedAt": "2026-10-12T20:43:02.401900+00:00",
+  "offlineReady": true,
+  "counts": {
+    "outdoor": 38,
+    "arena": 19,
+    "umpireGuidePages": 18
+  }
+}
