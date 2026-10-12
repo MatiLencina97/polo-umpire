@@ -660,35 +660,6 @@ export default function UmpireApp() {
                 </>
               ) : null}
               <div className="questionList">
-                    {[
-                      ["eventUpper", "Límite superior del torneo"],
-                      ["teamTotalBefore", "Handicap total del equipo antes del cambio"],
-                      ["outgoingHandicap", "Handicap del jugador que sale"],
-                      ["candidateHandicap", "Handicap del reemplazante (opcional)"],
-                    ].map(([key, label]) => (
-                      <div className="question" key={key}>
-                        <strong>{label}</strong>
-                        <input
-                          className="searchInput"
-                          inputMode="decimal"
-                          type="number"
-                          step="0.5"
-                          value={substitutionInputs[key as keyof typeof substitutionInputs]}
-                          onChange={(event) => setSubstitutionInputs((current) => ({ ...current, [key]: event.target.value }))}
-                          placeholder="Ej.: 8"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <p>{substitutionEligibilityText(discipline, {
-                    eventUpper: substitutionInputs.eventUpper === "" ? null : Number(substitutionInputs.eventUpper),
-                    teamTotalBefore: substitutionInputs.teamTotalBefore === "" ? null : Number(substitutionInputs.teamTotalBefore),
-                    outgoingHandicap: substitutionInputs.outgoingHandicap === "" ? null : Number(substitutionInputs.outgoingHandicap),
-                    candidateHandicap: substitutionInputs.candidateHandicap === "" ? null : Number(substitutionInputs.candidateHandicap),
-                  })}</p>
-                </div>
-              ) : null}
-              <div className="questionList">
                 {activeQuestions.map((question) => (
                   <div className="question" key={question.key}>
                     <strong>{questionLabel(question.key, question.label)}</strong>
