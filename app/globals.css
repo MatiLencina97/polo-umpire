@@ -218,3 +218,40 @@ footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8p
   .languageSwitch button { padding: 5px 6px; }
   .compactGrid { grid-template-columns: 1fr; }
 }
+
+.crossRuleWorkspace { display: grid; gap: 12px; margin: 14px 0; }
+.ruleGraph { border: 1px solid #c9d7e6; background: #f5f8fc; border-radius: 16px; padding: 15px; }
+.ruleGraphHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.ruleGraphHeader h3 { margin: 2px 0 0; }
+.crossStatus { flex: 0 0 auto; padding: 6px 9px; border-radius: 999px; font-size: 10px; font-weight: 900; }
+.crossStatus.pass { background: #e7f6ef; color: var(--green); }
+.crossStatus.needs-info { background: #fff3d9; color: var(--amber); }
+.crossStatus.fail { background: #fde8eb; color: var(--red); }
+.ruleGraphNodes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 13px; }
+.ruleGraphNode { position: relative; min-height: 78px; border: 1px solid #d7e1ec; background: white; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 5px; }
+.ruleGraphNode b { color: var(--navy); font-size: 12px; }
+.ruleGraphNode span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.ruleGraphNode i { position: absolute; right: -8px; top: 28px; z-index: 2; font-style: normal; color: #8da2b9; font-weight: 900; }
+.crossChecks { display: grid; gap: 8px; }
+.crossCheck { border: 1px solid var(--line); border-left-width: 4px; border-radius: 12px; padding: 11px 12px; background: white; }
+.crossCheck.pass { border-left-color: var(--green); }
+.crossCheck.fail { border-left-color: var(--red); background: #fff7f8; }
+.crossCheck.needs-info { border-left-color: var(--amber); background: #fffaf1; }
+.crossCheck.info { border-left-color: var(--navy-2); background: #f8fafc; }
+.crossCheck > div { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.crossCheckSource { font-size: 10px; font-weight: 900; color: #64778f; text-transform: uppercase; letter-spacing: .05em; }
+.crossCheck strong { color: var(--navy); font-size: 13px; }
+.crossCheck p { margin: 5px 0 0; color: #52667e; font-size: 12px; line-height: 1.45; }
+.nextFactCard { border: 2px solid #b7c9dc; border-radius: 16px; padding: 16px; background: white; }
+.nextFactCard h3 { margin: 2px 0 6px; font-size: 18px; }
+.nextFactCard.resolved { border-color: #b9dfcf; background: #f3fbf7; color: var(--green); }
+.nextFactCount { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
+.resultRulePath { margin: 12px 0; padding: 11px 13px; border: 1px solid #d8e2ec; border-radius: 12px; background: #f7f9fc; display: grid; gap: 5px; }
+.resultRulePath strong { font-size: 12px; color: var(--navy); }
+.resultRulePath span { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .ruleGraphHeader { display: block; }
+  .crossStatus { display: inline-block; margin-top: 8px; }
+  .ruleGraphNodes { grid-template-columns: 1fr 1fr; }
+  .ruleGraphNode i { display: none; }
+}

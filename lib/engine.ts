@@ -137,8 +137,6 @@ export const scenarioQuestions: Record<keyof typeof scenarioDefs, QuestionDefini
     { key: "unable", label: "Si es durante el período: ¿el jugador que sale fue declarado incapaz de continuar?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"]] },
     { key: "openSpot", label: "¿La posición ya estaba vacante porque el equipo venía jugando con menos jugadores?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"]] },
     { key: "doubleSub", label: "¿Se trata de una lesión durante el período y el equipo quiere hacer una doble sustitución?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"]] },
-    { key: "eligible", label: "¿El/los sustitutos son elegibles para jugar ese partido/evento?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
-    { key: "upperLimit", label: "¿La sustitución haría que el handicap agregado del equipo supere el límite superior del evento?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "penalty7", label: "¿La sustitución está relacionada con una remoción por Penalty 7?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
 };

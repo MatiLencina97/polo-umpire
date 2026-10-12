@@ -11,15 +11,19 @@ import {
   scenarioApplicationText,
   parseSubstitutionHandicaps,
   parseSubstitutionNationality,
-  substitutionEligibilityText,
   localizedApplicationText,
   localizedScenarioApplicationText,
-  substitutionAnalysisSections,
   scenarioDefs,
   scenarioQuestions,
   scoreRule,
   topicDefs,
 } from "@/lib/engine";
+import {
+  buildSubstitutionCrossRuleState,
+  defaultSubstitutionCrossFacts,
+  parseSubstitutionCrossFacts,
+  type SubstitutionCrossFacts,
+} from "@/lib/cross-rule";
 import type {
   ChoiceValue,
   Discipline,
@@ -65,18 +69,7 @@ const quickRuleSituations: Record<Language, string[]> = {
   ],
 };
 
-const defaultNationalityInputs = {
-  uspaNpcEvent: "unknown",
-  sponsorType: "unknown",
-  outgoingRole: "unknown",
-  outgoingAmerican: "unknown",
-  americanPlayersRemaining: null as number | null,
-  candidateAmerican: "unknown",
-  affiliateHostException: "unknown",
-  candidateImmediateFamily: "unknown",
-  candidateIsTeamOwner: "unknown",
-  gauntlet: "unknown",
-};
+const defaultNationalityInputs = defaultSubstitutionCrossFacts;
 
 const questionLabelsEn: Record<string, string> = {
   risk: "Did the action force the player with the possible Right of Way to check, change course, or face collision risk?",
@@ -163,7 +156,7 @@ export default function UmpireApp() {
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [updateStatus, setUpdateStatus] = useState("");
   const [language, setLanguage] = useState<Language>("en");
-  const [nationalityInputs, setNationalityInputs] = useState({ ...defaultNationalityInputs });
+  const [nationalityInputs, setNationalityInputs] = useState<SubstitutionCrossFacts>({ ...defaultNationalityInputs });
   const [followUpText, setFollowUpText] = useState("");
   const [followUps, setFollowUps] = useState<Array<{ question: string; answer: string; ruleIds: string[] }>>([]);
 
@@ -317,9 +310,17 @@ export default function UmpireApp() {
     candidateHandicap: substitutionInputs.candidateHandicap === "" ? null : Number(substitutionInputs.candidateHandicap),
   };
 
-  const substitutionSections = scenario === "substitutes"
-    ? substitutionAnalysisSections(discipline, handicapValues, nationalityInputs, answers, language)
-    : [];
+  const crossRuleState = scenario === "substitutes"
+    ? buildSubstitutionCrossRuleState({
+        discipline,
+        handicap: handicapValues,
+        facts: nationalityInputs,
+        answers,
+        language,
+      })
+    : null;
+
+  const substitutionSections = crossRuleState?.sections ?? [];
 
   const unresolvedQuestions = activeQuestions.filter((question) => !answers[question.key] || answers[question.key] === "unknown");
   const answeredQuestions = activeQuestions.filter((question) => answers[question.key] && answers[question.key] !== "unknown");
@@ -347,13 +348,14 @@ export default function UmpireApp() {
       if (detected === "substitutes") {
         const parsed = parseSubstitutionHandicaps(situation);
         const nationality = parseSubstitutionNationality(situation);
+        const crossFacts = parseSubstitutionCrossFacts(situation);
         setSubstitutionInputs({
           eventUpper: parsed.eventUpper != null ? String(parsed.eventUpper) : "",
           teamTotalBefore: parsed.teamTotalBefore != null ? String(parsed.teamTotalBefore) : "",
           outgoingHandicap: parsed.outgoingHandicap != null ? String(parsed.outgoingHandicap) : "",
           candidateHandicap: parsed.candidateHandicap != null ? String(parsed.candidateHandicap) : "",
         });
-        setNationalityInputs({ ...defaultNationalityInputs, ...nationality });
+        setNationalityInputs({ ...defaultNationalityInputs, ...nationality, ...crossFacts });
       }
       const rankedRules = db.rules
         .filter((rule) => rule.discipline === discipline)
@@ -378,21 +380,28 @@ export default function UmpireApp() {
     if (resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor") {
       const parsed = parseSubstitutionHandicaps(question);
       const parsedNationality = parseSubstitutionNationality(question);
+      const parsedCrossFacts = parseSubstitutionCrossFacts(question);
       const merged = {
         eventUpper: parsed.eventUpper != null ? String(parsed.eventUpper) : substitutionInputs.eventUpper,
         teamTotalBefore: parsed.teamTotalBefore != null ? String(parsed.teamTotalBefore) : substitutionInputs.teamTotalBefore,
         outgoingHandicap: parsed.outgoingHandicap != null ? String(parsed.outgoingHandicap) : substitutionInputs.outgoingHandicap,
         candidateHandicap: parsed.candidateHandicap != null ? String(parsed.candidateHandicap) : substitutionInputs.candidateHandicap,
       };
-      const mergedNationality = { ...nationalityInputs, ...parsedNationality };
+      const mergedNationality = { ...nationalityInputs, ...parsedNationality, ...parsedCrossFacts };
       setSubstitutionInputs(merged);
       setNationalityInputs(mergedNationality);
-      const sections = substitutionAnalysisSections(discipline, {
-        eventUpper: merged.eventUpper === "" ? null : Number(merged.eventUpper),
-        teamTotalBefore: merged.teamTotalBefore === "" ? null : Number(merged.teamTotalBefore),
-        outgoingHandicap: merged.outgoingHandicap === "" ? null : Number(merged.outgoingHandicap),
-        candidateHandicap: merged.candidateHandicap === "" ? null : Number(merged.candidateHandicap),
-      }, mergedNationality, answers, language);
+      const sections = buildSubstitutionCrossRuleState({
+        discipline,
+        handicap: {
+          eventUpper: merged.eventUpper === "" ? null : Number(merged.eventUpper),
+          teamTotalBefore: merged.teamTotalBefore === "" ? null : Number(merged.teamTotalBefore),
+          outgoingHandicap: merged.outgoingHandicap === "" ? null : Number(merged.outgoingHandicap),
+          candidateHandicap: merged.candidateHandicap === "" ? null : Number(merged.candidateHandicap),
+        },
+        facts: mergedNationality,
+        answers,
+        language,
+      }).sections;
       answer = sections
         .filter((section) => section.id === "decision" || section.id === "american" || section.id === "missing")
         .flatMap((section) => section.items)
@@ -538,14 +547,14 @@ export default function UmpireApp() {
               <p className="muted">{resolverMode === "play"
                 ? tr("Possible families: ", "Posibles familias: ") + (rankedTopics.filter((item) => item.score > 0).slice(0, 3).map((item) => topicLabel(item.id, item.label)).join(" · ") || (topic ? topicLabel(topic, topicDefs[topic].label) : ""))
                 : tr("Detected family: ", "Familia detectada: ") + (scenario ? scenarioDefs[scenario].label : rankedScenarios[0]?.label ?? tr("General rule", "Regla general"))}</p>
-              {resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor" ? (
-                <>
+              {resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor" && crossRuleState ? (
+                <div className="crossRuleWorkspace">
                   <div className="callout secondaryCallout">
-                    <strong>{tr("Handicap eligibility", "Elegibilidad por handicap")}</strong>
-                    <p>{tr("The app checks both the individual 3/4 Rule and the team's aggregate handicap after the substitution.", "La app controla tanto la 3/4 Rule individual como el handicap agregado del equipo después de la sustitución.")}</p>
+                    <strong>{tr("Handicap facts", "Datos de handicap")}</strong>
+                    <p>{tr("These feed Rule 2.d and Rule 3.c automatically. You do not need to decide yourself whether the substitute is eligible.", "Estos datos alimentan Rule 2.d y Rule 3.c automáticamente. No tenés que decidir vos mismo si el sustituto es elegible.")}</p>
                     <div className="questionList compactGrid">
                       {[
-                        ["eventUpper", tr("Event upper limit", "Límite superior del torneo")],
+                        ["eventUpper", tr("Event upper limit", "Límite superior del evento")],
                         ["teamTotalBefore", tr("Original team handicap", "Handicap original del equipo")],
                         ["outgoingHandicap", tr("Outgoing player handicap", "Handicap del jugador que sale")],
                         ["candidateHandicap", tr("Proposed substitute handicap (optional)", "Handicap del sustituto propuesto (opcional)")],
@@ -566,98 +575,85 @@ export default function UmpireApp() {
                     </div>
                   </div>
 
-                  <div className="callout nationalityCallout">
-                    <strong>{tr("Hidden eligibility check: American Rule / nationality", "Control de elegibilidad oculto: American Rule / nacionalidad")}</strong>
-                    <p>{tr("Substitution eligibility is not only about handicap. The app cross-checks Outdoor Rule 1.f, sponsor structure, the player's role, and the Affiliate Member Club exception in the Tournament Conditions.", "La elegibilidad del sustituto no depende sólo del handicap. La app cruza Outdoor Rule 1.f, la estructura de sponsor, el rol del jugador y la excepción de Affiliate Member Club de las Tournament Conditions.")}</p>
-                    <div className="questionList">
-                      <div className="question">
-                        <strong>{tr("Is this a USPA or NPC Event?", "¿Es un USPA o NPC Event?")}</strong>
-                        <div className="choices">
-                          {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                            <button key={value} className={nationalityInputs.uspaNpcEvent === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, uspaNpcEvent: value }))}>{label}</button>
-                          ))}
+                  <div className="ruleGraph">
+                    <div className="ruleGraphHeader">
+                      <div>
+                        <p className="eyebrow">{tr("CROSS-RULE ENGINE", "MOTOR DE REGLAS CRUZADAS")}</p>
+                        <h3>{tr("The app is checking more than the substitution rule", "La app está revisando más que la regla de sustitución")}</h3>
+                      </div>
+                      <span className={"crossStatus " + crossRuleState.status}>
+                        {crossRuleState.status === "fail" ? tr("Conflict found", "Conflicto detectado") : crossRuleState.status === "needs-info" ? tr("Needs facts", "Faltan datos") : tr("Checks clear", "Controles OK")}
+                      </span>
+                    </div>
+                    <div className="ruleGraphNodes">
+                      {crossRuleState.graph.map((node, index) => (
+                        <div className="ruleGraphNode" key={node.id}>
+                          <b>{node.source}</b>
+                          <span>{node.label}</span>
+                          {index < crossRuleState.graph.length - 1 ? <i>→</i> : null}
                         </div>
-                      </div>
-                      <div className="question">
-                        <strong>{tr("Team sponsorship structure", "Estructura de sponsor del equipo")}</strong>
-                        <div className="choices">
-                          {[["playing", tr("Playing sponsor", "Playing sponsor")], ["nonplaying", tr("Non-playing sponsor", "Non-playing sponsor")], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                            <button key={value} className={nationalityInputs.sponsorType === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, sponsorType: value }))}>{label}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="question">
-                        <strong>{tr("Role of the player being replaced", "Rol del jugador que sale")}</strong>
-                        <div className="choices">
-                          {[["regular", tr("Other player", "Otro jugador")], ["teamOwner", "Team owner"], ["designatedSponsor", "Designated sponsor"], ["playingSponsor", "Playing sponsor"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                            <button key={value} className={nationalityInputs.outgoingRole === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, outgoingRole: value }))}>{label}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="question">
-                        <strong>{tr("Does the outgoing player qualify as an American Player under Rule 1.f?", "¿El jugador que sale califica como American Player bajo Rule 1.f?")}</strong>
-                        <div className="choices">
-                          {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                            <button key={value} className={nationalityInputs.outgoingAmerican === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, outgoingAmerican: value }))}>{label}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="question">
-                        <strong>{tr("How many countable American Players remain after this player leaves?", "¿Cuántos American Players computables quedan cuando sale este jugador?")}</strong>
-                        <p className="muted">{tr("If there is a playing sponsor, do not count that sponsor toward Rule 1.f(1).", "Si hay playing sponsor, no cuentes a ese sponsor para Rule 1.f(1).")}</p>
-                        <input className="searchInput" type="number" min="0" max="4" step="1" value={nationalityInputs.americanPlayersRemaining ?? ""} onChange={(event) => setNationalityInputs((current) => ({ ...current, americanPlayersRemaining: event.target.value === "" ? null : Number(event.target.value) }))} placeholder="0" />
-                      </div>
-                      <div className="question">
-                        <strong>{tr("Does the proposed substitute qualify as an American Player under Rule 1.f?", "¿El sustituto propuesto califica como American Player bajo Rule 1.f?")}</strong>
-                        <p className="muted">{tr("Defined status: a Registered Player Member qualifies; a Canadian citizen who is an Affiliate Player Member also qualifies. Do not decide this from passport/nationality alone.", "Status definido: califica un Registered Player Member; también un ciudadano canadiense que sea Affiliate Player Member. No lo decidas sólo por pasaporte/nacionalidad.")}</p>
-                        <div className="choices">
-                          {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                            <button key={value} className={nationalityInputs.candidateAmerican === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, candidateAmerican: value }))}>{label}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="question">
-                        <strong>{tr("Does the National/Circuit Affiliate Member Club host-country exception apply?", "¿Aplica la excepción del país anfitrión para National/Circuit Event en un Affiliate Member Club?")}</strong>
-                        <p className="muted">{tr("This can allow the Rule 1.f Registered Player requirement to be satisfied by an Affiliate Player Member who is a citizen of the host country.", "Esto puede permitir que el requisito de Registered Player de Rule 1.f sea cubierto por un Affiliate Player Member ciudadano del país anfitrión.")}</p>
-                        <div className="choices">
-                          {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                            <button key={value} className={nationalityInputs.affiliateHostException === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, affiliateHostException: value }))}>{label}</button>
-                          ))}
-                        </div>
-                      </div>
-                      {(nationalityInputs.outgoingRole === "teamOwner" || nationalityInputs.outgoingRole === "designatedSponsor") ? (
-                        <>
-                          <div className="question">
-                            <strong>{tr("Is the proposed substitute an immediate family member of the team owner?", "¿El sustituto propuesto es familiar inmediato del team owner?")}</strong>
-                            <div className="choices">
-                              {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                                <button key={value} className={nationalityInputs.candidateImmediateFamily === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, candidateImmediateFamily: value }))}>{label}</button>
-                              ))}
-                            </div>
-                          </div>
-                          {nationalityInputs.outgoingRole === "designatedSponsor" ? (
-                            <div className="question">
-                              <strong>{tr("Is the proposed substitute the team owner?", "¿El sustituto propuesto es el team owner?")}</strong>
-                              <div className="choices">
-                                {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                                  <button key={value} className={nationalityInputs.candidateIsTeamOwner === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, candidateIsTeamOwner: value }))}>{label}</button>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-                          <div className="question">
-                            <strong>{tr("Is this the Gauntlet of Polo?", "¿Es Gauntlet of Polo?")}</strong>
-                            <div className="choices">
-                              {[["yes", tr("Yes", "Sí")], ["no", "No"], ["unknown", tr("Not sure", "No estoy seguro")]].map(([value,label]) => (
-                                <button key={value} className={nationalityInputs.gauntlet === value ? "selected" : ""} onClick={() => setNationalityInputs((current) => ({ ...current, gauntlet: value }))}>{label}</button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      ) : null}
+                      ))}
                     </div>
                   </div>
-                </>
+
+                  <div className="crossChecks">
+                    {crossRuleState.checks.map((check) => (
+                      <div className={"crossCheck " + check.status} key={check.id}>
+                        <div>
+                          <span className="crossCheckSource">{check.source}</span>
+                          <strong>{check.title}</strong>
+                        </div>
+                        <p>{check.summary}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {crossRuleState.nextQuestion ? (
+                    <div className="nextFactCard">
+                      <p className="eyebrow">{tr("NEXT FACT NEEDED", "SIGUIENTE DATO NECESARIO")}</p>
+                      <h3>{crossRuleState.nextQuestion.label}</h3>
+                      <p className="muted">{crossRuleState.nextQuestion.why}</p>
+                      {crossRuleState.nextQuestion.kind === "number" ? (
+                        <input
+                          className="searchInput"
+                          type="number"
+                          step="1"
+                          value={(nationalityInputs[crossRuleState.nextQuestion.key] as number | null) ?? ""}
+                          onChange={(event) => setNationalityInputs((current) => ({
+                            ...current,
+                            [crossRuleState.nextQuestion!.key]: event.target.value === "" ? null : Number(event.target.value),
+                          }))}
+                          placeholder="0"
+                        />
+                      ) : (
+                        <div className="choices">
+                          {crossRuleState.nextQuestion.options?.map(([value, label]) => (
+                            <button
+                              key={value}
+                              className={nationalityInputs[crossRuleState.nextQuestion!.key] === value ? "selected" : ""}
+                              onClick={() => setNationalityInputs((current) => ({
+                                ...current,
+                                [crossRuleState.nextQuestion!.key]: value,
+                              }))}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {crossRuleState.nextQuestions.length > 1 ? (
+                        <p className="nextFactCount">{tr(
+                          crossRuleState.nextQuestions.length - 1 + " additional fact(s) may still be required after this answer.",
+                          "Después de esta respuesta todavía pueden faltar " + (crossRuleState.nextQuestions.length - 1) + " dato(s).",
+                        )}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="nextFactCard resolved">
+                      <strong>{tr("All currently triggered cross-rule questions are answered.", "Todas las preguntas cruzadas activadas actualmente están respondidas.")}</strong>
+                    </div>
+                  )}
+                </div>
               ) : null}
               <div className="questionList">
                 {activeQuestions.map((question) => (
@@ -694,8 +690,13 @@ export default function UmpireApp() {
                 <span className="confidence">{tr("Input completeness", "Datos completos")}: {completeness === "high" ? tr("High", "Alta") : completeness === "medium" ? tr("Medium", "Media") : tr("Low", "Baja")}</span>
               </div>
 
-              {resolverMode === "situation" && scenario === "substitutes" ? (
-                <div className="resultSections">
+              {resolverMode === "situation" && scenario === "substitutes" && crossRuleState ? (
+                <>
+                  <div className="resultRulePath">
+                    <strong>{tr("Rule interaction path", "Ruta de interacción de reglas")}</strong>
+                    <span>{crossRuleState.graph.map((node) => node.source).join("  →  ")}</span>
+                  </div>
+                  <div className="resultSections">
                   {substitutionSections.map((section) => (
                     <section className={"resultSection " + (section.tone ?? "info")} key={section.id}>
                       <h3>{section.title}</h3>
@@ -704,7 +705,8 @@ export default function UmpireApp() {
                       </ul>
                     </section>
                   ))}
-                </div>
+                  </div>
+                </>
               ) : (
                 <div className="resultSections">
                   <section className="resultSection info">
@@ -841,7 +843,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Polo Umpire v0.6</span>
+        <span>Polo Umpire v0.7</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
