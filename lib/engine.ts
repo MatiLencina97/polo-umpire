@@ -174,8 +174,8 @@ export function parseSubstitutionHandicaps(text: string): SubstitutionHandicapIn
     parsedNumber(n.match(/(-?\d+(?:\.\d+)?)\s*[- ]?goal\s+tournament/)?.[1]);
 
   const teamTotalBefore =
-    parsedNumber(n.match(/equipo\s+(?:de|con|esta en|tiene)\s+(-?\d+(?:\.\d+)?)\s+goles?/)?.[1]) ??
-    parsedNumber(n.match(/team\s+(?:of\s+)?(-?\d+(?:\.\d+)?)\s*[- ]?goals?/)?.[1]);
+    parsedNumber(n.match(/equipo\s+(?:era\s+de|es\s+de|de|con|esta\s+en|tiene|sumaba|suma)\s+(-?\d+(?:\.\d+)?)\s+goles?/)?.[1]) ??
+    parsedNumber(n.match(/team\s+(?:was\s+|is\s+|of\s+)?(-?\d+(?:\.\d+)?)\s*[- ]?goals?/)?.[1]);
 
   const outgoingHandicap =
     parsedNumber(n.match(/jugador\s+de\s+(-?\d+(?:\.\d+)?)\s+goles?/)?.[1]) ??
@@ -183,7 +183,9 @@ export function parseSubstitutionHandicaps(text: string): SubstitutionHandicapIn
 
   const candidateHandicap =
     parsedNumber(n.match(/(?:reemplazante|sustituto|suplente|replacement|substitute).{0,35}?(-?\d+(?:\.\d+)?)\s+(?:goles?|goals?)/)?.[1]) ??
-    parsedNumber(n.match(/reemplazad[oa]\s+por\s+(?:un\s+)?(-?\d+(?:\.\d+)?)/)?.[1]);
+    parsedNumber(n.match(/reemplazad[oa]\s+por\s+(?:un\s+)?(-?\d+(?:\.\d+)?)/)?.[1]) ??
+    parsedNumber(n.match(/(?:uno|un\s+jugador)\s+de\s+(-?\d+(?:\.\d+)?)\s+goles?/)?.[1]) ??
+    parsedNumber(n.match(/(?:entra|entrar|poner|consigo|hay|tengo).{0,20}?(?:un|uno|jugador)?\s*(?:de\s+)?(-?\d+(?:\.\d+)?)\s+goles?/)?.[1]);
 
   return { eventUpper, teamTotalBefore, outgoingHandicap, candidateHandicap };
 }

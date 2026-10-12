@@ -94,6 +94,8 @@ export default function UmpireApp() {
   const [searchFilter, setSearchFilter] = useState<SearchFilter>("all");
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
   const [updateStatus, setUpdateStatus] = useState("");
+  const [followUpText, setFollowUpText] = useState("");
+  const [followUps, setFollowUps] = useState<Array<{ question: string; answer: string; ruleIds: string[] }>>([]);
 
   useEffect(() => {
     setNetworkOnline(navigator.onLine);
@@ -220,6 +222,8 @@ export default function UmpireApp() {
     if (!situation.trim() || !db) return;
     setAnswers({});
     setShowResolution(false);
+    setFollowUpText("");
+    setFollowUps([]);
 
     if (resolverMode === "play") {
       const ranked = classify(situation);
@@ -253,6 +257,53 @@ export default function UmpireApp() {
     }
 
     setTimeout(() => document.getElementById("questions")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
+  }
+
+  function submitFollowUp() {
+    const question = followUpText.trim();
+    if (!question || !db) return;
+
+    let answer = "";
+    let rules: Rule[] = [];
+
+    if (resolverMode === "situation" && scenario === "substitutes" && discipline === "outdoor") {
+      const parsed = parseSubstitutionHandicaps(question);
+      const merged = {
+        eventUpper: parsed.eventUpper != null ? String(parsed.eventUpper) : substitutionInputs.eventUpper,
+        teamTotalBefore: parsed.teamTotalBefore != null ? String(parsed.teamTotalBefore) : substitutionInputs.teamTotalBefore,
+        outgoingHandicap: parsed.outgoingHandicap != null ? String(parsed.outgoingHandicap) : substitutionInputs.outgoingHandicap,
+        candidateHandicap: parsed.candidateHandicap != null ? String(parsed.candidateHandicap) : substitutionInputs.candidateHandicap,
+      };
+      setSubstitutionInputs(merged);
+      answer = substitutionEligibilityText(discipline, {
+        eventUpper: merged.eventUpper === "" ? null : Number(merged.eventUpper),
+        teamTotalBefore: merged.teamTotalBefore === "" ? null : Number(merged.teamTotalBefore),
+        outgoingHandicap: merged.outgoingHandicap === "" ? null : Number(merged.outgoingHandicap),
+        candidateHandicap: merged.candidateHandicap === "" ? null : Number(merged.candidateHandicap),
+      });
+      rules = scenarioRules;
+    } else {
+      const context = [situation, ...followUps.flatMap((turn) => [turn.question, turn.answer]), question].join(" ");
+      rules = db.rules
+        .filter((rule) => rule.discipline === discipline)
+        .map((rule) => ({ rule, score: scoreRule(rule, context) }))
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+        .map((item) => item.rule);
+
+      const best = rules[0];
+      const application = best ? bestMatchingApplication(best, context) : null;
+      if (best) {
+        answer = `Con el contexto anterior, esta repregunta apunta principalmente a ${discipline === "outdoor" ? "Outdoor" : "Arena"} Rule ${best.rule} · ${best.title}. ${application?.text ?? "No encontré una Interpretation/Example específica para esta variante; abrí el artículo relacionado para confirmar el texto oficial."}`;
+      } else {
+        answer = "No puedo cerrar esta repregunta con suficiente respaldo local todavía. Reformulala agregando el hecho que cambia respecto de la situación anterior.";
+      }
+    }
+
+    setFollowUps((current) => [...current, { question, answer, ruleIds: rules.map((rule) => rule.id) }]);
+    setFollowUpText("");
+    setTimeout(() => document.getElementById("follow-up")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 20);
   }
 
   async function checkUpdates() {
@@ -462,6 +513,42 @@ export default function UmpireApp() {
               <div className="candidateList">
                 {(resolverMode === "play" ? resolutionRules : (scenarioRules.length ? scenarioRules : genericSituationRules)).map((rule) => <RuleCard key={rule.id} rule={rule} onOpen={setSelectedRule} />)}
               </div>
+
+              <div className="callout secondaryCallout" id="follow-up">
+                <strong>¿Quedó alguna duda? Repreguntá sin empezar de nuevo.</strong>
+                <p className="muted">La app conserva la situación, tus respuestas y los datos ya cargados. Podés preguntar, por ejemplo: “¿Y si el equipo era de 7?”, “¿Puede entrar uno de 6?” o “¿Qué cambia si fue entre chukkers?”.</p>
+                {followUps.length ? (
+                  <div className="questionList">
+                    {followUps.map((turn, index) => (
+                      <div className="question" key={`${turn.question}-${index}`}>
+                        <strong>Vos: {turn.question}</strong>
+                        <p>{turn.answer}</p>
+                        {turn.ruleIds.length ? (
+                          <div className="quickchips">
+                            {turn.ruleIds.map((id) => {
+                              const rule = db?.rules.find((candidate) => candidate.id === id);
+                              return rule ? (
+                                <button key={id} onClick={() => setSelectedRule(rule)}>
+                                  Rule {rule.rule}
+                                </button>
+                              ) : null;
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <textarea
+                  value={followUpText}
+                  onChange={(event) => setFollowUpText(event.target.value)}
+                  placeholder="Ej.: ¿Y si el equipo originalmente era de 7 goles?"
+                  rows={3}
+                />
+                <button className="primaryAction" onClick={submitFollowUp} disabled={!followUpText.trim()}>
+                  Repreguntar
+                </button>
+              </div>
             </div>
           )}
         </section>
@@ -535,7 +622,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Polo Umpire v0.4</span>
+        <span>Polo Umpire v0.5</span>
         <span>Fuente instalada: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
