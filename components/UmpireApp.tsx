@@ -799,7 +799,6 @@ export default function UmpireApp() {
               </div>
             </div>
           )}
-          )}
         </section>
       )}
 
