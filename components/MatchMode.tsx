@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { classify, questions } from "@/lib/engine";
 import { decidePlay } from "@/lib/play-decision";
 import { resolveProvisions } from "@/lib/subarticles";
+import { matchProgress } from "@/lib/match-flow";
 import type { ChoiceValue, Discipline, Language, Rule, RuleDb, TopicId } from "@/lib/types";
 
 type Props = {
@@ -64,39 +65,6 @@ function labelForOption(value: string, fallback: string, language: Language) {
   return fallback.toUpperCase();
 }
 
-function relevantKeys(topic: TopicId, answers: Record<string, ChoiceValue>) {
-  if (topic === "row") {
-    const keys = ["rowEntitled"];
-    if (answers.rowEntitled === "no") return keys;
-    keys.push("risk", "lineChanged");
-    if (answers.lineChanged === "yes") keys.push("clearanceTime");
-    return keys;
-  }
-  if (topic === "dangerous") return ["balance", "speedAngle", "blind"];
-  if (topic === "blocking") {
-    const keys = ["restartBlock", "marking"];
-    if (answers.marking === "no") return keys;
-    if (answers.restartBlock === "no") keys.push("slow");
-    return keys;
-  }
-  if (topic === "mallet") {
-    const keys = ["strokeDanger"];
-    if (answers.strokeDanger === "yes") return keys;
-    keys.push("hookPosition", "hookTiming", "hookClear");
-    return keys;
-  }
-  if (topic === "conduct") {
-    const keys = ["conductMatches"];
-    if (answers.conductMatches === "yes") keys.push("repeat");
-    return keys;
-  }
-  return ["dead", "restartType", "early"];
-}
-
-function isAnswered(value?: ChoiceValue) {
-  return value !== undefined && value !== "";
-}
-
 export default function MatchMode({
   language,
   discipline,
@@ -113,11 +81,14 @@ export default function MatchMode({
   const [showWhy, setShowWhy] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
 
-  const activeKeys = topic ? relevantKeys(topic, answers) : [];
+  const progress = topic ? matchProgress(topic, answers) : null;
+  const activeKeys = progress?.keys ?? [];
   const topicQuestions = topic ? questions[topic].filter((question) => activeKeys.includes(question.key)) : [];
-  const currentQuestion = topicQuestions.find((question) => !isAnswered(answers[question.key])) ?? null;
-  const answeredCount = topicQuestions.filter((question) => isAnswered(answers[question.key])).length;
-  const complete = Boolean(topic && topicQuestions.length && !currentQuestion);
+  const currentQuestion = progress?.currentKey
+    ? topicQuestions.find((question) => question.key === progress.currentKey) ?? null
+    : null;
+  const answeredCount = progress?.answeredKeys.length ?? 0;
+  const complete = Boolean(progress?.complete);
 
   const decision = topic ? decidePlay(topic, discipline, answers, language) : null;
   const hasCriticalUnknown = topicQuestions.some((question) => answers[question.key] === "unknown");
@@ -236,7 +207,7 @@ export default function MatchMode({
                 <button
                   className="matchBackButton"
                   onClick={() => {
-                    const previous = [...topicQuestions].reverse().find((question) => isAnswered(answers[question.key]));
+                    const previous = [...topicQuestions].reverse().find((question) => answers[question.key] !== undefined && answers[question.key] !== "");
                     if (!previous) return;
                     setAnswers((current) => {
                       const next = { ...current };
@@ -253,6 +224,11 @@ export default function MatchMode({
 
           {complete && decision ? (
             <section className={"matchVerdict " + displayedStatus}>
+              {progress?.earlyResolved ? (
+                <div className="matchEarlyResolved">
+                  ⚡ {tr("Decisive fact reached · non-decisive questions skipped", "Dato decisivo alcanzado · se omitieron preguntas no decisivas")}
+                </div>
+              ) : null}
               <div className="matchVerdictTop">
                 <span>
                   {displayedStatus === "foul"
@@ -289,7 +265,7 @@ export default function MatchMode({
                   <div>
                     <strong>{tr("Facts used", "Hechos utilizados")}</strong>
                     <ul>
-                      {topicQuestions.map((question) => (
+                      {topicQuestions.filter((question) => answers[question.key] !== undefined && answers[question.key] !== "").map((question) => (
                         <li key={question.key}>
                           {labelForQuestion(question.key, question.label, language)} <b>{labelForOption(String(answers[question.key] ?? ""), String(answers[question.key] ?? ""), language)}</b>
                         </li>

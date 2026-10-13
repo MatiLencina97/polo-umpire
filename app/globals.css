@@ -776,3 +776,15 @@ textarea,
   .matchVerdictTop small { text-align:left; }
   .matchVerdictActions { grid-template-columns:1fr; }
 }
+
+/* v0.15: early deterministic match ruling */
+.matchEarlyResolved {
+  margin:-5px 0 13px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:#f2ece4;
+  color:#665b4e;
+  font-size:calc(10px * var(--font-scale));
+  font-weight:900;
+  letter-spacing:.015em;
+}

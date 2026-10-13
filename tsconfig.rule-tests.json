@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": ".rule-test-build",
+    "noEmit": false
+  },
+  "include": [
+    "scripts/rule-regression-tests.ts",
+    "lib/types.ts",
+    "lib/engine.ts",
+    "lib/play-decision.ts",
+    "lib/subarticles.ts",
+    "lib/cross-rule.ts",
+    "lib/match-flow.ts"
+  ]
+}
