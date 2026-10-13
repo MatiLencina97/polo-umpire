@@ -44,6 +44,7 @@ import {
 import { decidePlay } from "@/lib/play-decision";
 import MatchMode from "@/components/MatchMode";
 import CaseHistoryPanel from "@/components/CaseHistoryPanel";
+import VoiceInputButton from "@/components/VoiceInputButton";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import {
   bestProvisionsForRules,
@@ -947,12 +948,15 @@ export default function UmpireApp() {
               <button className={resolverMode === "situation" ? "active" : ""} onClick={() => { setResolverMode("situation"); setTopic(null); setScenario(null); setShowResolution(false); }}>{tr("Rule situation", "Situación reglamentaria")}</button>
             </div>
 
-            <textarea
-              value={situation}
-              onChange={(event) => setSituation(event.target.value)}
-              placeholder={resolverMode === "play" ? tr("Example: Blue was following the line and Red crossed in front, forcing Blue to check…", "Ej.: Azul venía siguiendo la línea y Rojo cruzó adelante, obligándolo a frenar…") : tr("Example: A player is injured and must be replaced. What makes the substitute eligible?", "Ej.: Un jugador se lesiona y debe ser reemplazado. ¿Qué hace elegible al sustituto?")}
-              rows={5}
-            />
+            <div className="voiceTextareaWrap">
+              <textarea
+                value={situation}
+                onChange={(event) => setSituation(event.target.value)}
+                placeholder={resolverMode === "play" ? tr("Example: Blue was following the line and Red crossed in front, forcing Blue to check…", "Ej.: Azul venía siguiendo la línea y Rojo cruzó adelante, obligándolo a frenar…") : tr("Example: A player is injured and must be replaced. What makes the substitute eligible?", "Ej.: Un jugador se lesiona y debe ser reemplazado. ¿Qué hace elegible al sustituto?")}
+                rows={5}
+              />
+              <VoiceInputButton value={situation} onChange={setSituation} language={language} />
+            </div>
             <div className="quickchips">
               {(resolverMode === "play" ? quickPlays[language] : quickRuleSituations[language]).map((text, index) => (
                 <button key={text} onClick={() => setSituation(text)}>{tr("Example", "Ejemplo")} {index + 1}</button>
@@ -1380,7 +1384,10 @@ export default function UmpireApp() {
                     ))}
                   </div>
                 ) : null}
-                <textarea value={followUpText} onChange={(event) => setFollowUpText(event.target.value)} placeholder={tr("Example: What if the team originally totaled 7 goals? What if the substitute is Argentine but a USPA Registered Player Member?", "Ej.: ¿Y si el equipo originalmente era de 7? ¿Y si el sustituto es argentino pero es USPA Registered Player Member?")} rows={3} />
+                <div className="voiceTextareaWrap compactVoiceWrap">
+                  <textarea value={followUpText} onChange={(event) => setFollowUpText(event.target.value)} placeholder={tr("Example: What if the team originally totaled 7 goals? What if the substitute is Argentine but a USPA Registered Player Member?", "Ej.: ¿Y si el equipo originalmente era de 7? ¿Y si el sustituto es argentino pero es USPA Registered Player Member?")} rows={3} />
+                  <VoiceInputButton value={followUpText} onChange={setFollowUpText} language={language} compact />
+                </div>
                 <button className="primaryAction" onClick={submitFollowUp} disabled={!followUpText.trim()}>{tr("Ask follow-up", "Repreguntar")}</button>
               </div>
             </div>
@@ -1516,7 +1523,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.17</span>
+        <span>Umpire Polo Assistant v0.18</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
