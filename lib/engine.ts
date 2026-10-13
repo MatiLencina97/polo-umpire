@@ -105,7 +105,7 @@ export function applicationText(topic: TopicId, answers: Record<string, ChoiceVa
   if (topic === "dangerous") {
     if (a.balance === "yes") return "La pérdida de equilibrio del caballo es un indicador especialmente fuerte bajo Dangerous Riding. La regla ordena considerar además velocidad relativa, tamaño, posición, ángulo, fatiga y preparación del oponente.";
     if (a.speedAngle === "yes" || a.blind === "yes") return "Hay factores expresamente relevantes para Dangerous Riding: velocidad, ángulo, posición relativa y/o falta de preparación del oponente. El Umpire conserva discreción para valorar el grado de peligro.";
-    return "La acción debe evaluarse con los factores de Dangerous Riding. Si no hubo fuerza indebida, diferencia peligrosa de velocidad/ángulo ni riesgo innecesario, puede tratarse de un ride-off legal.";
+    return "La acción debe evaluarse con el conjunto de factores de Dangerous Riding. La ausencia de los indicadores preguntados no alcanza, por sí sola, para concluir no-foul: Rule 26 contempla otros factores y deja la valoración final del peligro al Umpire.";
   }
   if (topic === "blocking") {
     if (a.restartBlock === "yes" && a.marking === "yes") return "Los hechos coinciden con el supuesto central de Improper Blocking durante la ejecución de un knock-in, Penalty 5.a/5.b o free hit por pelota afuera: un atacante no puede impedir que un defensor marque al compañero que tiene una jugada sobre la pelota.";
