@@ -3,7 +3,7 @@ import type { ChoiceValue, TopicId } from "./types";
 const fullKeys: Record<TopicId, string[]> = {
   row: ["rowEntitled", "risk", "lineChanged", "clearanceTime"],
   dangerous: ["balance", "speedAngle", "blind"],
-  blocking: ["restartBlock", "marking", "slow"],
+  blocking: ["marking", "restartBlock", "slow"],
   mallet: ["strokeDanger", "strokeEnteredByOpponent", "hookPosition", "hookTiming", "hookClear"],
   conduct: ["conductMatches", "repeat"],
   restart: ["dead", "restartType", "early"],
@@ -12,23 +12,35 @@ const fullKeys: Record<TopicId, string[]> = {
 export function relevantMatchKeys(topic: TopicId, answers: Record<string, ChoiceValue>) {
   if (topic === "row") {
     const keys = ["rowEntitled"];
-    if (answers.rowEntitled === "no") return keys;
-    keys.push("risk", "lineChanged");
+    if (answers.rowEntitled !== "yes") return keys;
+
+    keys.push("risk");
+    if (answers.risk !== "yes") return keys;
+
+    keys.push("lineChanged");
     if (answers.lineChanged === "yes") keys.push("clearanceTime");
     return keys;
   }
 
   if (topic === "dangerous") {
+    const keys = ["balance"];
     // Rule 26.a expressly states that a mount knocked off balance means
-    // a dangerous ride-off has occurred. Once this fact is confirmed,
-    // additional factor questions may inform severity but cannot reverse the call.
-    if (answers.balance === "yes") return ["balance"];
-    return ["balance", "speedAngle", "blind"];
+    // a dangerous ride-off has occurred. Unknown balance is also decisive
+    // for the quick flow because later indicators cannot close that missing fact.
+    if (answers.balance !== "no") return keys;
+
+    keys.push("speedAngle");
+    if (answers.speedAngle !== "no") return keys;
+
+    keys.push("blind");
+    return keys;
   }
 
   if (topic === "blocking") {
-    const keys = ["restartBlock", "marking"];
-    if (answers.marking === "no") return keys;
+    const keys = ["marking"];
+    if (answers.marking !== "yes") return keys;
+
+    keys.push("restartBlock");
     if (answers.restartBlock === "no") keys.push("slow");
     return keys;
   }
@@ -39,7 +51,15 @@ export function relevantMatchKeys(topic: TopicId, answers: Record<string, Choice
       keys.push("strokeEnteredByOpponent");
       return keys;
     }
-    keys.push("hookPosition", "hookTiming", "hookClear");
+    if (answers.strokeDanger !== "no") return keys;
+
+    keys.push("hookPosition");
+    if (answers.hookPosition !== "yes") return keys;
+
+    keys.push("hookTiming");
+    if (answers.hookTiming !== "yes") return keys;
+
+    keys.push("hookClear");
     return keys;
   }
 
@@ -51,7 +71,16 @@ export function relevantMatchKeys(topic: TopicId, answers: Record<string, Choice
     return keys;
   }
 
-  return ["dead", "restartType", "early"];
+  const keys = ["early"];
+  if (answers.early === "yes") {
+    keys.push("restartType");
+    return keys;
+  }
+  if (answers.early !== "no") return keys;
+
+  keys.push("dead");
+  if (answers.dead === "yes") keys.push("restartType");
+  return keys;
 }
 
 export function isMatchAnswerPresent(value?: ChoiceValue) {
