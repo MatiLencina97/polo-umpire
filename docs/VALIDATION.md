@@ -1,6 +1,6 @@
 # Validation & Decision-Support Policy
 
-Umpire Polo Assistant is a **decision-support tool**, not a replacement for the Umpire.
+Polo Umpire Assistant is a **decision-support tool**, not a replacement for the Umpire.
 
 The final ruling always belongs to the Umpire. The application is designed to be conservative: when the installed Rulebook does not support a deterministic conclusion from the facts currently known, the app should return **Umpire Judgment** or **Insufficient Validated Coverage** instead of inventing certainty.
 
