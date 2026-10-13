@@ -45,6 +45,7 @@ const questionLabelsEn: Record<string, string> = {
   marking: "Did the attacker prevent the defender from marking a teammate who had a play on the ball?",
   slow: "In open play, had the ball carrier stopped or slowed to a slow canter/walk within two horse lengths?",
   strokeDanger: "Did the swing or hook create danger to a player or horse?",
+  strokeEnteredByOpponent: "If there was danger, did another player clearly ride into an already established stroke and create that danger?",
   hookPosition: "Was the hook made from the ball side of the opponent's mount, or directly from behind?",
   hookTiming: "Was the opponent in the act of hitting at the ball or hooking/striking the mallet?",
   hookClear: "Was the mallet clear of the opponent's mount, below shoulder level, and without excessive force?",
