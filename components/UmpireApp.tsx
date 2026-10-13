@@ -243,6 +243,7 @@ export default function UmpireApp() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [resolverExperience, setResolverExperience] = useState<ResolverExperience>("analysis");
   const [savedAnalysisFingerprint, setSavedAnalysisFingerprint] = useState("");
+  const [sideMenuOpen, setSideMenuOpen] = useState(false);
 
   const tr = (en: string, es: string) => language === "en" ? en : es;
   const optionLabel = (value: string, fallback: string) => {
@@ -371,6 +372,20 @@ export default function UmpireApp() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!sideMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSideMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [sideMenuOpen]);
 
   function changeLanguage(next: Language) {
     setLanguage(next);
@@ -829,6 +844,12 @@ export default function UmpireApp() {
     setTimeout(() => document.getElementById("follow-up")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 20);
   }
 
+  function openSideSection(next: Tab) {
+    setTab(next);
+    setSideMenuOpen(false);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 20);
+  }
+
   async function checkUpdates() {
     if (!navigator.onLine) {
       setUpdateStatus(tr("No connection: the installed local copy remains active.", "Sin conexión: la copia local instalada sigue activa."));
@@ -854,44 +875,17 @@ export default function UmpireApp() {
             <div className="brandSub">Rulebook Assistant</div>
           </div>
         </div>
-        <div className="topbarActions">
-          <div className="fontSizeSwitch" role="group" aria-label={tr("Text size", "Tamaño de texto")}>
-            <button
-              className={fontSize === "small" ? "active" : ""}
-              onClick={() => changeFontSize("small")}
-              aria-pressed={fontSize === "small"}
-              title={tr("Smaller text", "Texto más chico")}
-            >
-              A−
-            </button>
-            <button
-              className={fontSize === "normal" ? "active" : ""}
-              onClick={() => changeFontSize("normal")}
-              aria-pressed={fontSize === "normal"}
-              title={tr("Default text size", "Tamaño de texto normal")}
-            >
-              A
-            </button>
-            <button
-              className={fontSize === "large" ? "active" : ""}
-              onClick={() => changeFontSize("large")}
-              aria-pressed={fontSize === "large"}
-              title={tr("Larger text", "Texto más grande")}
-            >
-              A+
-            </button>
-          </div>
-          <div className="languageSwitch" aria-label={tr("Language", "Idioma")}>
-            <button className={language === "en" ? "active" : ""} onClick={() => changeLanguage("en")}>EN</button>
-            <button className={language === "es" ? "active" : ""} onClick={() => changeLanguage("es")}>ES</button>
-          </div>
-          <div className="statusStack">
-            <span className={"badge " + (networkOnline ? "online" : "offline")}>● {networkOnline ? "ONLINE" : "OFFLINE"}</span>
-            <span className={"offlineIndicator " + (offlineReady ? "ready" : "warming")}>
-              {offlineReady ? "✓ OFFLINE READY" : tr("Preparing offline…", "Preparando offline…")}
-            </span>
-          </div>
-        </div>
+        <button
+          className="sideMenuTrigger"
+          onClick={() => setSideMenuOpen(true)}
+          aria-label={tr("Open menu", "Abrir menú")}
+          aria-expanded={sideMenuOpen}
+          aria-controls="app-side-menu"
+        >
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </button>
       </header>
 
       <section className="hero">
@@ -911,8 +905,8 @@ export default function UmpireApp() {
         </button>
       </section>
 
-      <nav className="tabs" aria-label={tr("Sections", "Secciones")}>
-        {(["resolver", "buscar", "reglamento", "como", "historial", "estado"] as Tab[]).map((item) => (
+      <nav className="tabs" aria-label={tr("Primary sections", "Secciones principales")}>
+        {(["resolver", "buscar", "reglamento", "historial"] as Tab[]).map((item) => (
           <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>
             {item === "resolver"
               ? tr("Resolve", "Resolver")
@@ -920,14 +914,84 @@ export default function UmpireApp() {
                 ? tr("Search", "Buscar")
                 : item === "reglamento"
                   ? tr("Rulebook", "Reglamento")
-                  : item === "como"
-                    ? tr("How it works", "Cómo funciona")
-                    : item === "historial"
-                      ? tr("Cases", "Casos")
-                      : "Offline"}
+                  : tr("Cases", "Casos")}
           </button>
         ))}
       </nav>
+
+      {sideMenuOpen ? (
+        <div className="sideMenuBackdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setSideMenuOpen(false);
+        }}>
+          <aside id="app-side-menu" className="sideMenuDrawer" role="dialog" aria-modal="true" aria-label={tr("Menu", "Menú")}>
+            <div className="sideMenuHeader">
+              <div>
+                <p className="eyebrow">{tr("MENU", "MENÚ")}</p>
+                <h2>{tr("Settings & information", "Ajustes e información")}</h2>
+              </div>
+              <button className="sideMenuClose" onClick={() => setSideMenuOpen(false)} aria-label={tr("Close menu", "Cerrar menú")}>×</button>
+            </div>
+
+            <div className="sideMenuNav">
+              <button className={tab === "como" ? "active" : ""} onClick={() => openSideSection("como")}>
+                <span className="sideMenuIcon" aria-hidden="true">?</span>
+                <span>
+                  <b>{tr("How it works", "Cómo funciona")}</b>
+                  <small>{tr("Decision method, validation levels and limits", "Método de decisión, niveles de validación y límites")}</small>
+                </span>
+                <strong>›</strong>
+              </button>
+              <button className={tab === "estado" ? "active" : ""} onClick={() => openSideSection("estado")}>
+                <span className={"sideMenuIcon status " + (offlineReady ? "ready" : "warming")} aria-hidden="true">●</span>
+                <span>
+                  <b>{tr("Offline & validation status", "Offline y estado de validación")}</b>
+                  <small>{offlineReady ? tr("Local Rulebook ready without signal", "Rulebook local listo sin señal") : tr("Preparing local offline copy", "Preparando copia local offline")}</small>
+                </span>
+                <strong>›</strong>
+              </button>
+            </div>
+
+            <div className="sideMenuDivider"></div>
+
+            <div className="sideMenuSetting">
+              <div className="sideMenuSettingTitle">
+                <span>{tr("Language", "Idioma")}</span>
+                <small>{language === "en" ? "English" : "Español"}</small>
+              </div>
+              <div className="sideMenuSegmented" role="group" aria-label={tr("Language", "Idioma")}>
+                <button className={language === "en" ? "active" : ""} onClick={() => changeLanguage("en")}>English</button>
+                <button className={language === "es" ? "active" : ""} onClick={() => changeLanguage("es")}>Español</button>
+              </div>
+            </div>
+
+            <div className="sideMenuSetting">
+              <div className="sideMenuSettingTitle">
+                <span>{tr("Text size", "Tamaño de texto")}</span>
+                <small>{fontSize === "small" ? tr("Small", "Chico") : fontSize === "large" ? tr("Large", "Grande") : tr("Normal", "Normal")}</small>
+              </div>
+              <div className="sideMenuSegmented fontMenu" role="group" aria-label={tr("Text size", "Tamaño de texto")}>
+                <button className={fontSize === "small" ? "active" : ""} onClick={() => changeFontSize("small")}>A−</button>
+                <button className={fontSize === "normal" ? "active" : ""} onClick={() => changeFontSize("normal")}>A</button>
+                <button className={fontSize === "large" ? "active" : ""} onClick={() => changeFontSize("large")}>A+</button>
+              </div>
+            </div>
+
+            <div className="sideMenuDivider"></div>
+
+            <div className="sideMenuStatus">
+              <div>
+                <span className={"connectionDot " + (networkOnline ? "online" : "offline")}></span>
+                <b>{networkOnline ? tr("Online", "Online") : tr("Offline", "Offline")}</b>
+              </div>
+              <div>
+                <span className={"connectionDot " + (offlineReady ? "ready" : "warming")}></span>
+                <b>{offlineReady ? tr("Offline copy ready", "Copia offline lista") : tr("Offline copy preparing", "Preparando copia offline")}</b>
+              </div>
+              <small>Rulebook {manifest?.activeVersion ?? "2026"}</small>
+            </div>
+          </aside>
+        </div>
+      ) : null}
 
       {loadError && <div className="errorBanner">{loadError}</div>}
 
@@ -1675,7 +1739,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.21</span>
+        <span>Umpire Polo Assistant v0.22</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
