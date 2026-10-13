@@ -48,6 +48,7 @@ import { playDecisionRuleTrail, substitutionDecisionRuleTrail, substitutionExter
 import { complexRuleFocuses, complexText } from "@/lib/complex-rules";
 import MatchMode from "@/components/MatchMode";
 import DecisionRuleTrail from "@/components/DecisionRuleTrail";
+import RowEntitlementHelper from "@/components/RowEntitlementHelper";
 import CaseHistoryPanel from "@/components/CaseHistoryPanel";
 import VoiceInputButton from "@/components/VoiceInputButton";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
@@ -1217,6 +1218,14 @@ export default function UmpireApp() {
                     </div>
                   )}                </div>
               ) : null}
+              {resolverMode === "play" && topic === "row" && db ? (
+                <RowEntitlementHelper
+                  language={language}
+                  resolveProvision={(ref) => getProvision(db, discipline, ref)}
+                  onOpenProvision={setSelectedProvision}
+                  onApply={(hasRow) => setAnswers((current) => ({ ...current, rowEntitled: hasRow ? "yes" : "no" }))}
+                />
+              ) : null}
               <div className="questionList">
                 {activeQuestions.map((question) => (
                   <div className="question" key={question.key}>
@@ -1510,6 +1519,41 @@ export default function UmpireApp() {
               </div>
             </div>
           ))}
+          {db ? (
+            <div className="card complexRulesCatalog">
+              <p className="eyebrow">{tr("HIGH-COMPLEXITY RULES", "REGLAS DE ALTA COMPLEJIDAD")}</p>
+              <h2>{tr("Rules we audit most aggressively", "Reglas que auditamos con mayor profundidad")}</h2>
+              <p className="muted">{tr(
+                "These are the areas where several provisions interact or where the Rulebook intentionally leaves observation/discretion to the Umpire. Each card separates what the app can derive from what must remain human judgment.",
+                "Estas son las áreas donde interactúan varias disposiciones o donde el Rulebook deja intencionalmente observación/discreción al Umpire. Cada tarjeta separa lo que la app puede derivar de lo que debe seguir siendo juicio humano.",
+              )}</p>
+              <div className="complexRulesGrid">
+                {complexRuleFocuses.map((focus) => {
+                  const copy = complexText(focus, language);
+                  return (
+                    <article className="complexRuleCard" key={focus.id}>
+                      <div className="complexRuleTop">
+                        <strong>{focus.title}</strong>
+                        <span>{focus.discipline === "outdoor" ? "Outdoor" : "Arena"}</span>
+                      </div>
+                      <p><b>{tr("Why it is confusing:", "Por qué es confusa:")}</b> {copy.why}</p>
+                      <p className="certaintyLine"><b>{tr("What we can make certain:", "Qué podemos volver certero:")}</b> {copy.certainty}</p>
+                      <p className="judgmentLine"><b>{tr("Still Umpire judgment:", "Sigue siendo juicio del Umpire:")}</b> {copy.judgment}</p>
+                      <div className="complexRuleLinks">
+                        {[...focus.refs, ...focus.related].map((ref) => {
+                          const provision = getProvision(db, focus.discipline, ref);
+                          return provision ? (
+                            <button key={ref} onClick={() => setSelectedProvision(provision)}>{provision.label}</button>
+                          ) : null;
+                        })}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           {externalDb ? (
             <div className="card externalResourceCatalog">
               <p className="eyebrow">{tr("GOVERNING SOURCES · OFFLINE", "FUENTES DE CONTROL · OFFLINE")}</p>
@@ -1740,6 +1784,36 @@ export default function UmpireApp() {
                 </div>
               </>
             )}
+          </article>
+        </div>
+      )}
+
+      {selectedProvision && (
+        <div className="modalBackdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setSelectedProvision(null);
+        }}>
+          <article className="ruleModal provisionModal" role="dialog" aria-modal="true" aria-label={selectedProvision.label}>
+            <button className="modalClose" onClick={() => setSelectedProvision(null)} aria-label={tr("Close", "Cerrar")}>×</button>
+            <p className="eyebrow">{tr("EXACT CONTROLLING PROVISION", "DISPOSICIÓN EXACTA DE CONTROL")} · RULEBOOK {manifest?.activeVersion ?? "2026"}</p>
+            <h2>{selectedProvision.label}</h2>
+            <div className="sourceMeta">
+              {selectedProvision.discipline === "outdoor" ? "Outdoor" : "Arena"} · {tr("page", "página")} {selectedProvision.pageStart}
+            </div>
+            <pre className="officialText provisionOfficialText">{selectedProvision.text}</pre>
+            {db ? (() => {
+              const parent = db.rules.find((rule) => rule.discipline === selectedProvision.discipline && rule.rule === selectedProvision.rule);
+              return parent ? (
+                <button
+                  className="secondaryAction provisionFullRule"
+                  onClick={() => {
+                    setSelectedProvision(null);
+                    setSelectedRule(parent);
+                  }}
+                >
+                  {tr("Open full Rule " + parent.rule, "Abrir Rule " + parent.rule + " completa")}
+                </button>
+              ) : null;
+            })() : null}
           </article>
         </div>
       )}
