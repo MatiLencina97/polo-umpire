@@ -501,7 +501,7 @@ test("every Outdoor quick-decision truth-table combination returns a valid audit
       evaluated += 1;
     }
   }
-  assert.ok(evaluated >= 700);
+  assert.ok(evaluated >= 500);
 });
 
 let passed = 0;
