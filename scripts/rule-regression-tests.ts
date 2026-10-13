@@ -7,6 +7,7 @@ import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "
 import { matchProgress } from "../lib/match-flow";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
 import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
+import { appendTranscript, speechLocale } from "../lib/voice";
 import type { ExternalResourceDb, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
@@ -330,6 +331,23 @@ test("case history normalizer rejects malformed stored entries", () => {
   const normalized = normalizeCaseHistory([null, { id: "broken" }, valid]);
   assert.equal(normalized.length, 1);
   assert.equal(normalized[0].id, "valid");
+});
+
+
+test("voice transcript appends to an existing query without losing text", () => {
+  assert.equal(
+    appendTranscript("Blue had the line.", "Red crossed and Blue checked."),
+    "Blue had the line. Red crossed and Blue checked.",
+  );
+});
+
+test("voice transcript fills an empty query cleanly", () => {
+  assert.equal(appendTranscript("", "Red crossed the line"), "Red crossed the line");
+});
+
+test("voice dictation language follows the app language", () => {
+  assert.equal(speechLocale("en"), "en-US");
+  assert.equal(speechLocale("es"), "es-AR");
 });
 
 let passed = 0;
