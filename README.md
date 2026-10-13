@@ -1,6 +1,6 @@
-# Umpire Polo Assistant v0.10
+# Polo Umpire Assistant v0.23
 
-Offline-first PWA for polo umpires under the Umpire Polo Assistant brand, built with Next.js + TypeScript and a local dataset extracted from the current USPA Rulebook.
+Offline-first PWA for polo umpires under the Polo Umpire Assistant brand, built with Next.js + TypeScript and a local dataset extracted from the current USPA Rulebook.
 
 ## What works offline
 
