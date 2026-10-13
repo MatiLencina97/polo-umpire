@@ -483,6 +483,10 @@ export default function UmpireApp() {
     ? auditPlayDecision(topic, discipline, answers, playDecision)
     : null;
 
+  const effectivePlayStatus = playDecision && playDecisionAudit?.level === "insufficient-coverage" && playDecision.status !== "needs-info"
+    ? "needs-info"
+    : playDecision?.status;
+
   const guidanceMetrics = db ? officialGuidanceMetrics(db) : null;
 
   const precisePlayProvisions: RuleProvision[] = db && playDecision
@@ -631,7 +635,7 @@ export default function UmpireApp() {
         );
 
     if (resolverMode === "play" && playDecision) {
-      status = playDecision.status;
+      status = effectivePlayStatus ?? playDecision.status;
       headline = playDecision.headline;
       summary = playDecision.summary;
     } else if (resolverMode === "situation" && scenario === "substitutes" && crossRuleState) {
@@ -1281,8 +1285,8 @@ export default function UmpireApp() {
                       <span>{language === "en" ? playDecisionAudit.reasonEn : playDecisionAudit.reasonEs}</span>
                     </div>
                   ) : null}
-                  <div className={"decisionBanner " + playDecision.status}>
-                    <span>{playDecision.status === "foul" ? tr("FOUL", "FALTA") : playDecision.status === "no-foul" ? tr("NO FOUL INDICATED", "NO SE INDICA FALTA") : playDecision.status === "procedure" ? tr("PROCEDURE", "PROCEDIMIENTO") : tr("MORE FACTS NEEDED", "FALTAN DATOS")}</span>
+                  <div className={"decisionBanner " + effectivePlayStatus}>
+                    <span>{effectivePlayStatus === "foul" ? tr("FOUL", "FALTA") : effectivePlayStatus === "no-foul" ? tr("NO FOUL INDICATED", "NO SE INDICA FALTA") : effectivePlayStatus === "procedure" ? tr("PROCEDURE", "PROCEDIMIENTO") : tr("MORE FACTS NEEDED", "FALTAN DATOS")}</span>
                     <strong>{playDecision.headline}</strong>
                   </div>
                   <div className="resultSections">
