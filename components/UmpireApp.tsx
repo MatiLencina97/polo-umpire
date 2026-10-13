@@ -1239,7 +1239,11 @@ export default function UmpireApp() {
                         <button
                           key={value}
                           className={answers[question.key] === value ? "selected" : ""}
-                          onClick={() => setAnswers((current) => ({ ...current, [question.key]: value }))}
+                          onClick={() => setAnswers((current) => {
+                            const next = { ...current, [question.key]: value };
+                            if (question.key === "rowEntitled") delete next.rowEntitlementDerived;
+                            return next;
+                          })}
                         >
                           {optionLabel(value, label)}
                         </button>
