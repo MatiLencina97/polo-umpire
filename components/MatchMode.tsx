@@ -306,7 +306,15 @@ export default function MatchMode({
                   language={language}
                   resolveProvision={(ref) => getProvision(db, discipline, ref)}
                   onOpenProvision={onOpenProvision}
-                  onApply={(hasRow) => answer("rowEntitled", hasRow ? "yes" : "no")}
+                  onApply={(hasRow, refs) => {
+                    setAnswers((current) => ({
+                      ...current,
+                      rowEntitled: hasRow ? "yes" : "no",
+                      rowEntitlementDerived: refs.join(","),
+                    }));
+                    setSavedCaseId("");
+                    setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+                  }}
                 />
               ) : null}
               {topic === "row" && currentQuestion.key === "rowEntitled" ? (
