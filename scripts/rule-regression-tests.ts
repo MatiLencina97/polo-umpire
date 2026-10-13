@@ -5,7 +5,8 @@ import { decidePlay } from "../lib/play-decision";
 import { parseRuleProvisions, bestProvisionsForRules } from "../lib/subarticles";
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
 import { matchProgress } from "../lib/match-flow";
-import type { RuleDb } from "../lib/types";
+import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
+import type { ExternalResourceDb, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
 const cases: TestCase[] = [];
@@ -15,6 +16,7 @@ function test(name: string, run: () => void) {
 }
 
 const db = JSON.parse(fs.readFileSync("public/data/rules-2026.json", "utf8")) as RuleDb;
+const externalDb = JSON.parse(fs.readFileSync("public/data/resources-2026.json", "utf8")) as ExternalResourceDb;
 const outdoorRule = (rule: string) => {
   const found = db.rules.find((item) => item.discipline === "outdoor" && item.rule === rule);
   assert.ok(found, "Missing Outdoor Rule " + rule);
@@ -213,6 +215,39 @@ test("suspended substitute creates an eligibility failure", () => {
     language: "en",
   });
   assert.ok(state.checks.some((item) => item.status === "fail" && /suspend/i.test(item.summary)));
+});
+
+test("external Rulebook dataset contains governing source families", () => {
+  assert.ok(externalDb.resources.length >= 9);
+  assert.ok(externalDb.resources.some((item) => item.id === "tournament-conditions"));
+  assert.ok(externalDb.resources.some((item) => item.id === "equine-medications"));
+  assert.ok(externalDb.resources.some((item) => item.id === "policies"));
+});
+
+test("host-country eligibility query surfaces Tournament Conditions Section IV", () => {
+  const hits = searchExternalSections(externalDb, "Affiliate Player Member citizen of the host country Registered Player Member Outdoor Rule 1.f", 5);
+  assert.ok(hits.some((item) => item.resource.id === "tournament-conditions" && item.section.title.includes("Section IV") && /citizen of the host country/i.test(item.section.text)));
+});
+
+test("Tournament Conditions graph label resolves to Section IV for host-country substitution", () => {
+  const hits = externalMatchesForLabels(externalDb, ["Tournament Conditions"], "substitute American Player Affiliate Member Club host country", 3);
+  assert.equal(hits[0]?.resource.id, "tournament-conditions");
+  assert.ok(/Section IV/.test(hits[0]?.section.title ?? ""));
+});
+
+test("Alternative Format Arena source is locally searchable", () => {
+  const hits = searchExternalSections(externalDb, "alternative format arena beach snow replace USPA Arena Rules", 5);
+  assert.ok(hits.some((item) => item.resource.id === "alternative-format-arena"));
+});
+
+test("Sport-Related Conduct graph label resolves to disciplinary policy Part I", () => {
+  const hits = externalMatchesForLabels(externalDb, ["Sport-Related Conduct Procedures"], "conduct violation umpire player", 5);
+  assert.ok(hits.some((item) => item.resource.id === "policies" && /Sport-Related Conduct Violation Procedures/i.test(item.section.title)));
+});
+
+test("equine medication query surfaces Equine Medications Rules", () => {
+  const hits = searchExternalSections(externalDb, "restricted medication horse blood level NSAID", 5);
+  assert.ok(hits.some((item) => item.resource.id === "equine-medications"));
 });
 
 let passed = 0;

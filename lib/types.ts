@@ -19,10 +19,41 @@ export type RuleDb = {
   umpireGuide: Array<Record<string, unknown>>;
 };
 
+export type ExternalSection = {
+  id: string;
+  ref: string;
+  title: string;
+  pageStart: number;
+  pageEnd?: number;
+  pdfPageStart?: number;
+  pdfPageEnd?: number;
+  text: string;
+  keywords?: string[];
+};
+
+export type ExternalResource = {
+  id: string;
+  title: string;
+  shortTitle: string;
+  aliases?: string[];
+  keywords?: string[];
+  pageStart: number;
+  pageEnd?: number;
+  pdfPageStart?: number;
+  pdfPageEnd?: number;
+  sections: ExternalSection[];
+};
+
+export type ExternalResourceDb = {
+  source: Record<string, unknown>;
+  resources: ExternalResource[];
+};
+
 export type RuleManifest = {
   activeVersion: string;
   year: number;
   rulesFile: string;
+  resourcesFile?: string;
   sha256: string;
   generatedAt: string;
   offlineReady: boolean;
@@ -30,6 +61,8 @@ export type RuleManifest = {
     outdoor: number;
     arena: number;
     umpireGuidePages: number;
+    resources?: number;
+    resourceSections?: number;
   };
 };
 

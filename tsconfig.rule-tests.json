@@ -19,6 +19,7 @@
     "lib/play-decision.ts",
     "lib/subarticles.ts",
     "lib/cross-rule.ts",
-    "lib/match-flow.ts"
+    "lib/match-flow.ts",
+    "lib/external-resources.ts"
   ]
 }
