@@ -167,7 +167,11 @@ export default function MatchMode({
   }
 
   function answer(key: string, value: ChoiceValue) {
-    setAnswers((current) => ({ ...current, [key]: value }));
+    setAnswers((current) => {
+      const next = { ...current, [key]: value };
+      if (key === "rowEntitled") delete next.rowEntitlementDerived;
+      return next;
+    });
     setSavedCaseId("");
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
   }
@@ -339,6 +343,7 @@ export default function MatchMode({
                     setAnswers((current) => {
                       const next = { ...current };
                       delete next[previous.key];
+                      if (previous.key === "rowEntitled") delete next.rowEntitlementDerived;
                       return next;
                     });
                   }}
