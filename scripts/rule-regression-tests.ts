@@ -66,6 +66,13 @@ test("ROW without established entitlement requests more facts", () => {
   assert.ok(decision.references.includes("24.a"));
 });
 
+test("Match Mode stops ROW questions once no risk is established", () => {
+  const progress = matchProgress("row", { rowEntitled: "yes", risk: "no" });
+  assert.equal(progress.complete, true);
+  assert.equal(progress.earlyResolved, true);
+  assert.deepEqual(progress.keys, ["rowEntitled", "risk"]);
+});
+
 test("knocked-off-balance fact resolves Dangerous Riding immediately", () => {
   const decision = decidePlay("dangerous", "outdoor", { balance: "yes" }, "en");
   const progress = matchProgress("dangerous", { balance: "yes" });
@@ -80,6 +87,13 @@ test("Dangerous Riding continues when horse stayed balanced", () => {
   const progress = matchProgress("dangerous", { balance: "no" });
   assert.equal(progress.complete, false);
   assert.equal(progress.currentKey, "speedAngle");
+});
+
+test("Dangerous Riding stops after an express indicator because later quick facts cannot close the Umpire judgment", () => {
+  const progress = matchProgress("dangerous", { balance: "no", speedAngle: "yes" });
+  assert.equal(progress.complete, true);
+  assert.equal(progress.earlyResolved, true);
+  assert.deepEqual(progress.keys, ["balance", "speedAngle"]);
 });
 
 test("Dangerous Riding with primary factors negative remains Umpire judgment", () => {
@@ -115,6 +129,12 @@ test("blocking category closes early when defender was not prevented from markin
   assert.equal(decision.status, "no-foul");
   assert.equal(progress.complete, true);
   assert.equal(progress.earlyResolved, true);
+  assert.deepEqual(progress.keys, ["marking"]);
+});
+
+test("Blocking asks whether marking was prevented before asking restart context", () => {
+  const progress = matchProgress("blocking", {});
+  assert.equal(progress.currentKey, "marking");
 });
 
 test("dangerous mallet use is a foul when another player did not create the danger", () => {
@@ -133,6 +153,13 @@ test("mallet danger caused by a player riding into the stroke stays with the Ump
   assert.equal(decision.status, "needs-info");
   assert.ok(decision.references.includes("28.d"));
   assert.ok(decision.references.includes("26.h"));
+});
+
+test("Match Mode stops hook questions after the first illegal hook condition", () => {
+  const progress = matchProgress("mallet", { strokeDanger: "no", hookPosition: "no" });
+  assert.equal(progress.complete, true);
+  assert.equal(progress.earlyResolved, true);
+  assert.deepEqual(progress.keys, ["strokeDanger", "hookPosition"]);
 });
 
 test("hook meeting position timing clearance and safety conditions resolves no-foul", () => {
@@ -164,6 +191,20 @@ test("early play before a penalty/free hit is a procedure violation", () => {
   }, "en");
   assert.equal(decision.status, "procedure");
   assert.ok(decision.references.includes("36"));
+});
+
+test("Restart flow asks the early-play fact first and only then the restart type when needed", () => {
+  const first = matchProgress("restart", {});
+  assert.equal(first.currentKey, "early");
+
+  const early = matchProgress("restart", { early: "yes" });
+  assert.equal(early.currentKey, "restartType");
+  assert.deepEqual(early.keys, ["early", "restartType"]);
+
+  const ordinary = matchProgress("restart", { early: "no", dead: "no" });
+  assert.equal(ordinary.complete, true);
+  assert.equal(ordinary.earlyResolved, true);
+  assert.deepEqual(ordinary.keys, ["early", "dead"]);
 });
 
 test("subarticle parser exposes Rule 24 c and d separately", () => {
