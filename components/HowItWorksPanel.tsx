@@ -90,7 +90,7 @@ export default function HowItWorksPanel({
     <section className="howItWorks">
       <div className="card howHero">
         <p className="eyebrow">{tr("HOW IT WORKS", "CÓMO FUNCIONA")}</p>
-        <h2>{tr("How Umpire Polo Assistant reaches a ruling", "Cómo llega Umpire Polo Assistant a una decisión")}</h2>
+        <h2>{tr("How Polo Umpire Assistant reaches a ruling", "Cómo llega Polo Umpire Assistant a una decisión")}</h2>
         <p className="howHeroLead">{tr(
           "The app is a Rulebook-based decision-support system. It does not replace the Umpire and it does not use an AI opinion as the source of truth. It organizes the facts, applies validated rule branches, shows what is still uncertain, and links every important conclusion back to the installed Rulebook.",
           "La app es un sistema de apoyo a la decisión basado en el Rulebook. No reemplaza al Umpire y no usa una opinión de IA como fuente de verdad. Ordena los hechos, aplica ramas reglamentarias validadas, muestra qué sigue siendo incierto y vincula cada conclusión importante con el Rulebook instalado.",
@@ -247,8 +247,8 @@ export default function HowItWorksPanel({
           <li>{tr("Areas that have not yet reached the same deterministic coverage as the strongest Outdoor branches, especially some Arena situations.", "Áreas que todavía no alcanzaron la misma cobertura determinística que las ramas Outdoor más fuertes, especialmente algunas situaciones de Arena.")}</li>
         </ul>
         <p className="howSourceNote">{tr(
-          "Source installed in this app: USPA Rulebook " + rulebookVersion + ". Umpire Polo Assistant is a decision-support tool and does not itself issue an official ruling.",
-          "Fuente instalada en esta app: USPA Rulebook " + rulebookVersion + ". Umpire Polo Assistant es una herramienta de apoyo a la decisión y no emite por sí misma una decisión oficial.",
+          "Source installed in this app: USPA Rulebook " + rulebookVersion + ". Polo Umpire Assistant is a decision-support tool and does not itself issue an official ruling.",
+          "Fuente instalada en esta app: USPA Rulebook " + rulebookVersion + ". Polo Umpire Assistant es una herramienta de apoyo a la decisión y no emite por sí misma una decisión oficial.",
         )}</p>
       </div>
     </section>
