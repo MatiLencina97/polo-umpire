@@ -34,6 +34,13 @@ import {
   type CaseFactDefinition,
   type CaseFactValue,
 } from "@/lib/rule-graphs";
+import {
+  defaultEventProfile,
+  profileSummary,
+  profileToCaseFacts,
+  profileToSubstitutionFacts,
+  type EventProfile,
+} from "@/lib/event-profile";
 import type {
   ChoiceValue,
   Discipline,
@@ -173,6 +180,9 @@ export default function UmpireApp() {
   const [followUps, setFollowUps] = useState<Array<{ question: string; answer: string; ruleIds: string[] }>>([]);
   const [caseFacts, setCaseFacts] = useState<Record<string, CaseFactValue>>({});
   const [selectedMissingFactKey, setSelectedMissingFactKey] = useState("");
+  const [eventProfile, setEventProfile] = useState<EventProfile>({ ...defaultEventProfile });
+  const [profileDraft, setProfileDraft] = useState<EventProfile>({ ...defaultEventProfile });
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const tr = (en: string, es: string) => language === "en" ? en : es;
   const optionLabel = (value: string, fallback: string) => {
@@ -268,6 +278,18 @@ export default function UmpireApp() {
     if (savedFontSize === "small" || savedFontSize === "normal" || savedFontSize === "large") {
       setFontSize(savedFontSize);
     }
+
+    const savedProfile = localStorage.getItem("umpire-polo-event-profile");
+    if (savedProfile) {
+      try {
+        const parsed = { ...defaultEventProfile, ...JSON.parse(savedProfile) } as EventProfile;
+        setEventProfile(parsed);
+        setProfileDraft(parsed);
+        setDiscipline(parsed.discipline);
+      } catch {
+        // Keep the safe local defaults if the saved profile is invalid.
+      }
+    }
   }, []);
 
   function changeLanguage(next: Language) {
@@ -278,6 +300,27 @@ export default function UmpireApp() {
   function changeFontSize(next: FontSizePreference) {
     setFontSize(next);
     localStorage.setItem("polo-umpire-font-size", next);
+  }
+
+  function openEventProfile() {
+    setProfileDraft({ ...eventProfile });
+    setProfileOpen(true);
+  }
+
+  function saveEventProfile() {
+    const next = { ...profileDraft };
+    setEventProfile(next);
+    setProfileDraft(next);
+    setDiscipline(next.discipline);
+    localStorage.setItem("umpire-polo-event-profile", JSON.stringify(next));
+    setProfileOpen(false);
+  }
+
+  function clearEventProfile() {
+    const next = { ...defaultEventProfile, discipline };
+    setEventProfile(next);
+    setProfileDraft(next);
+    localStorage.removeItem("umpire-polo-event-profile");
   }
 
   const searchedRules = useMemo(() => {
@@ -378,8 +421,10 @@ export default function UmpireApp() {
     setShowResolution(false);
     setFollowUpText("");
     setFollowUps([]);
-    setNationalityInputs({ ...defaultNationalityInputs });
-    setCaseFacts({});
+    const profileCrossFacts = profileToSubstitutionFacts(eventProfile);
+    const profileCaseFacts = profileToCaseFacts(eventProfile);
+    setNationalityInputs({ ...defaultNationalityInputs, ...profileCrossFacts });
+    setCaseFacts(profileCaseFacts);
     setSelectedMissingFactKey("");
 
     if (resolverMode === "play") {
@@ -399,12 +444,21 @@ export default function UmpireApp() {
         const nationality = parseSubstitutionNationality(situation);
         const crossFacts = parseSubstitutionCrossFacts(situation);
         setSubstitutionInputs({
-          eventUpper: parsed.eventUpper != null ? String(parsed.eventUpper) : "",
+          eventUpper: parsed.eventUpper != null
+            ? String(parsed.eventUpper)
+            : eventProfile.upperHandicap != null
+              ? String(eventProfile.upperHandicap)
+              : "",
           teamTotalBefore: parsed.teamTotalBefore != null ? String(parsed.teamTotalBefore) : "",
           outgoingHandicap: parsed.outgoingHandicap != null ? String(parsed.outgoingHandicap) : "",
           candidateHandicap: parsed.candidateHandicap != null ? String(parsed.candidateHandicap) : "",
         });
-        setNationalityInputs({ ...defaultNationalityInputs, ...nationality, ...crossFacts });
+        setNationalityInputs({
+          ...defaultNationalityInputs,
+          ...profileToSubstitutionFacts(eventProfile),
+          ...nationality,
+          ...crossFacts,
+        });
       }
       const rankedRules = db.rules
         .filter((rule) => rule.discipline === discipline)
@@ -555,6 +609,13 @@ export default function UmpireApp() {
           <strong>Rulebook {manifest?.activeVersion ?? "2026"}</strong>
           <span>{manifest ? manifest.counts.outdoor + " Outdoor · " + manifest.counts.arena + " Arena" : tr("Loading rules…", "Cargando reglas…")}</span>
         </div>
+        <button className="eventProfileBar" onClick={openEventProfile}>
+          <span>
+            <small>{tr("EVENT PROFILE", "PERFIL DEL EVENTO")}</small>
+            <strong>{eventProfile.name.trim() ? profileSummary(eventProfile) : tr("No event profile configured", "Sin perfil de evento configurado")}</strong>
+          </span>
+          <b>{eventProfile.name.trim() ? tr("Edit", "Editar") : tr("Set up", "Configurar")} →</b>
+        </button>
       </section>
 
       <nav className="tabs" aria-label={tr("Sections", "Secciones")}>
@@ -570,6 +631,13 @@ export default function UmpireApp() {
       {tab === "resolver" && (
         <section className="view">
           <div className="card primaryCard">
+            {eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown" ? (
+              <div className="caseContextStrip">
+                <span>{tr("Using event context", "Usando contexto del evento")}</span>
+                <strong>{profileSummary(eventProfile)}</strong>
+                <button onClick={openEventProfile}>{tr("Change", "Cambiar")}</button>
+              </div>
+            ) : null}
             <div className="sectionHeading">
               <div>
                 <p className="eyebrow">{tr("STEP 1", "PASO 1")}</p>
@@ -1044,9 +1112,109 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.11</span>
+        <span>Umpire Polo Assistant v0.12</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
+
+      {profileOpen && (
+        <div className="modalBackdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setProfileOpen(false);
+        }}>
+          <article className="ruleModal eventProfileModal" role="dialog" aria-modal="true" aria-label={tr("Event Profile", "Perfil del Evento")}>
+            <button className="modalClose" onClick={() => setProfileOpen(false)} aria-label={tr("Close", "Cerrar")}>×</button>
+            <p className="eyebrow">{tr("TOURNAMENT CONTEXT", "CONTEXTO DEL TORNEO")}</p>
+            <h2>{tr("Event Profile", "Perfil del Evento")}</h2>
+            <p className="muted">{tr(
+              "Set this once before the tournament. The assistant will reuse these facts in every ruling and will only ask again when the play itself can change the answer.",
+              "Configurá esto una vez antes del torneo. El asistente reutilizará estos datos en cada decisión y sólo volverá a preguntar cuando la jugada pueda cambiar la respuesta.",
+            )}</p>
+
+            <div className="profileGrid">
+              <label className="profileField profileWide">
+                <span>{tr("Event name", "Nombre del evento")}</span>
+                <input className="searchInput" value={profileDraft.name} onChange={(event) => setProfileDraft((current) => ({ ...current, name: event.target.value }))} placeholder={tr("Example: Autumn 8 Goal", "Ej.: Copa Otoño 8 Goles")} />
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Discipline", "Disciplina")}</span>
+                <select value={profileDraft.discipline} onChange={(event) => setProfileDraft((current) => ({ ...current, discipline: event.target.value as Discipline }))}>
+                  <option value="outdoor">Outdoor</option>
+                  <option value="arena">Arena</option>
+                </select>
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Event classification", "Clasificación del Event")}</span>
+                <select value={profileDraft.eventType} onChange={(event) => setProfileDraft((current) => ({ ...current, eventType: event.target.value as EventProfile["eventType"] }))}>
+                  <option value="unknown">{tr("Not sure", "No estoy seguro")}</option>
+                  <option value="uspa">USPA Event</option>
+                  <option value="npc">NPC Event</option>
+                  <option value="club">Club Event</option>
+                  <option value="other">{tr("Other", "Otro")}</option>
+                </select>
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Upper handicap limit", "Límite superior de handicap")}</span>
+                <input className="searchInput" type="number" step="0.5" value={profileDraft.upperHandicap ?? ""} onChange={(event) => setProfileDraft((current) => ({ ...current, upperHandicap: event.target.value === "" ? null : Number(event.target.value) }))} placeholder="8" />
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Lower handicap limit", "Límite inferior de handicap")}</span>
+                <input className="searchInput" type="number" step="0.5" value={profileDraft.lowerHandicap ?? ""} onChange={(event) => setProfileDraft((current) => ({ ...current, lowerHandicap: event.target.value === "" ? null : Number(event.target.value) }))} placeholder="6" />
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Sponsor structure", "Estructura del sponsor")}</span>
+                <select value={profileDraft.sponsorStructure} onChange={(event) => setProfileDraft((current) => ({ ...current, sponsorStructure: event.target.value as EventProfile["sponsorStructure"] }))}>
+                  <option value="unknown">{tr("Not sure", "No estoy seguro")}</option>
+                  <option value="playing">Playing sponsor</option>
+                  <option value="nonplaying">Non-playing sponsor</option>
+                </select>
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Host-club exception known to apply?", "¿Sabemos si aplica la excepción del club anfitrión?")}</span>
+                <select value={profileDraft.affiliateHostException} onChange={(event) => setProfileDraft((current) => ({ ...current, affiliateHostException: event.target.value }))}>
+                  <option value="unknown">{tr("Not sure", "No estoy seguro")}</option>
+                  <option value="yes">{tr("Yes", "Sí")}</option>
+                  <option value="no">No</option>
+                </select>
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Club / venue", "Club / sede")}</span>
+                <input className="searchInput" value={profileDraft.club} onChange={(event) => setProfileDraft((current) => ({ ...current, club: event.target.value }))} placeholder={tr("Club name", "Nombre del club")} />
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Format", "Formato")}</span>
+                <input className="searchInput" value={profileDraft.format} onChange={(event) => setProfileDraft((current) => ({ ...current, format: event.target.value }))} placeholder={tr("Standard, round robin, etc.", "Standard, round robin, etc.")} />
+              </label>
+
+              <label className="profileField">
+                <span>{tr("Tournament Conditions available?", "¿Tenemos las Tournament Conditions?")}</span>
+                <select value={profileDraft.conditionsKnown} onChange={(event) => setProfileDraft((current) => ({ ...current, conditionsKnown: event.target.value }))}>
+                  <option value="unknown">{tr("Not sure", "No estoy seguro")}</option>
+                  <option value="yes">{tr("Yes", "Sí")}</option>
+                  <option value="no">No</option>
+                </select>
+              </label>
+
+              <label className="profileField profileWide">
+                <span>{tr("Tournament Conditions / local notes", "Tournament Conditions / notas locales")}</span>
+                <textarea rows={4} value={profileDraft.conditionsNotes} onChange={(event) => setProfileDraft((current) => ({ ...current, conditionsNotes: event.target.value }))} placeholder={tr("Add any event-specific condition that could change a ruling.", "Agregá cualquier condición específica del evento que pueda cambiar una decisión.")} />
+              </label>
+            </div>
+
+            <div className="profileActions">
+              <button className="secondaryAction" onClick={clearEventProfile}>{tr("Clear profile", "Borrar perfil")}</button>
+              <button className="primaryAction" onClick={saveEventProfile}>{tr("Save & use profile", "Guardar y usar perfil")}</button>
+            </div>
+            <p className="profileOfflineNote">✓ {tr("Saved on this device and available offline.", "Guardado en este dispositivo y disponible offline.")}</p>
+          </article>
+        </div>
+      )}
 
       {selectedRule && (
         <div className="modalBackdrop" role="presentation" onMouseDown={(event) => {

@@ -399,3 +399,72 @@ textarea,
     radial-gradient(circle at 85% 20%, rgba(183,165,142,.18), transparent 28%),
     linear-gradient(135deg, var(--navy), var(--navy-2));
 }
+
+/* Persistent event profile */
+.eventProfileBar {
+  width: 100%;
+  margin-top: 16px;
+  border: 1px solid rgba(216,201,184,.48);
+  border-radius: 14px;
+  padding: 11px 13px;
+  background: rgba(255,255,255,.08);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.eventProfileBar span { display: grid; gap: 3px; min-width: 0; }
+.eventProfileBar small { color: #d8c9b8; font-weight: 900; letter-spacing: .12em; font-size: calc(9px * var(--font-scale)); }
+.eventProfileBar strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(13px * var(--font-scale)); }
+.eventProfileBar b { flex: 0 0 auto; color: #e6d8c8; font-size: calc(11px * var(--font-scale)); }
+
+.caseContextStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  margin: -4px 0 15px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: var(--accent-soft);
+  border: 1px solid #ded1c2;
+}
+.caseContextStrip span { color: var(--muted); font-size: calc(11px * var(--font-scale)); }
+.caseContextStrip strong { color: var(--navy); font-size: calc(12px * var(--font-scale)); }
+.caseContextStrip button {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--navy-2);
+  font-weight: 900;
+  cursor: pointer;
+  font-size: calc(11px * var(--font-scale));
+}
+
+.eventProfileModal { width: min(760px, 100%); }
+.profileGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.profileField { display: grid; gap: 6px; }
+.profileField > span { color: var(--muted); font-size: calc(11px * var(--font-scale)); font-weight: 850; }
+.profileField select {
+  width: 100%;
+  border: 1px solid #cfd8e3;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fffdf9;
+  color: var(--text);
+}
+.profileWide { grid-column: 1 / -1; }
+.profileActions { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin-top: 16px; }
+.profileActions .primaryAction { width: 100%; }
+.profileOfflineNote { margin: 10px 0 0; text-align: center; color: var(--green); font-size: calc(11px * var(--font-scale)); font-weight: 800; }
+
+@media (max-width: 720px) {
+  .profileGrid { grid-template-columns: 1fr; }
+  .profileWide { grid-column: auto; }
+  .profileActions { grid-template-columns: 1fr; }
+  .eventProfileBar strong { white-space: normal; }
+  .caseContextStrip button { margin-left: 0; }
+}
