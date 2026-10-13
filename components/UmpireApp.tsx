@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { APP_VERSION } from "@/lib/app-version";
 import {
   applicationText,
   bestMatchingApplication,
@@ -346,7 +347,7 @@ export default function UmpireApp() {
     };
 
     const message = (event: MessageEvent) => {
-      if (event.data?.type === "OFFLINE_READY") setOfflineReady(true);
+      if (event.data?.type === "OFFLINE_READY") setOfflineReady(Boolean(event.data?.ready));
     };
     navigator.serviceWorker?.addEventListener("message", message);
 
@@ -1582,7 +1583,7 @@ export default function UmpireApp() {
                   headline: analysisFeedbackHeadline,
                   rulebookVersion: manifest?.activeVersion ?? "2026",
                   ruleRefs: analysisRuleTrail.map((item) => item.provision.ref),
-                  appVersion: "0.25.0",
+                  appVersion: APP_VERSION,
                 }}
               />
 

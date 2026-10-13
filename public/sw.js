@@ -1,4 +1,5 @@
-const CACHE = "polo-umpire-assistant-v0.25-2026";
+const CACHE = "polo-umpire-assistant-v0.26-2026";
+const OFFLINE_INDEX = "/__polo-umpire-offline-index-v0.26.json";
 const CORE = [
   "/",
   "/manifest.webmanifest",
@@ -6,8 +7,48 @@ const CORE = [
   "/data/manifest.json",
   "/data/rules-2026.json",
   "/data/resources-2026.json",
-  "/logo.png"
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
 ];
+
+function uniqueLocalPaths(urls) {
+  const paths = [];
+  for (const value of urls || []) {
+    try {
+      const url = new URL(value, self.location.origin);
+      if (url.origin !== self.location.origin) continue;
+      paths.push(url.pathname + url.search);
+    } catch {
+      // Ignore malformed cache candidates.
+    }
+  }
+  return [...new Set([...CORE, ...paths])];
+}
+
+async function allCached(cache, urls) {
+  const checks = await Promise.all(urls.map((url) => cache.match(url)));
+  return checks.every(Boolean);
+}
+
+async function readOfflineIndex(cache) {
+  const response = await cache.match(OFFLINE_INDEX);
+  if (!response) return null;
+  try {
+    const payload = await response.json();
+    return Array.isArray(payload?.urls) ? uniqueLocalPaths(payload.urls) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeOfflineIndex(cache, urls) {
+  await cache.put(
+    OFFLINE_INDEX,
+    new Response(JSON.stringify({ urls }), {
+      headers: { "content-type": "application/json", "cache-control": "no-store" },
+    }),
+  );
+}
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -26,20 +67,32 @@ self.addEventListener("message", (event) => {
   if (event.data?.type === "WARM_CACHE") {
     event.waitUntil((async () => {
       const cache = await caches.open(CACHE);
-      const urls = [...new Set([...(event.data.urls || []), ...CORE])];
+      const urls = uniqueLocalPaths(event.data.urls);
+      let failed = false;
+
       await Promise.all(urls.map(async (url) => {
-        try { await cache.add(url); } catch { /* keep warming other assets */ }
+        try {
+          const cached = await cache.match(url);
+          if (!cached) await cache.add(url);
+        } catch {
+          failed = true;
+        }
       }));
+
+      const ready = !failed && await allCached(cache, urls);
+      if (ready) await writeOfflineIndex(cache, urls);
+
       const clients = await self.clients.matchAll({ type: "window" });
-      clients.forEach((client) => client.postMessage({ type: "OFFLINE_READY" }));
+      clients.forEach((client) => client.postMessage({ type: "OFFLINE_READY", ready }));
     })());
   }
 
   if (event.data?.type === "OFFLINE_STATUS" && event.ports?.[0]) {
     event.waitUntil((async () => {
       const cache = await caches.open(CACHE);
-      const checks = await Promise.all(CORE.map((url) => cache.match(url)));
-      event.ports[0].postMessage({ ready: checks.every(Boolean) });
+      const urls = await readOfflineIndex(cache);
+      const ready = Boolean(urls?.length) && await allCached(cache, urls);
+      event.ports[0].postMessage({ ready });
     })());
   }
 });

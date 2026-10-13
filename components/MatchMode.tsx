@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { APP_VERSION } from "@/lib/app-version";
 import { classify, questions } from "@/lib/engine";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
@@ -413,7 +414,7 @@ export default function MatchMode({
                       : decision.headline,
                     rulebookVersion,
                     ruleRefs: ruleTrail.map((item) => item.provision.ref),
-                    appVersion: "0.25.0",
+                    appVersion: APP_VERSION,
                   }}
                 />
               ) : null}

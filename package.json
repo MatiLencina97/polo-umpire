@@ -1,16 +1,17 @@
 {
   "name": "polo-umpire-assistant",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test:rules": "tsc -p tsconfig.rule-tests.json && node .rule-test-build/scripts/rule-regression-tests.js"
+    "test:rules": "tsc -p tsconfig.rule-tests.json && node .rule-test-build/scripts/rule-regression-tests.js",
+    "test:sw": "node --check public/sw.js"
   },
   "dependencies": {
-    "next": "16.3.0",
+    "next": "16.3.8",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

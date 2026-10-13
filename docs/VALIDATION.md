@@ -99,7 +99,7 @@ The goal is to keep expanding this set until every modeled deterministic branch 
 
 ## Important known limits
 
-1. **ROW entitlement is not yet fully derived.** The current quick model can accept ROW entitlement as an Umpire-established fact. Rule 24(e)-(h) should eventually be modeled directly from physical facts.
+1. **ROW entitlement is only partially derived.** Common deterministic Rule 24(e)-(h) relationships can be resolved from physical facts with the ROW helper, while uncommon or ambiguous geometry still requires an Umpire-established entitlement or further review.
 2. **Dangerous Riding is intentionally conservative.** Absence of the currently asked danger factors is not converted into an automatic NO FOUL because Rule 26 lists non-exhaustive factors and relies on Umpire judgment.
 3. **Penalty selection is not a fixed lookup.** Rule 35 requires Umpire discretion based on danger/unfair advantage, field location, player positions and repetition.
 4. **Arena deterministic coverage is shallower than Outdoor.** The app should return more review states until Arena branches are modeled and audited with the same depth.
@@ -144,4 +144,6 @@ Validation effort is intentionally concentrated on the rules most likely to crea
 - Rule 28 together with Rule 26.h — mallet/hook responsibility and riding into the stroke.
 - Rule 35 — penalty selection and the boundary between structured factors and Umpire discretion.
 
-v0.20 adds a Rule 24 entitlement helper for common deterministic branches under 24(e)-(h). It also adds a complete decision rule trail: every decision explanation links directly to the exact playing-rule provisions and relevant governing sources needed to understand the result.
+v0.20 added a Rule 24 entitlement helper for common deterministic branches under 24(e)-(h) and a complete decision rule trail.
+
+v0.26 hardens field reliability without changing the governing-rule standard: Match Mode now stops once additional quick questions cannot change the current ruling class, and **OFFLINE READY** is only reported after the installed build's required runtime assets have been cached and re-verified.
