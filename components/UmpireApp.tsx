@@ -43,6 +43,8 @@ import {
 } from "@/lib/event-profile";
 import { decidePlay } from "@/lib/play-decision";
 import MatchMode from "@/components/MatchMode";
+import CaseHistoryPanel from "@/components/CaseHistoryPanel";
+import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import {
   bestProvisionsForRules,
   parseRuleProvisions,
@@ -70,7 +72,7 @@ import type {
   TopicId,
 } from "@/lib/types";
 
-type Tab = "resolver" | "buscar" | "reglamento" | "estado";
+type Tab = "resolver" | "buscar" | "reglamento" | "historial" | "estado";
 type SearchFilter = "all" | Discipline;
 type FontSizePreference = "small" | "normal" | "large";
 type ResolverExperience = "analysis" | "match";
@@ -229,6 +231,7 @@ export default function UmpireApp() {
   const [profileDraft, setProfileDraft] = useState<EventProfile>({ ...defaultEventProfile });
   const [profileOpen, setProfileOpen] = useState(false);
   const [resolverExperience, setResolverExperience] = useState<ResolverExperience>("analysis");
+  const [savedAnalysisFingerprint, setSavedAnalysisFingerprint] = useState("");
 
   const tr = (en: string, es: string) => language === "en" ? en : es;
   const optionLabel = (value: string, fallback: string) => {
@@ -508,6 +511,18 @@ export default function UmpireApp() {
 
   const externalEvidence = externalMatchesForLabels(externalDb, externalLabels, externalContextQuery, 8);
 
+  const currentAnalysisFingerprint = JSON.stringify({
+    situation,
+    resolverMode,
+    discipline,
+    answers,
+    caseFacts,
+    substitutionInputs,
+    nationalityInputs,
+    eventProfile,
+    rulebook: manifest?.activeVersion ?? "2026",
+  });
+
   const openExternal = (resource: ExternalResource, section: ExternalSection | null = null) => {
     setSelectedExternal({ resource, section });
   };
@@ -533,6 +548,7 @@ export default function UmpireApp() {
 
   function analyze() {
     if (!situation.trim() || !db) return;
+    setSavedAnalysisFingerprint("");
     setAnswers({});
     setShowResolution(false);
     setFollowUpText("");
@@ -587,6 +603,129 @@ export default function UmpireApp() {
     }
 
     setTimeout(() => document.getElementById("questions")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
+  }
+
+  function saveAnalysisCase() {
+    if (!showResolution) return;
+
+    const eventContext = eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown"
+      ? profileSummary(eventProfile)
+      : undefined;
+
+    let status: CaseRecord["outcome"]["status"] = "reference";
+    let headline = universalGraph?.label ?? tr("Rule situation analysis", "Análisis de situación reglamentaria");
+    let summary = scenario
+      ? localizedScenarioApplicationText(scenario, discipline, answers, language)
+      : tr(
+          "The saved case records the closest Rulebook provisions and governing sources found from the facts entered.",
+          "El caso guardado registra las disposiciones y fuentes de control más cercanas encontradas a partir de los hechos cargados.",
+        );
+
+    if (resolverMode === "play" && playDecision) {
+      status = playDecision.status;
+      headline = playDecision.headline;
+      summary = playDecision.summary;
+    } else if (resolverMode === "situation" && scenario === "substitutes" && crossRuleState) {
+      status = crossRuleState.status === "fail" ? "conflict" : crossRuleState.status === "needs-info" ? "needs-info" : "clear";
+      headline = crossRuleState.status === "fail"
+        ? tr("Eligibility conflict found", "Conflicto de elegibilidad detectado")
+        : crossRuleState.status === "needs-info"
+          ? tr("More eligibility facts needed", "Faltan datos de elegibilidad")
+          : tr("Triggered eligibility checks are clear", "Los controles de elegibilidad activados están OK");
+      const decisionSection = substitutionSections.find((section) => section.id === "decision");
+      summary = decisionSection?.items.join(" ")
+        || crossRuleState.checks.map((check) => check.summary).filter(Boolean).slice(0,3).join(" ");
+    }
+
+    const facts = [
+      ...answeredQuestions.map((question) => ({
+        label: questionLabel(question.key, question.label),
+        value: optionLabel(answers[question.key], answers[question.key]),
+      })),
+      ...Object.entries(caseFacts)
+        .filter(([,value]) => value !== null && value !== undefined && value !== "" && value !== "unknown")
+        .map(([key,value]) => ({
+          label: key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase()),
+          value: String(value),
+        })),
+    ];
+
+    if (resolverMode === "situation" && scenario === "substitutes") {
+      const substitutionLabels: Record<string,string> = {
+        eventUpper: tr("Event upper limit", "Límite superior del evento"),
+        teamTotalBefore: tr("Original team handicap", "Handicap original del equipo"),
+        outgoingHandicap: tr("Outgoing player handicap", "Handicap del jugador que sale"),
+        candidateHandicap: tr("Proposed substitute handicap", "Handicap del sustituto propuesto"),
+      };
+      for (const [key,value] of Object.entries(substitutionInputs)) {
+        if (value !== "") facts.push({ label: substitutionLabels[key] ?? key, value });
+      }
+      for (const [key,value] of Object.entries(nationalityInputs)) {
+        if (value === null || value === undefined || value === "" || value === "unknown") continue;
+        facts.push({
+          label: key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase()),
+          value: String(value),
+        });
+      }
+    }
+
+    const ruleReferences = resolverMode === "play" && playDecision
+      ? precisePlayProvisions.map((provision) => {
+          const rule = db?.rules.find((item) => item.discipline === discipline && item.rule === provision.rule);
+          return {
+            kind: "rule" as const,
+            label: provision.label,
+            page: rule ? pageLabel(rule) : undefined,
+            excerpt: provision.text.slice(0,600),
+          };
+        })
+      : (scenarioRules.length ? scenarioRules : genericSituationRules).map((rule) => ({
+          kind: "rule" as const,
+          label: (rule.discipline === "outdoor" ? "Outdoor" : "Arena") + " Rule " + rule.rule + " · " + rule.title,
+          page: pageLabel(rule),
+          excerpt: excerpt(rule),
+        }));
+
+    const externalReferences = externalEvidence.map((item) => ({
+      kind: "external" as const,
+      label: item.resource.shortTitle + " · " + item.section.title,
+      page: externalPageLabel(item.section),
+      excerpt: item.section.text.slice(0,600),
+      resourceId: item.resource.id,
+      sectionId: item.section.id,
+    }));
+
+    saveCaseRecord({
+      source: "analysis",
+      resolverMode,
+      discipline,
+      language,
+      situation,
+      eventContext,
+      rulebookVersion: manifest?.activeVersion ?? "2026",
+      outcome: { status, headline, summary },
+      facts,
+      references: [...ruleReferences, ...externalReferences],
+    });
+    setSavedAnalysisFingerprint(currentAnalysisFingerprint);
+  }
+
+  function reuseSavedCase(record: CaseRecord) {
+    setDiscipline(record.discipline);
+    setResolverMode(record.resolverMode);
+    setResolverExperience(record.source === "match" && record.resolverMode === "play" ? "match" : "analysis");
+    setSituation(record.situation);
+    setTopic(null);
+    setScenario(null);
+    setRankedTopics([]);
+    setRankedScenarios([]);
+    setGenericSituationRules([]);
+    setAnswers({});
+    setCaseFacts({});
+    setShowResolution(false);
+    setSavedAnalysisFingerprint("");
+    setTab("resolver");
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 30);
   }
 
   function submitFollowUp() {
@@ -735,9 +874,17 @@ export default function UmpireApp() {
       </section>
 
       <nav className="tabs" aria-label={tr("Sections", "Secciones")}>
-        {(["resolver", "buscar", "reglamento", "estado"] as Tab[]).map((item) => (
+        {(["resolver", "buscar", "reglamento", "historial", "estado"] as Tab[]).map((item) => (
           <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>
-            {item === "resolver" ? tr("Resolve", "Resolver") : item === "buscar" ? tr("Search", "Buscar") : item === "reglamento" ? tr("Rulebook", "Reglamento") : "Offline"}
+            {item === "resolver"
+              ? tr("Resolve", "Resolver")
+              : item === "buscar"
+                ? tr("Search", "Buscar")
+                : item === "reglamento"
+                  ? tr("Rulebook", "Reglamento")
+                  : item === "historial"
+                    ? tr("Cases", "Casos")
+                    : "Offline"}
           </button>
         ))}
       </nav>
@@ -766,6 +913,7 @@ export default function UmpireApp() {
               situation={situation}
               onSituationChange={setSituation}
               eventContext={eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown" ? profileSummary(eventProfile) : undefined}
+              rulebookVersion={manifest?.activeVersion ?? "2026"}
               onOpenRule={setSelectedRule}
               onOpenExternal={openExternal}
             />
@@ -1197,6 +1345,20 @@ export default function UmpireApp() {
                 </>
               ) : null}
 
+              <div className="caseSaveBar">
+                <div>
+                  <strong>{tr("Save this ruling to Case History", "Guardar esta decisión en el Historial")}</strong>
+                  <span>{tr("Stored locally with facts, sources, event context and Rulebook version.", "Se guarda localmente con hechos, fuentes, contexto del evento y versión del Rulebook.")}</span>
+                </div>
+                <button
+                  className="secondaryAction"
+                  onClick={saveAnalysisCase}
+                  disabled={savedAnalysisFingerprint === currentAnalysisFingerprint}
+                >
+                  {savedAnalysisFingerprint === currentAnalysisFingerprint ? tr("✓ Saved", "✓ Guardado") : tr("Save case", "Guardar caso")}
+                </button>
+              </div>
+
               <div className="callout secondaryCallout" id="follow-up">
                 <strong>{tr("Still unclear? Ask a follow-up without starting over.", "¿Quedó alguna duda? Repreguntá sin empezar de nuevo.")}</strong>
                 <p className="muted">{tr("The app keeps the original situation, your answers, handicap data and nationality/eligibility facts.", "La app conserva la situación original, tus respuestas, los datos de handicap y los datos de nacionalidad/elegibilidad.")}</p>
@@ -1319,6 +1481,16 @@ export default function UmpireApp() {
         </section>
       )}
 
+      {tab === "historial" && (
+        <section className="view">
+          <CaseHistoryPanel
+            language={language}
+            installedRulebookVersion={manifest?.activeVersion ?? "2026"}
+            onReuse={reuseSavedCase}
+          />
+        </section>
+      )}
+
       {tab === "estado" && (
         <section className="view">
           <div className="card offlineCard">
@@ -1344,7 +1516,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.16</span>
+        <span>Umpire Polo Assistant v0.17</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
