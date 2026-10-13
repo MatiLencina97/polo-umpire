@@ -22,6 +22,7 @@
     "lib/match-flow.ts",
     "lib/external-resources.ts",
     "lib/case-history.ts",
-    "lib/voice.ts"
+    "lib/voice.ts",
+    "lib/official-guidance.ts"
   ]
 }
