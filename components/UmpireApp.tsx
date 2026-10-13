@@ -1223,7 +1223,11 @@ export default function UmpireApp() {
                   language={language}
                   resolveProvision={(ref) => getProvision(db, discipline, ref)}
                   onOpenProvision={setSelectedProvision}
-                  onApply={(hasRow) => setAnswers((current) => ({ ...current, rowEntitled: hasRow ? "yes" : "no" }))}
+                  onApply={(hasRow, refs) => setAnswers((current) => ({
+                    ...current,
+                    rowEntitled: hasRow ? "yes" : "no",
+                    rowEntitlementDerived: refs.join(","),
+                  }))}
                 />
               ) : null}
               <div className="questionList">
