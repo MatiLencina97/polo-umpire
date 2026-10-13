@@ -42,6 +42,7 @@ import {
   type EventProfile,
 } from "@/lib/event-profile";
 import { decidePlay } from "@/lib/play-decision";
+import MatchMode from "@/components/MatchMode";
 import {
   bestProvisionsForRules,
   parseRuleProvisions,
@@ -63,6 +64,7 @@ import type {
 type Tab = "resolver" | "buscar" | "reglamento" | "estado";
 type SearchFilter = "all" | Discipline;
 type FontSizePreference = "small" | "normal" | "large";
+type ResolverExperience = "analysis" | "match";
 
 const quickPlays: Record<Language, string[]> = {
   en: [
@@ -196,6 +198,7 @@ export default function UmpireApp() {
   const [eventProfile, setEventProfile] = useState<EventProfile>({ ...defaultEventProfile });
   const [profileDraft, setProfileDraft] = useState<EventProfile>({ ...defaultEventProfile });
   const [profileOpen, setProfileOpen] = useState(false);
+  const [resolverExperience, setResolverExperience] = useState<ResolverExperience>("analysis");
 
   const tr = (en: string, es: string) => language === "en" ? en : es;
   const optionLabel = (value: string, fallback: string) => {
@@ -296,6 +299,9 @@ export default function UmpireApp() {
       setFontSize(savedFontSize);
     }
 
+    const savedExperience = localStorage.getItem("umpire-polo-resolver-experience");
+    if (savedExperience === "analysis" || savedExperience === "match") setResolverExperience(savedExperience);
+
     const savedProfile = localStorage.getItem("umpire-polo-event-profile");
     if (savedProfile) {
       try {
@@ -317,6 +323,15 @@ export default function UmpireApp() {
   function changeFontSize(next: FontSizePreference) {
     setFontSize(next);
     localStorage.setItem("polo-umpire-font-size", next);
+  }
+
+  function changeResolverExperience(next: ResolverExperience) {
+    setResolverExperience(next);
+    localStorage.setItem("umpire-polo-resolver-experience", next);
+    if (next === "match") {
+      setResolverMode("play");
+      setShowResolution(false);
+    }
   }
 
   function openEventProfile() {
@@ -663,6 +678,30 @@ export default function UmpireApp() {
 
       {tab === "resolver" && (
         <section className="view">
+          <div className="resolverExperienceSwitch" role="group" aria-label={tr("Resolver mode", "Modo de resolución")}>
+            <button className={resolverExperience === "analysis" ? "active" : ""} onClick={() => changeResolverExperience("analysis")}>
+              <span>◫</span>
+              <b>{tr("Full analysis", "Análisis completo")}</b>
+            </button>
+            <button className={resolverExperience === "match" ? "active" : ""} onClick={() => changeResolverExperience("match")}>
+              <span>⚡</span>
+              <b>{tr("Match mode", "Modo partido")}</b>
+            </button>
+          </div>
+
+          {resolverExperience === "match" && db ? (
+            <MatchMode
+              language={language}
+              discipline={discipline}
+              db={db}
+              situation={situation}
+              onSituationChange={setSituation}
+              eventContext={eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown" ? profileSummary(eventProfile) : undefined}
+              onOpenRule={setSelectedRule}
+            />
+          ) : null}
+
+          <div className={resolverExperience === "match" ? "fullAnalysisHidden" : ""}>
           <div className="card primaryCard">
             {eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown" ? (
               <div className="caseContextStrip">
@@ -1091,6 +1130,7 @@ export default function UmpireApp() {
               </div>
             </div>
           )}
+          </div>
         </section>
       )}
 
@@ -1183,7 +1223,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.13</span>
+        <span>Umpire Polo Assistant v0.14</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
