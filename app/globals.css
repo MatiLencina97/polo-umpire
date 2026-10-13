@@ -2197,3 +2197,178 @@ html[data-theme="dark"] .modalBackdrop {
 html[data-theme="dark"] .brandLogo {
   background: #f7f5f1;
 }
+
+/* v0.25 · Umpire feedback */
+.decisionFeedback {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #fbf8f3;
+}
+.decisionFeedbackHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.decisionFeedbackHeader h3 {
+  margin: 2px 0 5px;
+  color: var(--navy);
+}
+.decisionFeedbackHeader p:not(.eyebrow) {
+  margin: 0;
+  max-width: 600px;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: calc(10px * var(--font-scale));
+}
+.feedbackPrimaryChoices {
+  display: flex;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+.feedbackPrimaryChoices button {
+  min-height: 42px;
+  border: 1px solid #d5c7b7;
+  border-radius: 11px;
+  padding: 8px 11px;
+  background: white;
+  color: var(--navy);
+  font-weight: 900;
+  cursor: pointer;
+}
+.feedbackPrimaryChoices button span { margin-right: 4px; }
+.feedbackPrimaryChoices button.useful.selected {
+  background: #edf8f2;
+  border-color: #9ecab7;
+  color: #176e4c;
+}
+.feedbackPrimaryChoices button.review.selected {
+  background: #fff8e8;
+  border-color: #d6b566;
+  color: #795d15;
+}
+.feedbackDetails {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.feedbackDetails > strong { color: var(--navy); }
+.feedbackReasonGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.feedbackReasonGrid button {
+  border: 1px solid #d5c7b7;
+  border-radius: 999px;
+  padding: 7px 9px;
+  background: white;
+  color: #596879;
+  cursor: pointer;
+}
+.feedbackReasonGrid button.selected {
+  background: #e7eef7;
+  border-color: #7391b2;
+  color: var(--navy);
+  font-weight: 900;
+}
+.feedbackDetails label {
+  display: grid;
+  gap: 5px;
+}
+.feedbackDetails label > span {
+  color: var(--navy);
+  font-weight: 850;
+  font-size: calc(10px * var(--font-scale));
+}
+.feedbackDetails textarea {
+  min-height: 72px;
+  padding: 10px 11px;
+}
+.feedbackDetails > small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+.feedbackSubmit {
+  margin-top: 11px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 11px;
+  padding: 9px 13px;
+  background: var(--navy);
+  color: white;
+  font-weight: 900;
+  cursor: pointer;
+}
+.feedbackSubmit:disabled { opacity: .5; cursor: default; }
+.decisionFeedback.submitted {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #f3faf6;
+  border-color: #b9dfcf;
+}
+.decisionFeedback.submitted > div {
+  display: grid;
+  gap: 3px;
+}
+.decisionFeedback.submitted strong { color: #176e4c; }
+.decisionFeedback.submitted span {
+  color: #557366;
+  font-size: calc(10px * var(--font-scale));
+}
+.decisionFeedback.submitted button {
+  border: 1px solid #b9dfcf;
+  border-radius: 9px;
+  padding: 7px 9px;
+  background: white;
+  color: #176e4c;
+  font-weight: 850;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .decisionFeedbackHeader { display: grid; }
+  .feedbackPrimaryChoices {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .feedbackPrimaryChoices button { width: 100%; }
+}
+html[data-theme="dark"] .decisionFeedback {
+  background: #101b27;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .feedbackPrimaryChoices button,
+html[data-theme="dark"] .feedbackReasonGrid button,
+html[data-theme="dark"] .decisionFeedback.submitted button {
+  background: #172432;
+  border-color: #324354;
+  color: #c7d3df;
+}
+html[data-theme="dark"] .feedbackPrimaryChoices button.useful.selected,
+html[data-theme="dark"] .decisionFeedback.submitted {
+  background: #12271f;
+  border-color: #285c47;
+}
+html[data-theme="dark"] .feedbackPrimaryChoices button.review.selected {
+  background: #2a2416;
+  border-color: #6c5726;
+}
+html[data-theme="dark"] .feedbackReasonGrid button.selected {
+  background: #213a53;
+  border-color: #587da3;
+  color: #eef5fb;
+}
+html[data-theme="dark"] .decisionFeedbackHeader h3,
+html[data-theme="dark"] .feedbackDetails > strong,
+html[data-theme="dark"] .feedbackDetails label > span {
+  color: #e6eef6;
+}
+html[data-theme="dark"] .decisionFeedback.submitted strong { color: #9ecab7; }
+html[data-theme="dark"] .decisionFeedback.submitted span { color: #9cabbb; }
