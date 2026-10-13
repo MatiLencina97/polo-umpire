@@ -53,6 +53,7 @@ import CaseHistoryPanel from "@/components/CaseHistoryPanel";
 import VoiceInputButton from "@/components/VoiceInputButton";
 import HowItWorksPanel from "@/components/HowItWorksPanel";
 import OfflineStatusPanel from "@/components/OfflineStatusPanel";
+import DecisionFeedback from "@/components/DecisionFeedback";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import {
   bestProvisionsForRules,
@@ -596,6 +597,28 @@ export default function UmpireApp() {
     eventProfile,
     rulebook: manifest?.activeVersion ?? "2026",
   });
+
+  const analysisFeedbackStatus = resolverMode === "play" && playDecision
+    ? (effectivePlayStatus ?? playDecision.status)
+    : scenario === "substitutes" && crossRuleState
+      ? crossRuleState.status
+      : "reference";
+
+  const analysisFeedbackHeadline = resolverMode === "play" && playDecision
+    ? playDecision.headline
+    : scenario === "substitutes" && crossRuleState
+      ? crossRuleState.status === "fail"
+        ? tr("Eligibility conflict found", "Conflicto de elegibilidad detectado")
+        : crossRuleState.status === "needs-info"
+          ? tr("More eligibility facts needed", "Faltan datos de elegibilidad")
+          : tr("Triggered eligibility checks are clear", "Los controles de elegibilidad activados están OK")
+      : universalGraph?.label ?? mainRule?.title ?? tr("Rule situation analysis", "Análisis de situación reglamentaria");
+
+  const analysisFeedbackValidation = resolverMode === "play"
+    ? playDecisionAudit?.level ?? null
+    : scenario === "substitutes" && crossRuleState
+      ? "cross-rule-" + crossRuleState.status
+      : "reference";
 
   const openExternal = (resource: ExternalResource, section: ExternalSection | null = null) => {
     setSelectedExternal({ resource, section });
@@ -1541,6 +1564,23 @@ export default function UmpireApp() {
                 </button>
               </div>
 
+              <DecisionFeedback
+                language={language}
+                context={{
+                  source: "analysis",
+                  discipline,
+                  resolverMode,
+                  topic,
+                  scenario,
+                  outcomeStatus: analysisFeedbackStatus,
+                  validationLevel: analysisFeedbackValidation,
+                  headline: analysisFeedbackHeadline,
+                  rulebookVersion: manifest?.activeVersion ?? "2026",
+                  ruleRefs: analysisRuleTrail.map((item) => item.provision.ref),
+                  appVersion: "0.25.0",
+                }}
+              />
+
               <div className="callout secondaryCallout" id="follow-up">
                 <strong>{tr("Still unclear? Ask a follow-up without starting over.", "¿Quedó alguna duda? Repreguntá sin empezar de nuevo.")}</strong>
                 <p className="muted">{tr("The app keeps the original situation, your answers, handicap data and nationality/eligibility facts.", "La app conserva la situación original, tus respuestas, los datos de handicap y los datos de nacionalidad/elegibilidad.")}</p>
@@ -1766,7 +1806,7 @@ export default function UmpireApp() {
       ) : null}
 
       <footer>
-        <span>Polo Umpire Assistant v0.24</span>
+        <span>Polo Umpire Assistant v0.25</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
