@@ -471,6 +471,19 @@ test("decision audit marks ROW calls as Umpire judgment until ROW entitlement is
   assert.equal(audit.level, "umpire-judgment");
 });
 
+test("decision audit promotes helper-derived ROW branch to direct rule support", () => {
+  const answers = {
+    rowEntitled: "yes",
+    rowEntitlementDerived: "24.f",
+    risk: "yes",
+    lineChanged: "no",
+  } as const;
+  const decision = decidePlay("row", "outdoor", answers, "en");
+  const audit = auditPlayDecision("row", "outdoor", answers, decision);
+  assert.equal(audit.level, "direct-rule-support");
+});
+
+
 test("decision audit marks knocked-off-balance Dangerous Riding as directly rule-supported", () => {
   const answers = { balance: "yes" } as const;
   const decision = decidePlay("dangerous", "outdoor", answers, "en");
