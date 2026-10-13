@@ -55,6 +55,7 @@ import HowItWorksPanel from "@/components/HowItWorksPanel";
 import OfflineStatusPanel from "@/components/OfflineStatusPanel";
 import DecisionFeedback from "@/components/DecisionFeedback";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
+import { flushPendingFeedback } from "@/lib/decision-feedback";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -269,7 +270,11 @@ export default function UmpireApp() {
 
   useEffect(() => {
     setNetworkOnline(navigator.onLine);
-    const on = () => setNetworkOnline(true);
+    if (navigator.onLine) void flushPendingFeedback();
+    const on = () => {
+      setNetworkOnline(true);
+      void flushPendingFeedback();
+    };
     const off = () => setNetworkOnline(false);
     window.addEventListener("online", on);
     window.addEventListener("offline", off);
