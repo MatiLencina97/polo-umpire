@@ -49,9 +49,18 @@ import {
   resolveProvisions,
   type RuleProvision,
 } from "@/lib/subarticles";
+import {
+  externalMatchesForLabels,
+  externalPageLabel,
+  searchExternalSections,
+  type ExternalSectionMatch,
+} from "@/lib/external-resources";
 import type {
   ChoiceValue,
   Discipline,
+  ExternalResource,
+  ExternalResourceDb,
+  ExternalSection,
   Language,
   Rule,
   RuleDb,
@@ -161,11 +170,31 @@ function RuleCard({ rule, onOpen }: { rule: Rule; onOpen: (rule: Rule) => void }
   );
 }
 
+function ExternalSourceCard({
+  match,
+  onOpen,
+}: {
+  match: ExternalSectionMatch;
+  onOpen: (resource: ExternalResource, section: ExternalSection) => void;
+}) {
+  const compact = match.section.text.replace(/\s+/g, " ").trim();
+  return (
+    <button className="externalSourceCard" onClick={() => onOpen(match.resource, match.section)}>
+      <span className="candidateTop">
+        <strong>{match.resource.shortTitle} · {match.section.title}</strong>
+        <span className="ruleTag">p. {externalPageLabel(match.section)}</span>
+      </span>
+      <span className="candidateExcerpt">{compact.slice(0, 270)}{compact.length > 270 ? "…" : ""}</span>
+    </button>
+  );
+}
+
 export default function UmpireApp() {
   const [tab, setTab] = useState<Tab>("resolver");
   const [discipline, setDiscipline] = useState<Discipline>("outdoor");
   const [resolverMode, setResolverMode] = useState<ResolverMode>("play");
   const [db, setDb] = useState<RuleDb | null>(null);
+  const [externalDb, setExternalDb] = useState<ExternalResourceDb | null>(null);
   const [manifest, setManifest] = useState<RuleManifest | null>(null);
   const [networkOnline, setNetworkOnline] = useState(true);
   const [offlineReady, setOfflineReady] = useState(false);
@@ -187,6 +216,7 @@ export default function UmpireApp() {
   const [search, setSearch] = useState("");
   const [searchFilter, setSearchFilter] = useState<SearchFilter>("all");
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
+  const [selectedExternal, setSelectedExternal] = useState<{ resource: ExternalResource; section: ExternalSection | null } | null>(null);
   const [updateStatus, setUpdateStatus] = useState("");
   const [language, setLanguage] = useState<Language>("en");
   const [fontSize, setFontSize] = useState<FontSizePreference>("normal");
@@ -236,6 +266,18 @@ export default function UmpireApp() {
         const nextDb = (await dbResponse.json()) as RuleDb;
         setManifest(nextManifest);
         setDb(nextDb);
+
+        if (nextManifest.resourcesFile) {
+          try {
+            const resourcesPath = nextManifest.resourcesFile.startsWith("/")
+              ? nextManifest.resourcesFile
+              : "/" + nextManifest.resourcesFile;
+            const resourcesResponse = await fetch(resourcesPath);
+            if (resourcesResponse.ok) setExternalDb((await resourcesResponse.json()) as ExternalResourceDb);
+          } catch {
+            setExternalDb(null);
+          }
+        }
       } catch {
         setLoadError("Could not open the local Rulebook copy. Open the app once with a connection to finish the offline installation.");
       }
@@ -252,6 +294,7 @@ export default function UmpireApp() {
             "/manifest.webmanifest",
             "/data/manifest.json",
             "/data/rules-2026.json",
+            "/data/resources-2026.json",
             "/icons/icon-192.png",
             "/icons/icon-512.png",
             ...performance
@@ -366,6 +409,11 @@ export default function UmpireApp() {
       .map((item) => item.rule);
   }, [db, search, searchFilter]);
 
+  const searchedExternal = useMemo(
+    () => search.trim() ? searchExternalSections(externalDb, search, 12) : [],
+    [externalDb, search],
+  );
+
   const resolutionRules = useMemo(() => {
     if (!db || !topic) return [];
     const nums = relatedRuleNumbers(topic, discipline);
@@ -443,6 +491,26 @@ export default function UmpireApp() {
         language,
       })
     : null;
+
+  const externalContextQuery = [
+    situation,
+    eventProfile.conditionsNotes,
+    eventProfile.eventType,
+    eventProfile.club,
+    ...Object.entries(caseFacts).map(([key,value]) => key + " " + String(value ?? "")),
+    ...(crossRuleState?.checks.map((check) => check.source + " " + check.summary) ?? []),
+  ].filter(Boolean).join(" ");
+
+  const externalLabels = Array.from(new Set([
+    ...(universalGraph?.external ?? []),
+    ...(scenario === "substitutes" ? ["Tournament Conditions", "Constitution / By-Laws"] : []),
+  ]));
+
+  const externalEvidence = externalMatchesForLabels(externalDb, externalLabels, externalContextQuery, 8);
+
+  const openExternal = (resource: ExternalResource, section: ExternalSection | null = null) => {
+    setSelectedExternal({ resource, section });
+  };
 
   const availableMissingFacts: CaseFactDefinition[] = scenario === "substitutes" && crossRuleState
     ? []
@@ -655,7 +723,7 @@ export default function UmpireApp() {
         <p className="heroText">{tr("The critical engine runs on the device: rules, local search, guided questions and references stay available in airplane mode.", "El motor crítico funciona en el dispositivo: reglas, búsqueda local, preguntas guiadas y referencias siguen disponibles en modo avión.")}</p>
         <div className="versionPill">
           <strong>Rulebook {manifest?.activeVersion ?? "2026"}</strong>
-          <span>{manifest ? manifest.counts.outdoor + " Outdoor · " + manifest.counts.arena + " Arena" : tr("Loading rules…", "Cargando reglas…")}</span>
+          <span>{manifest ? manifest.counts.outdoor + " Outdoor · " + manifest.counts.arena + " Arena" + (manifest.counts.resourceSections ? " · " + manifest.counts.resourceSections + " source sections" : "") : tr("Loading rules…", "Cargando reglas…")}</span>
         </div>
         <button className="eventProfileBar" onClick={openEventProfile}>
           <span>
@@ -694,10 +762,12 @@ export default function UmpireApp() {
               language={language}
               discipline={discipline}
               db={db}
+              externalDb={externalDb}
               situation={situation}
               onSituationChange={setSituation}
               eventContext={eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown" ? profileSummary(eventProfile) : undefined}
               onOpenRule={setSelectedRule}
+              onOpenExternal={openExternal}
             />
           ) : null}
 
@@ -764,12 +834,20 @@ export default function UmpireApp() {
                     <span>{rule.title}</span>
                   </button>
                 ))}
-                {universalGraph.external.map((external) => (
-                  <div className="ruleGraphNode externalNode" key={external}>
-                    <b>{external}</b>
-                    <span>{tr("External controlling section", "Sección externa de control")}</span>
-                  </div>
-                ))}
+                {universalGraph.external.map((external) => {
+                  const source = externalEvidence.find((item) => item.requestedLabel === external);
+                  return source ? (
+                    <button className="ruleGraphNode externalNode available graphRuleButton" key={external} onClick={() => openExternal(source.resource, source.section)}>
+                      <b>{external}</b>
+                      <span>{source.section.title} · p. {externalPageLabel(source.section)}</span>
+                    </button>
+                  ) : (
+                    <div className="ruleGraphNode externalNode" key={external}>
+                      <b>{external}</b>
+                      <span>{tr("External controlling section", "Sección externa de control")}</span>
+                    </div>
+                  );
+                })}
               </div>
 
               {selectedGenericFact ? (
@@ -1104,6 +1182,21 @@ export default function UmpireApp() {
                 {(resolverMode === "play" ? resolutionRules : (scenarioRules.length ? scenarioRules : genericSituationRules)).map((rule) => <RuleCard key={rule.id} rule={rule} onOpen={setSelectedRule} />)}
               </div>
 
+              {externalEvidence.length ? (
+                <>
+                  <h3 className="externalEvidenceHeading">{tr("External governing sources", "Fuentes externas de control")}</h3>
+                  <p className="muted">{tr(
+                    "These installed Rulebook sections can modify, qualify, or control the playing-rule answer.",
+                    "Estas secciones instaladas del Rulebook pueden modificar, condicionar o controlar la respuesta de las reglas de juego.",
+                  )}</p>
+                  <div className="externalEvidenceList">
+                    {externalEvidence.map((item) => (
+                      <ExternalSourceCard key={item.resource.id + "-" + item.section.id} match={item} onOpen={openExternal} />
+                    ))}
+                  </div>
+                </>
+              ) : null}
+
               <div className="callout secondaryCallout" id="follow-up">
                 <strong>{tr("Still unclear? Ask a follow-up without starting over.", "¿Quedó alguna duda? Repreguntá sin empezar de nuevo.")}</strong>
                 <p className="muted">{tr("The app keeps the original situation, your answers, handicap data and nationality/eligibility facts.", "La app conserva la situación original, tus respuestas, los datos de handicap y los datos de nacionalidad/elegibilidad.")}</p>
@@ -1155,7 +1248,15 @@ export default function UmpireApp() {
           </div>
           <div className="candidateList searchResults">
             {searchedRules.map((rule) => <RuleCard key={rule.id} rule={rule} onOpen={setSelectedRule} />)}
-            {!searchedRules.length && <div className="card muted">{tr("No matches found. Try different terms.", "No encontré coincidencias. Probá con otras palabras.")}</div>}
+            {search.trim() && searchedExternal.length ? (
+              <>
+                <div className="searchSectionDivider">{tr("Governing sources", "Fuentes de control")}</div>
+                {searchedExternal.map((item) => (
+                  <ExternalSourceCard key={item.resource.id + "-" + item.section.id} match={item} onOpen={openExternal} />
+                ))}
+              </>
+            ) : null}
+            {!searchedRules.length && !searchedExternal.length && <div className="card muted">{tr("No matches found. Try different terms.", "No encontré coincidencias. Probá con otras palabras.")}</div>}
           </div>
         </section>
       )}
@@ -1175,6 +1276,25 @@ export default function UmpireApp() {
               </div>
             </div>
           ))}
+          {externalDb ? (
+            <div className="card externalResourceCatalog">
+              <p className="eyebrow">{tr("GOVERNING SOURCES · OFFLINE", "FUENTES DE CONTROL · OFFLINE")}</p>
+              <h2>{tr("Tournament Conditions, policies and official supporting sections", "Tournament Conditions, políticas y secciones oficiales de apoyo")}</h2>
+              <p className="muted">{tr(
+                "These sources are indexed locally with Rulebook page ranges and can be opened without a connection.",
+                "Estas fuentes están indexadas localmente con las páginas del Rulebook y se pueden abrir sin conexión.",
+              )}</p>
+              <div className="externalResourceGrid">
+                {externalDb.resources.map((resource) => (
+                  <button key={resource.id} onClick={() => openExternal(resource, null)}>
+                    <strong>{resource.shortTitle}</strong>
+                    <span>{resource.sections.length} {tr("sections", "secciones")} · p. {externalPageLabel(resource)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="card graphCatalogCard">
             <p className="eyebrow">{tr("RULE INTERACTION CATALOG", "CATÁLOGO DE INTERACCIONES")}</p>
             <h2>{tr("All mapped rule graphs", "Todos los grafos de reglas mapeados")}</h2>
@@ -1210,6 +1330,7 @@ export default function UmpireApp() {
               <div><span>Outdoor Rules</span><strong>{manifest ? `✓ ${manifest.counts.outdoor}` : "…"}</strong></div>
               <div><span>Arena Rules</span><strong>{manifest ? `✓ ${manifest.counts.arena}` : "…"}</strong></div>
               <div><span>Umpire Guide</span><strong>{manifest ? `✓ ${manifest.counts.umpireGuidePages} págs.` : "…"}</strong></div>
+              <div><span>{tr("Governing sources", "Fuentes de control")}</span><strong>{manifest?.counts.resourceSections ? `✓ ${manifest.counts.resources ?? 0} / ${manifest.counts.resourceSections} sections` : "…"}</strong></div>
               <div><span>{tr("Current connection", "Conexión actual")}</span><strong>{networkOnline ? "Online" : "Offline"}</strong></div>
             </div>
             <div className="offlineTest">
@@ -1223,7 +1344,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.15</span>
+        <span>Umpire Polo Assistant v0.16</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
@@ -1323,6 +1444,39 @@ export default function UmpireApp() {
               <button className="primaryAction" onClick={saveEventProfile}>{tr("Save & use profile", "Guardar y usar perfil")}</button>
             </div>
             <p className="profileOfflineNote">✓ {tr("Saved on this device and available offline.", "Guardado en este dispositivo y disponible offline.")}</p>
+          </article>
+        </div>
+      )}
+
+      {selectedExternal && (
+        <div className="modalBackdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setSelectedExternal(null);
+        }}>
+          <article className="ruleModal externalResourceModal" role="dialog" aria-modal="true" aria-label={selectedExternal.resource.title}>
+            <button className="modalClose" onClick={() => setSelectedExternal(null)} aria-label={tr("Close", "Cerrar")}>×</button>
+            <p className="eyebrow">{tr("OFFICIAL GOVERNING SOURCE", "FUENTE OFICIAL DE CONTROL")} · RULEBOOK {manifest?.activeVersion ?? "2026"}</p>
+            <h2>{selectedExternal.resource.title}</h2>
+            {selectedExternal.section ? (
+              <>
+                <div className="sourceMeta">{selectedExternal.section.title} · {tr("page", "página")} {externalPageLabel(selectedExternal.section)}</div>
+                <button className="externalBackToIndex" onClick={() => setSelectedExternal({ resource: selectedExternal.resource, section: null })}>
+                  ← {tr("All sections", "Todas las secciones")}
+                </button>
+                <pre className="officialText">{selectedExternal.section.text}</pre>
+              </>
+            ) : (
+              <>
+                <div className="sourceMeta">USPA Rulebook {manifest?.activeVersion ?? "2026"} · {tr("pages", "páginas")} {externalPageLabel(selectedExternal.resource)}</div>
+                <div className="externalSectionIndex">
+                  {selectedExternal.resource.sections.map((section) => (
+                    <button key={section.id} onClick={() => setSelectedExternal({ resource: selectedExternal.resource, section })}>
+                      <strong>{section.title}</strong>
+                      <span>p. {externalPageLabel(section)}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </article>
         </div>
       )}

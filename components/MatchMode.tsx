@@ -5,16 +5,19 @@ import { classify, questions } from "@/lib/engine";
 import { decidePlay } from "@/lib/play-decision";
 import { resolveProvisions } from "@/lib/subarticles";
 import { matchProgress } from "@/lib/match-flow";
-import type { ChoiceValue, Discipline, Language, Rule, RuleDb, TopicId } from "@/lib/types";
+import { externalMatchesForLabels, externalPageLabel } from "@/lib/external-resources";
+import type { ChoiceValue, Discipline, ExternalResource, ExternalResourceDb, ExternalSection, Language, Rule, RuleDb, TopicId } from "@/lib/types";
 
 type Props = {
   language: Language;
   discipline: Discipline;
   db: RuleDb;
+  externalDb: ExternalResourceDb | null;
   situation: string;
   onSituationChange: (value: string) => void;
   eventContext?: string;
   onOpenRule: (rule: Rule) => void;
+  onOpenExternal: (resource: ExternalResource, section: ExternalSection | null) => void;
 };
 
 const topicNames: Record<TopicId, { en: string; es: string }> = {
@@ -69,10 +72,12 @@ export default function MatchMode({
   language,
   discipline,
   db,
+  externalDb,
   situation,
   onSituationChange,
   eventContext,
   onOpenRule,
+  onOpenExternal,
 }: Props) {
   const tr = (en: string, es: string) => language === "en" ? en : es;
   const [topic, setTopic] = useState<TopicId | null>(null);
@@ -100,6 +105,18 @@ export default function MatchMode({
     () => decision ? resolveProvisions(db, discipline, decision.references) : [],
     [db, discipline, decision],
   );
+
+  const matchExternalLabels: Record<TopicId, string[]> = {
+    row: ["Umpire Guide"],
+    dangerous: ["Umpire Guide"],
+    blocking: ["Umpire Guide"],
+    mallet: ["Umpire Guide"],
+    conduct: ["Policies", "Sport-Related Conduct Procedures"],
+    restart: ["Tournament Conditions", "Umpire Guide"],
+  };
+  const governingSources = topic
+    ? externalMatchesForLabels(externalDb, matchExternalLabels[topic], situation + " " + (decision?.summary ?? ""), 3)
+    : [];
 
   function begin() {
     if (!situation.trim()) return;
@@ -297,6 +314,20 @@ export default function MatchMode({
                       })}
                     </div>
                   </div>
+
+                  {governingSources.length ? (
+                    <div>
+                      <strong>{tr("Governing sources", "Fuentes de control")}</strong>
+                      <div className="matchProvisionList">
+                        {governingSources.map((item) => (
+                          <button key={item.resource.id + "-" + item.section.id} onClick={() => onOpenExternal(item.resource, item.section)}>
+                            <b>{item.resource.shortTitle} · {item.section.title}</b>
+                            <span>p. {externalPageLabel(item.section)} · {item.section.text.slice(0,220)}{item.section.text.length > 220 ? "…" : ""}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </section>

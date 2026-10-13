@@ -788,3 +788,46 @@ textarea,
   font-weight:900;
   letter-spacing:.015em;
 }
+
+/* v0.16: structured offline governing sources */
+.externalNode.available { border-style:solid; border-color:#d8c9b8; background:#fbf7f1; }
+.externalNode.available span { color:#75695c; }
+.externalEvidenceHeading { margin-top:20px; }
+.externalEvidenceList { display:grid; gap:9px; margin:10px 0 18px; }
+.externalSourceCard {
+  width:100%; display:grid; gap:8px; text-align:left; border:1px solid #ddd3c7;
+  border-left:4px solid var(--accent); border-radius:13px; padding:12px 13px;
+  background:#fffdf9; color:var(--text); cursor:pointer;
+}
+.externalSourceCard:hover { border-color:#b7a58e; }
+.externalSourceCard .candidateExcerpt { color:#657181; line-height:1.48; }
+.searchSectionDivider {
+  padding:12px 4px 3px; color:#8d7d6b; font-size:calc(10px * var(--font-scale));
+  font-weight:950; letter-spacing:.11em; text-transform:uppercase;
+}
+.externalResourceGrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:15px; }
+.externalResourceGrid button {
+  display:grid; gap:5px; text-align:left; border:1px solid var(--line); border-radius:12px;
+  padding:12px; background:#fffdf9; color:var(--text); cursor:pointer;
+}
+.externalResourceGrid button:hover { border-color:var(--accent); }
+.externalResourceGrid strong { color:var(--navy); }
+.externalResourceGrid span { color:var(--muted); font-size:calc(10px * var(--font-scale)); }
+.externalResourceModal { width:min(860px,100%); }
+.externalSectionIndex { display:grid; gap:7px; margin-top:14px; }
+.externalSectionIndex button {
+  display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%;
+  border:1px solid var(--line); border-radius:11px; padding:11px 12px;
+  background:#fffdf9; color:var(--text); text-align:left; cursor:pointer;
+}
+.externalSectionIndex button:hover { border-color:var(--accent); }
+.externalSectionIndex strong { color:var(--navy); }
+.externalSectionIndex span { flex:0 0 auto; color:var(--muted); font-size:calc(10px * var(--font-scale)); }
+.externalBackToIndex {
+  margin:11px 0 2px; border:0; background:transparent; color:var(--navy-2);
+  font-weight:900; cursor:pointer;
+}
+@media (max-width:720px) {
+  .externalResourceGrid { grid-template-columns:1fr; }
+  .externalSectionIndex button { align-items:flex-start; }
+}
