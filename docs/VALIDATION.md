@@ -131,3 +131,17 @@ A qualified Umpire or rules official should be able to review:
 - the saved Case History snapshot.
 
 That human-reviewability is a core product requirement, not an optional debugging feature.
+
+
+## High-complexity rule focus
+
+Validation effort is intentionally concentrated on the rules most likely to create confusion in practice:
+
+- Rule 24 — Right of Way, especially the distinction between LOB and ROW, near-side precedence, following vs meeting, lesser-angle tests, and two-player priority.
+- Rules 1/2/3 + Tournament Conditions — substitution and player eligibility.
+- Rule 26 — Dangerous Riding and the non-exhaustive danger-factor analysis.
+- Rule 26A — Improper Blocking.
+- Rule 28 together with Rule 26.h — mallet/hook responsibility and riding into the stroke.
+- Rule 35 — penalty selection and the boundary between structured factors and Umpire discretion.
+
+v0.20 adds a Rule 24 entitlement helper for common deterministic branches under 24(e)-(h). It also adds a complete decision rule trail: every decision explanation links directly to the exact playing-rule provisions and relevant governing sources needed to understand the result.
