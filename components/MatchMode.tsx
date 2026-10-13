@@ -7,6 +7,7 @@ import { resolveProvisions } from "@/lib/subarticles";
 import { matchProgress } from "@/lib/match-flow";
 import { externalMatchesForLabels, externalPageLabel } from "@/lib/external-resources";
 import { saveCaseRecord } from "@/lib/case-history";
+import { auditLevelLabel, auditPlayDecision } from "@/lib/decision-audit";
 import VoiceInputButton from "@/components/VoiceInputButton";
 import type { ChoiceValue, Discipline, ExternalResource, ExternalResourceDb, ExternalSection, Language, Rule, RuleDb, TopicId } from "@/lib/types";
 
@@ -101,6 +102,7 @@ export default function MatchMode({
   const complete = Boolean(progress?.complete);
 
   const decision = topic ? decidePlay(topic, discipline, answers, language) : null;
+  const decisionAudit = topic && decision ? auditPlayDecision(topic, discipline, answers, decision) : null;
   const hasCriticalUnknown = topicQuestions.some((question) => answers[question.key] === "unknown");
   const displayedStatus = hasCriticalUnknown && decision && decision.status !== "needs-info"
     ? "needs-info"
@@ -222,6 +224,13 @@ export default function MatchMode({
             "Describe the play. The app asks only the facts that can change the call, one at a time.",
             "Describí la jugada. La app pregunta sólo los hechos que pueden cambiar la decisión, de a uno.",
           )}</p>
+          <div className="umpireAuthorityNotice">
+            <strong>{tr("Decision support, not a replacement for the Umpire", "Apoyo a la decisión, no reemplazo del Umpire")}</strong>
+            <span>{tr(
+              "The app identifies rules, missing facts and validated branches. The final call always belongs to the Umpire.",
+              "La app identifica reglas, hechos faltantes y ramas validadas. La decisión final siempre corresponde al Umpire.",
+            )}</span>
+          </div>
         </div>
         <div className="matchDiscipline">{discipline === "outdoor" ? "OUTDOOR" : "ARENA"}</div>
       </div>
@@ -314,6 +323,12 @@ export default function MatchMode({
                   ⚡ {tr("Decisive fact reached · non-decisive questions skipped", "Dato decisivo alcanzado · se omitieron preguntas no decisivas")}
                 </div>
               ) : null}
+              {decisionAudit ? (
+                <div className={"decisionAuditBadge " + decisionAudit.level}>
+                  <b>{auditLevelLabel(decisionAudit.level, language)}</b>
+                  <span>{language === "en" ? decisionAudit.reasonEn : decisionAudit.reasonEs}</span>
+                </div>
+              ) : null}
               <div className="matchVerdictTop">
                 <span>
                   {displayedStatus === "foul"
@@ -368,6 +383,13 @@ export default function MatchMode({
                         {decision.missing.map((item, index) => <li key={index}>{item}</li>)}
                         {hasCriticalUnknown ? <li>{tr("At least one answer was marked Not sure.", "Al menos una respuesta fue marcada como No estoy seguro.")}</li> : null}
                       </ul>
+                    </div>
+                  ) : null}
+
+                  {decisionAudit ? (
+                    <div className="auditScopePanel">
+                      <strong>{tr("Validation scope", "Alcance de validación")}</strong>
+                      <p>{language === "en" ? decisionAudit.scopeEn : decisionAudit.scopeEs}</p>
                     </div>
                   ) : null}
 
