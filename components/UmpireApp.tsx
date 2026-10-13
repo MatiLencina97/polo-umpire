@@ -1812,7 +1812,7 @@ export default function UmpireApp() {
       ) : null}
 
       <footer>
-        <span>Polo Umpire Assistant v0.25</span>
+        <span>Polo Umpire Assistant v{APP_VERSION}</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
