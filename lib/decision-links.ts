@@ -46,7 +46,11 @@ export function playDecisionRuleTrail(args: {
     if (topic === "row") {
       add(out, db, discipline, "23", t(language, "Defines the Line of the Ball used to analyze ROW", "Define la Line of the Ball usada para analizar el ROW"));
       add(out, db, discipline, "24.b", t(language, "Explains that ROW is not the same as the Line of the Ball", "Aclara que ROW no es lo mismo que la Line of the Ball"));
-      if (answers.rowEntitled === "yes" || answers.rowEntitled === "no") {
+      if (answers.rowEntitlementDerived) {
+        for (const ref of String(answers.rowEntitlementDerived).split(",").filter(Boolean)) {
+          add(out, db, discipline, ref, t(language, "ROW entitlement derived from the Rule 24 physical-fact helper", "Titularidad del ROW derivada por el asistente de hechos físicos de Rule 24"));
+        }
+      } else if (answers.rowEntitled === "yes" || answers.rowEntitled === "no") {
         for (const ref of ["24.e","24.f","24.g","24.h"]) {
           add(out, db, discipline, ref, t(language, "Possible source of ROW entitlement — review the physical relationship of the players", "Posible fuente de titularidad del ROW — revisá la relación física entre los jugadores"));
         }
