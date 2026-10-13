@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Umpire Polo Assistant",
+  title: "Polo Umpire Assistant",
   description: "Offline polo rulebook assistant for umpires",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Umpire Polo Assistant",
+    title: "Polo Umpire Assistant",
   },
   icons: {
     icon: [
