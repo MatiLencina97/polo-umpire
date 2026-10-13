@@ -11,6 +11,7 @@ import { appendTranscript, speechLocale } from "../lib/voice";
 import { extractOfficialGuidance, officialGuidanceMetrics } from "../lib/official-guidance";
 import { auditPlayDecision } from "../lib/decision-audit";
 import { defaultRowEntitlementFacts, deriveRowEntitlement } from "../lib/row-entitlement";
+import { buildFeedbackRecord, normalizeFeedbackRecord, sanitizeFeedbackNote } from "../lib/decision-feedback";
 import { playDecisionRuleTrail, substitutionDecisionRuleTrail } from "../lib/decision-links";
 import { questions } from "../lib/engine";
 import type { ExternalResourceDb, RuleDb } from "../lib/types";
@@ -612,6 +613,49 @@ test("substitution decision rule trail turns cross-rule checks into exact clicka
   assert.ok(refs.includes("3.a"));
   assert.ok(refs.includes("2.d"));
   assert.ok(refs.includes("1.f"));
+});
+
+
+test("feedback records never require the original play description", () => {
+  const record = buildFeedbackRecord({
+    source: "match",
+    discipline: "outdoor",
+    resolverMode: "play",
+    topic: "row",
+    outcomeStatus: "foul",
+    validationLevel: "direct-rule-support",
+    headline: "ROW crossing foul",
+    rulebookVersion: "2026",
+    ruleRefs: ["24.c", "35.b", "24.c"],
+    appVersion: "0.25.0",
+  }, "useful", "clear", "", "feedback-1", "2026-10-13T20:00:00.000Z");
+
+  assert.equal(record.context.ruleRefs.length, 2);
+  assert.equal("situation" in record.context, false);
+  assert.equal(record.delivery, "pending");
+});
+
+test("feedback note is normalized and capped", () => {
+  const note = sanitizeFeedbackNote("  Rule 24.d   should also be reviewed.  ");
+  assert.equal(note, "Rule 24.d should also be reviewed.");
+  assert.equal(sanitizeFeedbackNote("x".repeat(500)).length, 300);
+});
+
+test("feedback normalization rejects malformed ratings", () => {
+  const valid = buildFeedbackRecord({
+    source: "analysis",
+    discipline: "arena",
+    resolverMode: "situation",
+    scenario: "substitutes",
+    outcomeStatus: "needs-info",
+    headline: "More facts needed",
+    rulebookVersion: "2026",
+    ruleRefs: ["3"],
+    appVersion: "0.25.0",
+  }, "needs-review", "missing-fact", "Needs event conditions.", "feedback-2", "2026-10-13T20:00:00.000Z");
+
+  assert.equal(normalizeFeedbackRecord(valid)?.id, "feedback-2");
+  assert.equal(normalizeFeedbackRecord({ ...valid, rating: "perfect" }), null);
 });
 
 let passed = 0;
