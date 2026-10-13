@@ -1856,3 +1856,344 @@ textarea,
   .brandLogo { width:40px; height:40px; }
   .tabs button { font-size:10px; }
 }
+
+/* v0.24 · dismissible information windows + dark mode */
+.infoWindowBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 105;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(4, 17, 33, .72);
+  backdrop-filter: blur(5px);
+  animation: infoWindowFade .16s ease-out;
+}
+.infoWindowPanel {
+  width: min(1080px, 100%);
+  max-height: 94vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--bg);
+  box-shadow: 0 32px 100px rgba(0,0,0,.38);
+}
+.compactInfoWindow { width: min(860px, 100%); }
+.infoWindowHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 17px 18px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+.infoWindowHeader h2 {
+  margin: 2px 0 0;
+  color: var(--text);
+}
+.infoWindowClose {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #edf1f5;
+  color: var(--navy);
+  font-size: 27px;
+  line-height: 1;
+  cursor: pointer;
+}
+.infoWindowScroll {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  overscroll-behavior: contain;
+}
+.infoWindowScroll .howItWorks,
+.infoWindowScroll .offlineWindowContent {
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+.infoWindowScroll .offlineCard { margin-bottom: 0; }
+@keyframes infoWindowFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .infoWindowBackdrop { animation: none; }
+}
+@media (max-width: 720px) {
+  .infoWindowBackdrop {
+    place-items: stretch;
+    padding: 0;
+  }
+  .infoWindowPanel,
+  .compactInfoWindow {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .infoWindowHeader {
+    padding-top: max(14px, env(safe-area-inset-top));
+  }
+  .infoWindowScroll {
+    padding: 12px;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Dark palette is intentionally explicit so rule/status semantics remain unchanged. */
+html[data-theme="dark"] {
+  --bg: #09121c;
+  --card: #111d29;
+  --text: #e7edf5;
+  --muted: #9aa9b9;
+  --line: #2a3948;
+  --accent-soft: #2a251f;
+  --shadow: 0 10px 30px rgba(0,0,0,.28);
+}
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background: var(--bg);
+  color: var(--text);
+}
+html[data-theme="dark"] .tabs {
+  background: #152331;
+}
+html[data-theme="dark"] .tabs button {
+  color: #9fb0c1;
+}
+html[data-theme="dark"] .tabs button.active {
+  background: #223446;
+  color: #f4f7fb;
+  box-shadow: 0 2px 10px rgba(0,0,0,.26);
+}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .candidate,
+html[data-theme="dark"] .ruleItem,
+html[data-theme="dark"] .externalSourceCard,
+html[data-theme="dark"] .caseHistoryCard,
+html[data-theme="dark"] .graphCatalogItem,
+html[data-theme="dark"] .complexRuleCard,
+html[data-theme="dark"] .decisionRuleTrailItem,
+html[data-theme="dark"] .rowHelperResult,
+html[data-theme="dark"] .resourceLibrary > details,
+html[data-theme="dark"] .sideMenuStatus,
+html[data-theme="dark"] .sideMenuNav > button,
+html[data-theme="dark"] .infoWindowHeader,
+html[data-theme="dark"] .ruleModal {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--text);
+}
+html[data-theme="dark"] .sideMenuDrawer {
+  background: #0d1823;
+  border-left-color: var(--line);
+}
+html[data-theme="dark"] .sideMenuClose,
+html[data-theme="dark"] .infoWindowClose,
+html[data-theme="dark"] .modalClose {
+  background: #1d2b39;
+  color: #e8eef5;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .sideMenuNav > button:hover,
+html[data-theme="dark"] .sideMenuNav > button.active {
+  background: #25303a;
+  border-color: #665b4e;
+}
+html[data-theme="dark"] .sideMenuIcon {
+  background: #1c2b39;
+  color: #e5edf6;
+}
+html[data-theme="dark"] .sideMenuSegmented,
+html[data-theme="dark"] .segmented,
+html[data-theme="dark"] .resolverExperienceSwitch {
+  background: #192633;
+}
+html[data-theme="dark"] .sideMenuSegmented button,
+html[data-theme="dark"] .segmented button {
+  color: #aab8c6;
+}
+html[data-theme="dark"] .sideMenuSegmented button.active {
+  background: #2a3b4c;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,.24);
+}
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] .searchInput,
+html[data-theme="dark"] .officialText {
+  background: #0d1823;
+  color: #e5edf6;
+  border-color: #344657;
+}
+html[data-theme="dark"] textarea::placeholder,
+html[data-theme="dark"] input::placeholder {
+  color: #74869a;
+}
+html[data-theme="dark"] .quickchips button,
+html[data-theme="dark"] .choices button,
+html[data-theme="dark"] .caseCardActions button,
+html[data-theme="dark"] .resourceSectionList button,
+html[data-theme="dark"] .complexRuleLinks button,
+html[data-theme="dark"] .howRuleLinks button,
+html[data-theme="dark"] .rowHelperRefs button {
+  background: #172432;
+  color: #c7d3df;
+  border-color: #324354;
+}
+html[data-theme="dark"] .choices button.selected {
+  background: #213a53;
+  border-color: #587da3;
+  color: #eef5fb;
+}
+html[data-theme="dark"] .secondaryAction {
+  background: #1c2b39;
+  color: #d9e5ef;
+}
+html[data-theme="dark"] .callout,
+html[data-theme="dark"] .caseSaveBar,
+html[data-theme="dark"] .decisionRuleTrail,
+html[data-theme="dark"] .governingSources,
+html[data-theme="dark"] .rowEntitlementHelper,
+html[data-theme="dark"] .howAuthority,
+html[data-theme="dark"] .howTournamentLink {
+  background: #181b1f;
+  border-color: #3a342d;
+}
+html[data-theme="dark"] .resultSection,
+html[data-theme="dark"] .auditScopePanel,
+html[data-theme="dark"] .offlineTest,
+html[data-theme="dark"] .howStep,
+html[data-theme="dark"] .howMetrics > div,
+html[data-theme="dark"] .howVerifyGrid > div,
+html[data-theme="dark"] .howExampleCard,
+html[data-theme="dark"] .caseHistorySection,
+html[data-theme="dark"] .caseReferenceList > div,
+html[data-theme="dark"] .provisionOfficialText {
+  background: #0e1a26;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .resultSection.warning,
+html[data-theme="dark"] .decisionAuditBadge.insufficient-coverage,
+html[data-theme="dark"] .howValidationList .insufficient,
+html[data-theme="dark"] .caseVersionWarning {
+  background: #2a2416;
+  border-color: #6c5726;
+}
+html[data-theme="dark"] .resultSection.fail,
+html[data-theme="dark"] .decisionAuditBadge.foul,
+html[data-theme="dark"] .errorBanner {
+  background: #2a171b;
+  border-color: #68323a;
+}
+html[data-theme="dark"] .resultSection.pass,
+html[data-theme="dark"] .decisionAuditBadge.direct-rule-support,
+html[data-theme="dark"] .howValidationList .direct {
+  background: #12271f;
+  border-color: #285c47;
+}
+html[data-theme="dark"] .decisionAuditBadge.umpire-judgment,
+html[data-theme="dark"] .howValidationList .judgment,
+html[data-theme="dark"] .matchEarlyResolved {
+  background: #28231e;
+  border-color: #5a4d3f;
+}
+html[data-theme="dark"] .validationAuditCard,
+html[data-theme="dark"] .governingLibraryCard,
+html[data-theme="dark"] .howHero {
+  background: #101b27;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .validationMetricGrid > div,
+html[data-theme="dark"] .statusRows,
+html[data-theme="dark"] .statusRows > div {
+  background: #0d1823;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .resourceSectionList button:hover {
+  background: #192735;
+}
+html[data-theme="dark"] .ruleTag,
+html[data-theme="dark"] .caseMeta span,
+html[data-theme="dark"] .complexRuleTop span,
+html[data-theme="dark"] .howVerifyGrid b {
+  background: #1b2a38;
+  color: #b6c4d2;
+}
+html[data-theme="dark"] .caseRefChips span {
+  background: #2b251f;
+  color: #c8b69f;
+}
+html[data-theme="dark"] .eyebrow {
+  color: #91a4b8;
+}
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] .candidateExcerpt,
+html[data-theme="dark"] .ruleItem span,
+html[data-theme="dark"] .trailBody small,
+html[data-theme="dark"] .howHeroLead,
+html[data-theme="dark"] .howStep p,
+html[data-theme="dark"] .howExampleCard p,
+html[data-theme="dark"] .howVerifyGrid span,
+html[data-theme="dark"] .howLimitsCard ul,
+html[data-theme="dark"] .howSourceNote,
+html[data-theme="dark"] .caseSituation,
+html[data-theme="dark"] .caseHistorySection p,
+html[data-theme="dark"] .sideMenuNav small,
+html[data-theme="dark"] .sideMenuSettingTitle small,
+html[data-theme="dark"] .sideMenuStatus small,
+html[data-theme="dark"] footer {
+  color: #9aaabd;
+}
+html[data-theme="dark"] .candidateTop strong,
+html[data-theme="dark"] .ruleItem b,
+html[data-theme="dark"] .statusRows strong,
+html[data-theme="dark"] .sideMenuHeader h2,
+html[data-theme="dark"] .sideMenuNav b,
+html[data-theme="dark"] .sideMenuSettingTitle span,
+html[data-theme="dark"] .decisionRuleTrailHeader h3,
+html[data-theme="dark"] .trailBody b,
+html[data-theme="dark"] .complexRuleTop strong,
+html[data-theme="dark"] .rowHelperHeader h3,
+html[data-theme="dark"] .rowHelperResult strong,
+html[data-theme="dark"] .howItWorks h2,
+html[data-theme="dark"] .howItWorks h3,
+html[data-theme="dark"] .howValidationList b,
+html[data-theme="dark"] .howMetrics strong,
+html[data-theme="dark"] .caseHistoryCard h3,
+html[data-theme="dark"] .caseHistorySection > strong,
+html[data-theme="dark"] .caseReferenceList b,
+html[data-theme="dark"] .sourceMeta + h2,
+html[data-theme="dark"] .infoWindowHeader h2 {
+  color: #e6eef6;
+}
+html[data-theme="dark"] .howValidationList > div {
+  background: #101b27;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .howValidationList p,
+html[data-theme="dark"] .validationLegend span,
+html[data-theme="dark"] .validationFootnote,
+html[data-theme="dark"] .auditScopePanel p,
+html[data-theme="dark"] .rowHelperResult p {
+  color: #9cabbb;
+}
+html[data-theme="dark"] .infoWindowPanel {
+  background: var(--bg);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .infoWindowBackdrop,
+html[data-theme="dark"] .modalBackdrop {
+  background: rgba(0,5,10,.78);
+}
+html[data-theme="dark"] .brandLogo {
+  background: #f7f5f1;
+}
