@@ -41,6 +41,13 @@ import {
   profileToSubstitutionFacts,
   type EventProfile,
 } from "@/lib/event-profile";
+import { decidePlay } from "@/lib/play-decision";
+import {
+  bestProvisionsForRules,
+  parseRuleProvisions,
+  resolveProvisions,
+  type RuleProvision,
+} from "@/lib/subarticles";
 import type {
   ChoiceValue,
   Discipline,
@@ -90,8 +97,10 @@ const quickRuleSituations: Record<Language, string[]> = {
 const defaultNationalityInputs = defaultSubstitutionCrossFacts;
 
 const questionLabelsEn: Record<string, string> = {
-  risk: "Did the action force the player with the possible Right of Way to check, change course, or face collision risk?",
+  rowEntitled: "Was the affected player actually entitled to the Right of Way at that moment?",
+  risk: "Did the action force the player with the Right of Way to check, change course, or face collision risk?",
   lineChanged: "Had the Line of the Ball changed immediately before the action?",
+  clearanceTime: "If the line changed, was the opponent given the necessary time to clear the new ROW?",
   parallel: "Were the players parallel or nearly parallel at the relevant moment?",
   balance: "Was either horse knocked off balance or displaced with force?",
   speedAngle: "Was there a significant difference in speed, position, or a strong converging angle?",
@@ -100,10 +109,14 @@ const questionLabelsEn: Record<string, string> = {
   marking: "Did the attacker prevent the defender from marking a teammate who had a play on the ball?",
   slow: "In open play, did the ball carrier slow to a slow canter/walk while the block occurred within two horse lengths?",
   strokeDanger: "Did the swing or hook create danger to another player or horse?",
-  sameSide: "Was the hook made from the same side of the horse as the player making the stroke?",
+  hookPosition: "Was the hook made from the same side of the opponent's mount as the ball, or directly from behind?",
+  hookTiming: "Was the opponent in the act of hitting at the ball or hooking/striking the mallet?",
+  hookClear: "Was the mallet clear of the opponent's mount, below shoulder level, and used without excessive force?",
+  conductMatches: "Does the behavior fit Rule 33.a (appealing, abuse, arguing with officials, rough/dangerous conduct, post-whistle hit, etc.)?",
   deliberate: "Was the conduct deliberate, abusive, or contrary to the spirit of the game?",
   repeat: "Was there a similar prior foul, warning, or card?",
   dead: "Was the ball out of play or the clock stopped?",
+  restartType: "What type of restart was being executed?",
   early: "Did anyone hit or play before the Umpire called Play?",
   endPeriod: "Is the substitution being made at the end of a period?",
   unable: "If during a period, has the player being replaced been declared unable to continue?",
@@ -191,6 +204,10 @@ export default function UmpireApp() {
     if (value === "no") return "No";
     if (value === "unknown") return "Not sure";
     if (value === "na") return "Not applicable";
+    if (value === "knockin") return "Knock-in";
+    if (value === "throwin") return "Throw-in";
+    if (value === "penalty") return "Penalty / free hit";
+    if (value === "other") return "Other";
     return fallback;
   };
   const questionLabel = (key: string, fallback: string) => language === "en" ? (questionLabelsEn[key] ?? fallback) : fallback;
@@ -389,6 +406,14 @@ export default function UmpireApp() {
 
   const substitutionSections = crossRuleState?.sections ?? [];
 
+  const playDecision = resolverMode === "play" && topic
+    ? decidePlay(topic, discipline, answers, language)
+    : null;
+
+  const precisePlayProvisions: RuleProvision[] = db && playDecision
+    ? resolveProvisions(db, discipline, playDecision.references)
+    : [];
+
   const universalSeedRules = resolverMode === "play"
     ? resolutionRules.map((rule) => rule.rule)
     : (scenarioRules.length ? scenarioRules : genericSituationRules).map((rule) => rule.rule);
@@ -411,6 +436,14 @@ export default function UmpireApp() {
   const selectedGenericFact = availableMissingFacts.find((item) => item.key === selectedMissingFactKey)
     ?? availableMissingFacts[0]
     ?? null;
+
+  const situationProvisionMatches = resolverMode === "situation"
+    ? bestProvisionsForRules(
+        scenarioRules.length ? scenarioRules : genericSituationRules,
+        [situation, ...Object.entries(caseFacts).map(([key,value]) => key + " " + String(value ?? ""))].join(" "),
+        6,
+      )
+    : [];
 
   const unresolvedQuestions = activeQuestions.filter((question) => !answers[question.key] || answers[question.key] === "unknown");
   const answeredQuestions = activeQuestions.filter((question) => answers[question.key] && answers[question.key] !== "unknown");
@@ -955,15 +988,47 @@ export default function UmpireApp() {
                   ))}
                   </div>
                 </>
+              ) : resolverMode === "play" && playDecision ? (
+                <>
+                  <div className={"decisionBanner " + playDecision.status}>
+                    <span>{playDecision.status === "foul" ? tr("FOUL", "FALTA") : playDecision.status === "no-foul" ? tr("NO FOUL INDICATED", "NO SE INDICA FALTA") : playDecision.status === "procedure" ? tr("PROCEDURE", "PROCEDIMIENTO") : tr("MORE FACTS NEEDED", "FALTAN DATOS")}</span>
+                    <strong>{playDecision.headline}</strong>
+                  </div>
+                  <div className="resultSections">
+                    {playDecision.sections.map((section) => (
+                      <section className={"resultSection " + section.tone} key={section.id}>
+                        <h3>{section.title}</h3>
+                        <ul>{section.items.map((item,index) => <li key={index}>{item}</li>)}</ul>
+                      </section>
+                    ))}
+                    {answeredQuestions.length ? (
+                      <section className="resultSection pass">
+                        <h3>{tr("Facts used", "Hechos utilizados")}</h3>
+                        <ul>
+                          {answeredQuestions.map((question) => <li key={question.key}><b>{questionLabel(question.key, question.label)}</b>: {optionLabel(answers[question.key], answers[question.key])}</li>)}
+                        </ul>
+                      </section>
+                    ) : null}
+                  </div>
+                  {precisePlayProvisions.length ? (
+                    <div className="preciseProvisions">
+                      <p className="eyebrow">{tr("PRECISE PROVISIONS", "DISPOSICIONES PRECISAS")}</p>
+                      {precisePlayProvisions.map((provision) => (
+                        <div className="provisionCard" key={provision.id}>
+                          <strong>{provision.label}</strong>
+                          <p>{provision.text.length > 420 ? provision.text.slice(0,420) + "…" : provision.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <div className="resultSections">
                   <section className="resultSection info">
                     <h3>{tr("Interpretation", "Interpretación")}</h3>
-                    <p>{resolverMode === "play" && topic
-                      ? localizedApplicationText(topic, answers, language)
-                      : scenario
-                        ? localizedScenarioApplicationText(scenario, discipline, answers, language)
-                        : tr("The app found the closest rules in the local Rulebook. Review the official provision and related Interpretation/Example before closing the ruling.", "La app encontró las reglas más cercanas en el Rulebook local. Revisá la disposición oficial y la Interpretation/Example relacionada antes de cerrar la decisión.")}</p>
+                    <p>{scenario
+                      ? localizedScenarioApplicationText(scenario, discipline, answers, language)
+                      : tr("The app found the closest rules in the local Rulebook. Review the official provision and related Interpretation/Example before closing the ruling.", "La app encontró las reglas más cercanas en el Rulebook local. Revisá la disposición oficial y la Interpretation/Example relacionada antes de cerrar la decisión.")}</p>
                   </section>
                   {answeredQuestions.length ? (
                     <section className="resultSection pass">
@@ -977,6 +1042,12 @@ export default function UmpireApp() {
                     <section className="resultSection warning">
                       <h3>{tr("Facts still unclear", "Datos todavía no claros")}</h3>
                       <ul>{unresolvedQuestions.map((question) => <li key={question.key}>{questionLabel(question.key, question.label)}</li>)}</ul>
+                    </section>
+                  ) : null}
+                  {situationProvisionMatches.length ? (
+                    <section className="resultSection info">
+                      <h3>{tr("Most relevant subarticles", "Subartículos más relevantes")}</h3>
+                      <ul>{situationProvisionMatches.map((provision) => <li key={provision.id}><b>{provision.label}</b>: {provision.text.slice(0,220)}{provision.text.length > 220 ? "…" : ""}</li>)}</ul>
                     </section>
                   ) : null}
                 </div>
@@ -1112,7 +1183,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.12</span>
+        <span>Umpire Polo Assistant v0.13</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
@@ -1225,6 +1296,19 @@ export default function UmpireApp() {
             <p className="eyebrow">{selectedRule.discipline.toUpperCase()} · RULEBOOK {manifest?.activeVersion ?? "2026"}</p>
             <h2>Rule {selectedRule.rule} · {selectedRule.title}</h2>
             <div className="sourceMeta">USPA Rulebook {manifest?.activeVersion ?? "2026"} · {tr("page", "página")} {pageLabel(selectedRule)}</div>
+            {parseRuleProvisions(selectedRule).filter((item) => item.level === 1).length ? (
+              <details className="subarticleIndex">
+                <summary>{tr("Browse by subarticle", "Ver por subartículo")}</summary>
+                <div className="subarticleList">
+                  {parseRuleProvisions(selectedRule).filter((item) => item.level === 1).map((provision) => (
+                    <div key={provision.id}>
+                      <strong>{provision.label}</strong>
+                      <p>{provision.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
             <pre className="officialText">{selectedRule.text}</pre>
             {selectedRule.applications?.length ? (
               <div className="interpretations">

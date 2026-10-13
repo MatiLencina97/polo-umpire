@@ -468,3 +468,36 @@ textarea,
   .eventProfileBar strong { white-space: normal; }
   .caseContextStrip button { margin-left: 0; }
 }
+
+/* Deterministic play decisions + subarticle index */
+.decisionBanner {
+  display:grid;
+  gap:4px;
+  margin:12px 0;
+  padding:14px 15px;
+  border-radius:14px;
+  border:1px solid var(--line);
+}
+.decisionBanner span { font-size:calc(9px * var(--font-scale)); font-weight:950; letter-spacing:.13em; }
+.decisionBanner strong { font-size:calc(18px * var(--font-scale)); color:var(--navy); }
+.decisionBanner.foul { background:#fff5f6; border-color:#e7b9c0; }
+.decisionBanner.foul span { color:var(--red); }
+.decisionBanner.no-foul { background:#f2faf6; border-color:#b9dfcf; }
+.decisionBanner.no-foul span { color:var(--green); }
+.decisionBanner.needs-info { background:#fffaf1; border-color:#e5cf9b; }
+.decisionBanner.needs-info span { color:var(--amber); }
+.decisionBanner.procedure { background:#f4f7fb; border-color:#c9d7e6; }
+.decisionBanner.procedure span { color:var(--navy-2); }
+
+.preciseProvisions { display:grid; gap:8px; margin:14px 0; }
+.provisionCard { border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:12px; padding:11px 12px; background:#fffdf9; }
+.provisionCard strong { color:var(--navy); font-size:calc(12px * var(--font-scale)); }
+.provisionCard p { margin:5px 0 0; color:var(--muted); line-height:1.5; font-size:calc(12px * var(--font-scale)); }
+
+.subarticleIndex { margin:12px 0; border:1px solid var(--line); border-radius:13px; background:#fbfaf8; }
+.subarticleIndex > summary { cursor:pointer; padding:11px 13px; font-weight:900; color:var(--navy); }
+.subarticleList { display:grid; gap:0; border-top:1px solid var(--line); }
+.subarticleList > div { padding:12px 13px; border-bottom:1px solid var(--line); }
+.subarticleList > div:last-child { border-bottom:0; }
+.subarticleList strong { color:var(--navy); }
+.subarticleList p { margin:5px 0 0; white-space:pre-wrap; line-height:1.5; color:#51657b; font-size:calc(12px * var(--font-scale)); }

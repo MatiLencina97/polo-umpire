@@ -35,8 +35,10 @@ export const topicDefs: Record<TopicId, TopicDefinition> = {
 
 export const questions: Record<TopicId, QuestionDefinition[]> = {
   row: [
-    { key: "risk", label: "¿La acción obligó al jugador con el posible Right of Way a frenar, cambiar dirección o generó riesgo de colisión?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
+    { key: "rowEntitled", label: "¿El jugador afectado tenía realmente el Right of Way en ese momento?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
+    { key: "risk", label: "¿La acción obligó al jugador con el Right of Way a frenar, cambiar dirección o generó riesgo de colisión?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "lineChanged", label: "¿La línea de la pelota había cambiado inmediatamente antes de la acción?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
+    { key: "clearanceTime", label: "Si cambió la línea: ¿el oponente tuvo el tiempo necesario para despejar el nuevo ROW?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"], ["unknown", "No estoy seguro"]] },
     { key: "parallel", label: "¿Los jugadores iban paralelos o casi paralelos al momento relevante?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
   dangerous: [
@@ -51,14 +53,18 @@ export const questions: Record<TopicId, QuestionDefinition[]> = {
   ],
   mallet: [
     { key: "strokeDanger", label: "¿El swing/hook puso en riesgo a otro jugador o caballo?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
-    { key: "sameSide", label: "¿El hook se hizo desde el mismo lado del caballo que el jugador que realizaba el stroke?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
+    { key: "hookPosition", label: "¿El hook se hizo desde el mismo lado del caballo rival que la pelota, o directamente desde atrás?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
+    { key: "hookTiming", label: "¿El rival estaba en el acto de pegarle a la pelota o de hookear/golpear el mallet?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
+    { key: "hookClear", label: "¿El mallet quedó libre del caballo rival, por debajo del hombro y sin fuerza excesiva?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
   conduct: [
+    { key: "conductMatches", label: "¿La conducta encaja en Rule 33.a (appealing, abuso, discutir con oficiales, rough/dangerous conduct, golpe después del whistle, etc.)?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "deliberate", label: "¿La conducta fue deliberada, abusiva o contraria al espíritu del juego?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "repeat", label: "¿Ya hubo faltas similares o una advertencia/tarjeta previa?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
   restart: [
     { key: "dead", label: "¿La pelota estaba fuera de juego o el reloj detenido?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
+    { key: "restartType", label: "¿Qué tipo de reanudación se estaba ejecutando?", options: [["knockin", "Knock-in"], ["throwin", "Throw-in"], ["penalty", "Penalty / free hit"], ["other", "Otra"], ["unknown", "No estoy seguro"]] },
     { key: "early", label: "¿Alguien golpeó/jugó antes de que el Umpire llamara “Play”?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
 };
