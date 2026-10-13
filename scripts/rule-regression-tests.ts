@@ -6,6 +6,7 @@ import { parseRuleProvisions, bestProvisionsForRules } from "../lib/subarticles"
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
 import { matchProgress } from "../lib/match-flow";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
+import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
 import type { ExternalResourceDb, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
@@ -248,6 +249,87 @@ test("Sport-Related Conduct graph label resolves to disciplinary policy Part I",
 test("equine medication query surfaces Equine Medications Rules", () => {
   const hits = searchExternalSections(externalDb, "restricted medication horse blood level NSAID", 5);
   assert.ok(hits.some((item) => item.resource.id === "equine-medications"));
+});
+
+
+test("case history snapshot preserves Rulebook version, facts and sources", () => {
+  const record = buildCaseRecord({
+    source: "match",
+    resolverMode: "play",
+    discipline: "outdoor",
+    language: "en",
+    situation: "Blue had the ROW and Red crossed.",
+    eventContext: "Autumn 8 Goal",
+    rulebookVersion: "2026",
+    outcome: {
+      status: "foul",
+      headline: "ROW entry/crossing foul",
+      summary: "The ROW holder had to check.",
+    },
+    facts: [
+      { label: "ROW entitlement", value: "YES" },
+      { label: "Risk", value: "YES" },
+    ],
+    references: [
+      { kind: "rule", label: "Rule 24.c", page: "88", excerpt: "Right of Way text" },
+      { kind: "rule", label: "Rule 24.c", page: "88", excerpt: "duplicate" },
+      { kind: "external", label: "Umpire Guide", page: "223", resourceId: "umpire-guide", sectionId: "intro" },
+    ],
+  }, "case-1", "2026-10-13T15:30:00.000Z");
+
+  assert.equal(record.rulebookVersion, "2026");
+  assert.equal(record.eventContext, "Autumn 8 Goal");
+  assert.equal(record.facts.length, 2);
+  assert.equal(record.references.length, 2);
+  assert.equal(record.references[0].label, "Rule 24.c");
+});
+
+test("case history merge keeps newest cases first and avoids duplicate IDs", () => {
+  const base = buildCaseRecord({
+    source: "analysis",
+    resolverMode: "situation",
+    discipline: "outdoor",
+    language: "en",
+    situation: "Substitute eligibility",
+    rulebookVersion: "2026",
+    outcome: { status: "reference", headline: "Eligibility", summary: "Review rules." },
+    facts: [],
+    references: [],
+  }, "case-a", "2026-10-13T10:00:00.000Z");
+
+  const newer = buildCaseRecord({
+    source: "match",
+    resolverMode: "play",
+    discipline: "arena",
+    language: "en",
+    situation: "Arena hook",
+    rulebookVersion: "2026",
+    outcome: { status: "needs-info", headline: "Need facts", summary: "More detail required." },
+    facts: [],
+    references: [],
+  }, "case-b", "2026-10-13T11:00:00.000Z");
+
+  const merged = mergeCaseRecord([base], newer);
+  assert.deepEqual(merged.map((item) => item.id), ["case-b", "case-a"]);
+  assert.equal(mergeCaseRecord(merged, newer).filter((item) => item.id === "case-b").length, 1);
+});
+
+test("case history normalizer rejects malformed stored entries", () => {
+  const valid = buildCaseRecord({
+    source: "analysis",
+    resolverMode: "play",
+    discipline: "outdoor",
+    language: "en",
+    situation: "Valid",
+    rulebookVersion: "2026",
+    outcome: { status: "reference", headline: "Valid case", summary: "Summary" },
+    facts: [],
+    references: [],
+  }, "valid", "2026-10-13T12:00:00.000Z");
+
+  const normalized = normalizeCaseHistory([null, { id: "broken" }, valid]);
+  assert.equal(normalized.length, 1);
+  assert.equal(normalized[0].id, "valid");
 });
 
 let passed = 0;
