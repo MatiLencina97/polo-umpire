@@ -707,16 +707,15 @@ export default function UmpireApp() {
       }
     }
 
-    const ruleReferences = resolverMode === "play" && playDecision
-      ? precisePlayProvisions.map((provision) => {
-          const rule = db?.rules.find((item) => item.discipline === discipline && item.rule === provision.rule);
-          return {
-            kind: "rule" as const,
-            label: provision.label,
-            page: rule ? pageLabel(rule) : undefined,
-            excerpt: provision.text.slice(0,600),
-          };
-        })
+    const ruleReferences = analysisRuleTrail.length
+      ? analysisRuleTrail.map(({ provision }) => ({
+          kind: "rule" as const,
+          label: provision.label,
+          page: provision.pageEnd && provision.pageEnd !== provision.pageStart
+            ? provision.pageStart + "–" + provision.pageEnd
+            : String(provision.pageStart),
+          excerpt: provision.text.slice(0,600),
+        }))
       : (scenarioRules.length ? scenarioRules : genericSituationRules).map((rule) => ({
           kind: "rule" as const,
           label: (rule.discipline === "outdoor" ? "Outdoor" : "Arena") + " Rule " + rule.rule + " · " + rule.title,
