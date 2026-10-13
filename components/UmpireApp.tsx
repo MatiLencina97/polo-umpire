@@ -44,12 +44,16 @@ import {
 import { decidePlay } from "@/lib/play-decision";
 import { auditLevelLabel, auditPlayDecision } from "@/lib/decision-audit";
 import { officialGuidanceMetrics } from "@/lib/official-guidance";
+import { playDecisionRuleTrail, substitutionDecisionRuleTrail, substitutionExternalTrail, type DecisionRuleLink } from "@/lib/decision-links";
+import { complexRuleFocuses, complexText } from "@/lib/complex-rules";
 import MatchMode from "@/components/MatchMode";
+import DecisionRuleTrail from "@/components/DecisionRuleTrail";
 import CaseHistoryPanel from "@/components/CaseHistoryPanel";
 import VoiceInputButton from "@/components/VoiceInputButton";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import {
   bestProvisionsForRules,
+  getProvision,
   parseRuleProvisions,
   resolveProvisions,
   type RuleProvision,
@@ -222,6 +226,7 @@ export default function UmpireApp() {
   const [search, setSearch] = useState("");
   const [searchFilter, setSearchFilter] = useState<SearchFilter>("all");
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
+  const [selectedProvision, setSelectedProvision] = useState<RuleProvision | null>(null);
   const [selectedExternal, setSelectedExternal] = useState<{ resource: ExternalResource; section: ExternalSection | null } | null>(null);
   const [updateStatus, setUpdateStatus] = useState("");
   const [language, setLanguage] = useState<Language>("en");
@@ -524,6 +529,24 @@ export default function UmpireApp() {
   ]));
 
   const externalEvidence = externalMatchesForLabels(externalDb, externalLabels, externalContextQuery, 8);
+
+  const analysisRuleTrail: DecisionRuleLink[] = db
+    ? resolverMode === "play" && topic && playDecision
+      ? playDecisionRuleTrail({ db, discipline, topic, answers, decision: playDecision, language })
+      : scenario === "substitutes" && crossRuleState
+        ? substitutionDecisionRuleTrail({ db, discipline, checks: crossRuleState.checks, language })
+        : (scenarioRules.length ? scenarioRules : genericSituationRules)
+            .map((rule) => parseRuleProvisions(rule)[0])
+            .filter(Boolean)
+            .map((provision) => ({
+              provision,
+              role: tr("Related governing rule identified from the situation", "Regla de control relacionada identificada a partir de la situación"),
+            }))
+    : [];
+
+  const analysisExternalTrail = scenario === "substitutes"
+    ? substitutionExternalTrail({ db: externalDb, query: externalContextQuery, language })
+    : externalEvidence;
 
   const currentAnalysisFingerprint = JSON.stringify({
     situation,
@@ -929,6 +952,7 @@ export default function UmpireApp() {
               eventContext={eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown" ? profileSummary(eventProfile) : undefined}
               rulebookVersion={manifest?.activeVersion ?? "2026"}
               onOpenRule={setSelectedRule}
+              onOpenProvision={setSelectedProvision}
               onOpenExternal={openExternal}
             />
           ) : null}
@@ -1261,6 +1285,14 @@ export default function UmpireApp() {
                 )}</span>
               </div>
 
+              <DecisionRuleTrail
+                language={language}
+                ruleLinks={analysisRuleTrail}
+                externalLinks={analysisExternalTrail}
+                onOpenProvision={setSelectedProvision}
+                onOpenExternal={(resource, section) => openExternal(resource, section)}
+              />
+
               {resolverMode === "situation" && scenario === "substitutes" && crossRuleState ? (
                 <>
                   <div className="resultRulePath">
@@ -1575,7 +1607,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.19</span>
+        <span>Umpire Polo Assistant v0.20</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
