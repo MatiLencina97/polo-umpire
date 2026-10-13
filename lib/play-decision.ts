@@ -244,12 +244,32 @@ export function decidePlay(
 
   if (topic === "mallet") {
     if (a.strokeDanger === "yes") {
+      if (a.strokeEnteredByOpponent === "yes") {
+        return makeDecision({
+          status: "needs-info",
+          headline: t(language, "Another player may have created the mallet danger", "Otro jugador puede haber creado el peligro del mallet"),
+          summary: t(language, "Rule 28.d says the mallet user is responsible unless another player is clearly at fault by riding into the stroke. The app should not assign the mallet foul until the Umpire determines who created the danger; Rule 26.h may also apply if a player deliberately rode into the stroke.", "Rule 28.d dice que el usuario del mallet es responsable salvo que otro jugador sea claramente responsable por entrar en el stroke. La app no debe asignar la falta de mallet hasta que el Umpire determine quién creó el peligro; Rule 26.h también puede aplicar si un jugador entró deliberadamente en el stroke."),
+          references: ["28.d","26.h"],
+          missing: [t(language, "Umpire determination of who created the danger and whether the entry into the stroke was deliberate/dangerous.", "Determinación del Umpire sobre quién creó el peligro y si el ingreso al stroke fue deliberado/peligroso.")],
+          language,
+        });
+      }
+      if (a.strokeEnteredByOpponent === "no") {
+        return makeDecision({
+          status: "foul",
+          headline: t(language, "Dangerous / improper use of the mallet", "Uso peligroso / impropio del mallet"),
+          summary: t(language, "Rule 28.d makes the player responsible for using the mallet safely. The entered facts identify dangerous use and do not indicate that another player clearly created the danger by riding into the stroke.", "Rule 28.d hace responsable al jugador de usar el mallet de forma segura. Los hechos cargados identifican un uso peligroso y no indican que otro jugador haya creado claramente el peligro entrando en el stroke."),
+          references: ["28.d","35.b"],
+          penalty: [t(language, "If deliberate or sufficiently dangerous, Rule 33 / Penalty 10 may also become relevant.", "Si fue deliberado o suficientemente peligroso, también pueden volverse relevantes Rule 33 / Penalty 10.")],
+          language,
+        });
+      }
       return makeDecision({
-        status: "foul",
-        headline: t(language, "Dangerous / improper use of the mallet", "Uso peligroso / impropio del mallet"),
-        summary: t(language, "Rule 28.d makes the player responsible for using the mallet safely. A dangerous or abusive use is a foul, subject to whether another player clearly created the danger by riding into an established stroke.", "Rule 28.d hace responsable al jugador de usar el mallet de forma segura. Un uso peligroso o abusivo es falta, sujeto a si otro jugador creó claramente el peligro entrando en un stroke ya establecido."),
-        references: ["28.d","26.h","35.b"],
-        penalty: [t(language, "If deliberate or sufficiently dangerous, Rule 33 / Penalty 10 may also become relevant.", "Si fue deliberado o suficientemente peligroso, también pueden volverse relevantes Rule 33 / Penalty 10.")],
+        status: "needs-info",
+        headline: t(language, "Who created the mallet danger is decisive", "Es decisivo saber quién creó el peligro del mallet"),
+        summary: t(language, "Before assigning responsibility under Rule 28.d, determine whether another player clearly rode into an already established stroke and created the danger.", "Antes de asignar responsabilidad bajo Rule 28.d, determiná si otro jugador entró claramente en un stroke ya establecido y creó el peligro."),
+        references: ["28.d","26.h"],
+        missing: [t(language, "Did another player clearly ride into the established stroke and create the danger?", "¿Otro jugador entró claramente en el stroke ya establecido y creó el peligro?")],
         language,
       });
     }
