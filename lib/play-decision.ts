@@ -176,10 +176,11 @@ export function decidePlay(
     }
     if (a.balance === "no" && a.speedAngle === "no" && a.blind === "no") {
       return makeDecision({
-        status: "no-foul",
-        headline: t(language, "Dangerous Riding not established by these facts", "Dangerous Riding no establecido con estos datos"),
-        summary: t(language, "None of the entered facts triggers the strongest Rule 26.a indicators. Because the listed factors are not exhaustive, another dangerous circumstance could still support a call.", "Ninguno de los datos cargados activa los indicadores más fuertes de Rule 26.a. Como los factores no son exhaustivos, otra circunstancia peligrosa todavía podría justificar una falta."),
+        status: "needs-info",
+        headline: t(language, "No automatic Dangerous Riding indicator — Umpire judgment required", "No hay un indicador automático de Dangerous Riding — se requiere juicio del Umpire"),
+        summary: t(language, "The entered facts do not show the strongest modeled Rule 26.a indicators, but Rule 26's factors are not exhaustive and the Rulebook does not authorize the app to convert their absence into a definitive no-foul. The Umpire must still assess the total circumstances, including force, relative size/position, fatigue, other dangerous acts, and the aggressor.", "Los hechos cargados no muestran los indicadores modelados más fuertes de Rule 26.a, pero los factores de Rule 26 no son exhaustivos y el Rulebook no autoriza a la app a convertir su ausencia en un no-foul definitivo. El Umpire todavía debe evaluar el conjunto de circunstancias, incluyendo fuerza, tamaño/posición relativa, fatiga, otros actos peligrosos y al agresor."),
         references: ["26.a"],
+        missing: [t(language, "Umpire assessment of the total circumstances and any other Rule 26 danger factor not captured by the quick questions.", "Valoración del Umpire sobre el conjunto de circunstancias y cualquier otro factor de peligro de Rule 26 no capturado por las preguntas rápidas.")],
         language,
       });
     }
