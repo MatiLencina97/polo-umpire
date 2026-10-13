@@ -114,13 +114,22 @@ test("blocking category closes early when defender was not prevented from markin
   assert.equal(progress.earlyResolved, true);
 });
 
-test("dangerous mallet use is a foul", () => {
-  const decision = decidePlay("mallet", "outdoor", { strokeDanger: "yes" }, "en");
-  const progress = matchProgress("mallet", { strokeDanger: "yes" });
+test("dangerous mallet use is a foul when another player did not create the danger", () => {
+  const answers = { strokeDanger: "yes", strokeEnteredByOpponent: "no" } as const;
+  const decision = decidePlay("mallet", "outdoor", answers, "en");
+  const progress = matchProgress("mallet", answers);
   assert.equal(decision.status, "foul");
   assert.ok(decision.references.includes("28.d"));
   assert.equal(progress.complete, true);
   assert.equal(progress.earlyResolved, true);
+});
+
+test("mallet danger caused by a player riding into the stroke stays with the Umpire for responsibility", () => {
+  const answers = { strokeDanger: "yes", strokeEnteredByOpponent: "yes" } as const;
+  const decision = decidePlay("mallet", "outdoor", answers, "en");
+  assert.equal(decision.status, "needs-info");
+  assert.ok(decision.references.includes("28.d"));
+  assert.ok(decision.references.includes("26.h"));
 });
 
 test("hook meeting position timing clearance and safety conditions resolves no-foul", () => {
@@ -438,7 +447,7 @@ test("golden Rule 28 example: striking a safely positioned mount on downswing is
     /strikes\s+Red.s\s+mount\s+on\s+the\s+downswing/i.test(item.text) &&
     /Foul Blue/i.test(item.text)
   ));
-  const decision = decidePlay("mallet", "outdoor", { strokeDanger: "yes" }, "en");
+  const decision = decidePlay("mallet", "outdoor", { strokeDanger: "yes", strokeEnteredByOpponent: "no" }, "en");
   assert.equal(decision.status, "foul");
 });
 
