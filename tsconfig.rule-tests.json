@@ -26,6 +26,9 @@
     "lib/case-history.ts",
     "lib/voice.ts",
     "lib/official-guidance.ts",
-    "lib/decision-audit.ts"
+    "lib/decision-audit.ts",
+    "lib/row-entitlement.ts",
+    "lib/decision-links.ts",
+    "lib/complex-rules.ts"
   ]
 }
