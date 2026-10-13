@@ -83,3 +83,8 @@ Substitutions now include a handicap eligibility calculator. For Outdoor play it
 - General player eligibility checks from Rule 2 and Rule 3 interpretations.
 
 If the question gives the tournament upper limit and outgoing player handicap but not the original team total, the app asks for the missing team handicap before calculating the exact maximum substitute.
+
+
+## Validation
+
+Decision confidence is reported as **Direct Rule Support**, **Umpire Judgment**, or **Insufficient Validated Coverage** rather than as an invented percentage. See [docs/VALIDATION.md](docs/VALIDATION.md) for the audit methodology, known limits, official-guidance coverage, and human-review policy.
