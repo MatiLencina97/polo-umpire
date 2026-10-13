@@ -4,7 +4,7 @@ const fullKeys: Record<TopicId, string[]> = {
   row: ["rowEntitled", "risk", "lineChanged", "clearanceTime"],
   dangerous: ["balance", "speedAngle", "blind"],
   blocking: ["restartBlock", "marking", "slow"],
-  mallet: ["strokeDanger", "hookPosition", "hookTiming", "hookClear"],
+  mallet: ["strokeDanger", "strokeEnteredByOpponent", "hookPosition", "hookTiming", "hookClear"],
   conduct: ["conductMatches", "repeat"],
   restart: ["dead", "restartType", "early"],
 };
@@ -35,7 +35,10 @@ export function relevantMatchKeys(topic: TopicId, answers: Record<string, Choice
 
   if (topic === "mallet") {
     const keys = ["strokeDanger"];
-    if (answers.strokeDanger === "yes") return keys;
+    if (answers.strokeDanger === "yes") {
+      keys.push("strokeEnteredByOpponent");
+      return keys;
+    }
     keys.push("hookPosition", "hookTiming", "hookClear");
     return keys;
   }
