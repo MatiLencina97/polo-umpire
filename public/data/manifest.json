@@ -8,6 +8,9 @@
   "counts": {
     "outdoor": 38,
     "arena": 19,
-    "umpireGuidePages": 18
-  }
+    "umpireGuidePages": 18,
+    "resources": 9,
+    "resourceSections": 112
+  },
+  "resourcesFile": "data/resources-2026.json"
 }

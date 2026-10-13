@@ -34,8 +34,18 @@ if not data.startswith(b"%PDF"):
 tmp.write_bytes(data)
 new_hash = hashlib.sha256(data).hexdigest()
 manifest = json.loads(MANIFEST.read_text(encoding="utf-8")) if MANIFEST.exists() else {}
-if new_hash == manifest.get("sha256"):
+active_version = str(manifest.get("activeVersion") or manifest.get("year") or "")
+resources_path = ROOT / "public" / "data" / f"resources-{active_version}.json" if active_version else None
+resources_missing = not resources_path or not resources_path.exists()
+
+if new_hash == manifest.get("sha256") and not resources_missing:
     print("No Rulebook change detected.")
+    tmp.unlink(missing_ok=True)
+    raise SystemExit(0)
+
+if new_hash == manifest.get("sha256") and resources_missing:
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "extract_resources.py"), str(tmp)], check=True)
+    print("Rulebook unchanged; missing external-resource dataset regenerated.")
     tmp.unlink(missing_ok=True)
     raise SystemExit(0)
 

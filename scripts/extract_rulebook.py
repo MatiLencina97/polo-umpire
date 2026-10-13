@@ -237,6 +237,10 @@ def main():
         "counts": {"outdoor": len(outdoor), "arena": len(arena), "umpireGuidePages": len(guide)},
     }
     MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # Keep all governing sections versioned/offline with the playing rules.
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "extract_resources.py"), str(PDF)], check=True)
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     print(json.dumps(manifest, indent=2))
 
 
