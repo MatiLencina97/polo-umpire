@@ -252,7 +252,10 @@ export default function MatchMode({
           <button className="matchPrimaryButton" onClick={begin} disabled={!situation.trim()}>
             {tr("START QUICK RULING", "INICIAR DECISIÓN RÁPIDA")}
           </button>
-          <p className="matchOfflineLine">✓ {tr("Runs locally · available offline", "Funciona localmente · disponible offline")}</p>
+          <p className="matchOfflineLine">✓ {tr(
+            "Rulings run locally · voice dictation availability depends on the browser",
+            "Las decisiones funcionan localmente · el dictado por voz depende del navegador",
+          )}</p>
         </div>
       ) : (
         <>
