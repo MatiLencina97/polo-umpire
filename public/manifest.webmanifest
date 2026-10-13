@@ -1,6 +1,6 @@
 {
-  "name": "Umpire Polo Assistant",
-  "short_name": "Umpire",
+  "name": "Polo Umpire Assistant",
+  "short_name": "Polo Umpire",
   "description": "Offline polo rulebook assistant for umpires",
   "start_url": "/",
   "scope": "/",
