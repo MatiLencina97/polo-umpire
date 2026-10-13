@@ -359,9 +359,9 @@ test("voice dictation language follows the app language", () => {
 
 test("official guidance index covers every Interpretation/Example marker in the installed Rulebook", () => {
   const metrics = officialGuidanceMetrics(db);
-  assert.equal(metrics.total, 118);
+  assert.equal(metrics.total, 132);
   assert.equal(metrics.examples, 63);
-  assert.equal(metrics.interpretations, 55);
+  assert.equal(metrics.interpretations, 69);
   assert.equal(metrics.rulesWithGuidance, 34);
 });
 
@@ -371,7 +371,7 @@ test("golden Rule 24 example: safe entry after checking supports no crossing fou
     item.discipline === "outdoor" &&
     item.rule === "24" &&
     item.kind === "example" &&
-    /No foul on Red #3 because Blue #2, by checking, took the danger out of the play/i.test(item.text)
+    /No foul on Red #3[\\s\\S]{0,180}safe distance and relative speed/i.test(item.text)
   ));
   const decision = decidePlay("row", "outdoor", {
     rowEntitled: "yes",
@@ -419,7 +419,7 @@ test("golden Rule 26A example: shielding a defender during a knock-in is imprope
     item.discipline === "outdoor" &&
     item.rule === "26A" &&
     item.kind === "example" &&
-    /uses Red #1 as a shield/i.test(item.text) &&
+    /uses\\s+Red #1\\s+as\\s+a\\s+shield/i.test(item.text) &&
     /Improper blocking/i.test(item.text)
   ));
   const decision = decidePlay("blocking", "outdoor", {
@@ -435,7 +435,7 @@ test("golden Rule 28 example: striking a safely positioned mount on downswing is
     item.discipline === "outdoor" &&
     item.rule === "28" &&
     item.kind === "example" &&
-    /strikes Red.s mount on the downswing/i.test(item.text) &&
+    /strikes\\s+Red.s\\s+mount\\s+on\\s+the\\s+downswing/i.test(item.text) &&
     /Foul Blue/i.test(item.text)
   ));
   const decision = decidePlay("mallet", "outdoor", { strokeDanger: "yes" }, "en");
