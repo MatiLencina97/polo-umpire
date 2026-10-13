@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { classify } from "../lib/engine";
 import { decidePlay } from "../lib/play-decision";
-import { parseRuleProvisions, bestProvisionsForRules } from "../lib/subarticles";
+import { parseRuleProvisions, bestProvisionsForRules, resolveProvisions } from "../lib/subarticles";
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
 import { matchProgress } from "../lib/match-flow";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
 import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
 import { appendTranscript, speechLocale } from "../lib/voice";
+import { extractOfficialGuidance, officialGuidanceMetrics } from "../lib/official-guidance";
+import { auditPlayDecision } from "../lib/decision-audit";
+import { questions } from "../lib/engine";
 import type { ExternalResourceDb, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
@@ -76,13 +79,16 @@ test("Dangerous Riding continues when horse stayed balanced", () => {
   assert.equal(progress.currentKey, "speedAngle");
 });
 
-test("Dangerous Riding with all primary factors negative does not establish foul", () => {
-  const decision = decidePlay("dangerous", "outdoor", {
+test("Dangerous Riding with primary factors negative remains Umpire judgment", () => {
+  const answers = {
     balance: "no",
     speedAngle: "no",
     blind: "no",
-  }, "en");
-  assert.equal(decision.status, "no-foul");
+  } as const;
+  const decision = decidePlay("dangerous", "outdoor", answers, "en");
+  const audit = auditPlayDecision("dangerous", "outdoor", answers, decision);
+  assert.equal(decision.status, "needs-info");
+  assert.equal(audit.level, "umpire-judgment");
   assert.ok(decision.references.includes("26.a"));
 });
 
@@ -348,6 +354,154 @@ test("voice transcript fills an empty query cleanly", () => {
 test("voice dictation language follows the app language", () => {
   assert.equal(speechLocale("en"), "en-US");
   assert.equal(speechLocale("es"), "es-AR");
+});
+
+
+test("official guidance index covers every Interpretation/Example marker in the installed Rulebook", () => {
+  const metrics = officialGuidanceMetrics(db);
+  assert.equal(metrics.total, 118);
+  assert.equal(metrics.examples, 63);
+  assert.equal(metrics.interpretations, 55);
+  assert.equal(metrics.rulesWithGuidance, 34);
+});
+
+test("golden Rule 24 example: safe entry after checking supports no crossing foul", () => {
+  const guidance = extractOfficialGuidance(db);
+  assert.ok(guidance.some((item) =>
+    item.discipline === "outdoor" &&
+    item.rule === "24" &&
+    item.kind === "example" &&
+    /No foul on Red #3 because Blue #2, by checking, took the danger out of the play/i.test(item.text)
+  ));
+  const decision = decidePlay("row", "outdoor", {
+    rowEntitled: "yes",
+    risk: "no",
+    lineChanged: "no",
+  }, "en");
+  assert.equal(decision.status, "no-foul");
+});
+
+test("golden Rule 24 example: line change without safe clearance remains a foul branch", () => {
+  const guidance = extractOfficialGuidance(db);
+  assert.ok(guidance.some((item) =>
+    item.discipline === "outdoor" &&
+    item.rule === "24" &&
+    item.kind === "example" &&
+    /Red taps the ball sharply to the right/i.test(item.text) &&
+    /risk of collision or danger/i.test(item.text)
+  ));
+  const decision = decidePlay("row", "outdoor", {
+    rowEntitled: "yes",
+    risk: "yes",
+    lineChanged: "yes",
+    clearanceTime: "no",
+  }, "en");
+  assert.equal(decision.status, "foul");
+  assert.ok(decision.references.includes("24.d"));
+});
+
+test("golden Rule 26 example: staggered mount supports Dangerous Riding foul", () => {
+  const guidance = extractOfficialGuidance(db);
+  assert.ok(guidance.some((item) =>
+    item.discipline === "outdoor" &&
+    item.rule === "26" &&
+    item.kind === "example" &&
+    /mount is staggered from the force of contact/i.test(item.text) &&
+    /Foul Red/i.test(item.text)
+  ));
+  const decision = decidePlay("dangerous", "outdoor", { balance: "yes" }, "en");
+  assert.equal(decision.status, "foul");
+});
+
+test("golden Rule 26A example: shielding a defender during a knock-in is improper blocking", () => {
+  const guidance = extractOfficialGuidance(db);
+  assert.ok(guidance.some((item) =>
+    item.discipline === "outdoor" &&
+    item.rule === "26A" &&
+    item.kind === "example" &&
+    /uses Red #1 as a shield/i.test(item.text) &&
+    /Improper blocking/i.test(item.text)
+  ));
+  const decision = decidePlay("blocking", "outdoor", {
+    restartBlock: "yes",
+    marking: "yes",
+  }, "en");
+  assert.equal(decision.status, "foul");
+});
+
+test("golden Rule 28 example: striking a safely positioned mount on downswing is a foul", () => {
+  const guidance = extractOfficialGuidance(db);
+  assert.ok(guidance.some((item) =>
+    item.discipline === "outdoor" &&
+    item.rule === "28" &&
+    item.kind === "example" &&
+    /strikes Red.s mount on the downswing/i.test(item.text) &&
+    /Foul Blue/i.test(item.text)
+  ));
+  const decision = decidePlay("mallet", "outdoor", { strokeDanger: "yes" }, "en");
+  assert.equal(decision.status, "foul");
+});
+
+test("Rule 35 penalty selection is never converted into a fixed automatic penalty by the play engine", () => {
+  const decision = decidePlay("row", "outdoor", {
+    rowEntitled: "yes",
+    risk: "yes",
+    lineChanged: "no",
+  }, "en");
+  assert.equal(decision.status, "foul");
+  assert.ok(decision.references.includes("35.b"));
+  assert.ok(decision.penalty.some((item) => /discretion|discrecional/i.test(item)));
+});
+
+test("decision audit marks ROW calls as Umpire judgment until ROW entitlement is fully derived", () => {
+  const answers = { rowEntitled: "yes", risk: "yes", lineChanged: "no" } as const;
+  const decision = decidePlay("row", "outdoor", answers, "en");
+  const audit = auditPlayDecision("row", "outdoor", answers, decision);
+  assert.equal(audit.level, "umpire-judgment");
+});
+
+test("decision audit marks knocked-off-balance Dangerous Riding as directly rule-supported", () => {
+  const answers = { balance: "yes" } as const;
+  const decision = decidePlay("dangerous", "outdoor", answers, "en");
+  const audit = auditPlayDecision("dangerous", "outdoor", answers, decision);
+  assert.equal(audit.level, "direct-rule-support");
+  assert.match(audit.scopeEn, /aggressor/i);
+});
+
+test("every Outdoor quick-decision truth-table combination returns a valid audited result with resolvable references", () => {
+  const topics = ["row","dangerous","blocking","mallet","conduct","restart"] as const;
+
+  function combinations(options: string[][], index = 0, current: string[] = [], output: string[][] = []) {
+    if (index === options.length) {
+      output.push([...current]);
+      return output;
+    }
+    for (const value of options[index]) {
+      current.push(value);
+      combinations(options, index + 1, current, output);
+      current.pop();
+    }
+    return output;
+  }
+
+  let evaluated = 0;
+  for (const topic of topics) {
+    const defs = questions[topic];
+    const optionSets = defs.map((question) => question.options.map(([value]) => value));
+    for (const values of combinations(optionSets)) {
+      const answers: Record<string,string> = {};
+      defs.forEach((question,index) => { answers[question.key] = values[index]; });
+      const decision = decidePlay(topic, "outdoor", answers, "en");
+      const audit = auditPlayDecision(topic, "outdoor", answers, decision);
+      assert.ok(["foul","no-foul","needs-info","procedure"].includes(decision.status));
+      assert.ok(["direct-rule-support","umpire-judgment","insufficient-coverage"].includes(audit.level));
+      for (const ref of decision.references) {
+        assert.ok(resolveProvisions(db, "outdoor", [ref]).length > 0, "Unresolved ref " + ref + " for " + topic);
+      }
+      evaluated += 1;
+    }
+  }
+  assert.ok(evaluated >= 700);
 });
 
 let passed = 0;
