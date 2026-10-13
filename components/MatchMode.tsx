@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react";
 import { classify, questions } from "@/lib/engine";
 import { decidePlay } from "@/lib/play-decision";
-import { resolveProvisions } from "@/lib/subarticles";
+import { getProvision, resolveProvisions } from "@/lib/subarticles";
 import { matchProgress } from "@/lib/match-flow";
 import { externalMatchesForLabels, externalPageLabel } from "@/lib/external-resources";
 import { saveCaseRecord } from "@/lib/case-history";
 import { auditLevelLabel, auditPlayDecision } from "@/lib/decision-audit";
 import { playDecisionRuleTrail } from "@/lib/decision-links";
 import DecisionRuleTrail from "@/components/DecisionRuleTrail";
+import RowEntitlementHelper from "@/components/RowEntitlementHelper";
 import VoiceInputButton from "@/components/VoiceInputButton";
 import type { ChoiceValue, Discipline, ExternalResource, ExternalResourceDb, ExternalSection, Language, Rule, RuleDb, TopicId } from "@/lib/types";
 import type { RuleProvision } from "@/lib/subarticles";
@@ -300,6 +301,20 @@ export default function MatchMode({
                 <span>{topic ? topicNames[topic][language] : ""}</span>
               </div>
               <h3>{labelForQuestion(currentQuestion.key, currentQuestion.label, language)}</h3>
+              {topic === "row" && currentQuestion.key === "rowEntitled" ? (
+                <RowEntitlementHelper
+                  language={language}
+                  resolveProvision={(ref) => getProvision(db, discipline, ref)}
+                  onOpenProvision={onOpenProvision}
+                  onApply={(hasRow) => answer("rowEntitled", hasRow ? "yes" : "no")}
+                />
+              ) : null}
+              {topic === "row" && currentQuestion.key === "rowEntitled" ? (
+                <p className="matchDirectAnswerHint">{tr(
+                  "Or, if the Umpire has already established the ROW from the play, answer directly:",
+                  "O, si el Umpire ya estableció el ROW a partir de la jugada, respondé directamente:",
+                )}</p>
+              ) : null}
               <div className="matchAnswers">
                 {currentQuestion.options.map(([value, label]) => (
                   <button key={value} onClick={() => answer(currentQuestion.key, value)}>
