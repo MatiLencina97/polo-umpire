@@ -1,4 +1,4 @@
-# Polo Umpire Assistant v0.23
+# Polo Umpire Assistant v0.26
 
 Offline-first PWA for polo umpires under the Polo Umpire Assistant brand, built with Next.js + TypeScript and a local dataset extracted from the current USPA Rulebook.
 
@@ -19,7 +19,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`, wait for **OFFLINE READY**, then test with airplane mode / network disabled.
+Open `http://localhost:3000`. **OFFLINE READY** is shown only after the Rulebook, app shell and runtime assets required by the current build have been cached and verified. Then test with airplane mode / network disabled.
 
 ## Production build
 
@@ -27,7 +27,7 @@ Open `http://localhost:3000`, wait for **OFFLINE READY**, then test with airplan
 npm run build
 ```
 
-`next.config.ts` uses `output: "export"`, so the app can be served statically and deployed to Vercel.
+The production build uses the Next.js App Router and can be deployed to Vercel. Critical ruling logic and Rulebook data remain local/offline; the optional feedback endpoint requires the Next.js server runtime when feedback delivery is enabled.
 
 ## Rulebook data
 
@@ -59,19 +59,19 @@ For safety, production should eventually add an admin approval step before activ
 
 ## Architecture
 
-- Next.js 16 / React 19 / TypeScript
-- Static export
-- Service Worker (`public/sw.js`)
+- Next.js 16.3.8 / React 19 / TypeScript
+- App Router with an optional feedback API route
+- Service Worker (`public/sw.js`) with verified runtime-asset readiness
 - Local JSON ruleset
-- No backend required for critical use
+- No network/backend dependency for critical ruling use
 
-Planned next layers:
+Current next layers:
 
-1. More granular sub-rule decision trees (`24.c`, `26.a`, etc.)
-2. Local query/history storage in IndexedDB
-3. Optional cloud sync
-4. Optional AI interpretation when connected
-5. Admin change-review screen for new Rulebook versions
+1. Persistent anonymous feedback analytics and review dashboard
+2. Deeper Arena deterministic coverage
+3. More official golden examples for every deterministic branch
+4. Optional AI interpretation when connected, without replacing local rule citations
+5. Admin change-review screen for materially changed Rulebook versions
 
 
 ## Situation rules
@@ -88,3 +88,12 @@ If the question gives the tournament upper limit and outgoing player handicap bu
 ## Validation
 
 Decision confidence is reported as **Direct Rule Support**, **Umpire Judgment**, or **Insufficient Validated Coverage** rather than as an invented percentage. See [docs/VALIDATION.md](docs/VALIDATION.md) for the audit methodology, known limits, official-guidance coverage, and human-review policy.
+
+
+## v0.26 reliability hardening
+
+- Dependencies are locked with `package-lock.json`; CI uses `npm ci`.
+- Next.js is pinned to the patched 16.3.8 release.
+- CI syntax-checks the service worker in addition to the rule regression suite and production build.
+- Offline readiness is persisted only after the exact same-origin runtime assets observed by the installed build are cached successfully.
+- Match Mode stops asking questions when later answers cannot change the current ruling class or validation state.
