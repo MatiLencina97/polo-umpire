@@ -14,7 +14,7 @@ type Props = {
   language: Language;
   resolveProvision: (ref: string) => RuleProvision | null;
   onOpenProvision: (provision: RuleProvision) => void;
-  onApply?: (hasRow: boolean) => void;
+  onApply?: (hasRow: boolean, refs: string[]) => void;
 };
 
 export default function RowEntitlementHelper({ language, resolveProvision, onOpenProvision, onApply }: Props) {
@@ -127,10 +127,10 @@ export default function RowEntitlementHelper({ language, resolveProvision, onOpe
           })}
         </div>
         {onApply && result.status === "affected-has-row" ? (
-          <button className="rowApply" onClick={() => onApply(true)}>{tr("Use: affected player HAS ROW", "Usar: el afectado TIENE ROW")}</button>
+          <button className="rowApply" onClick={() => onApply(true, result.refs)}>{tr("Use: affected player HAS ROW", "Usar: el afectado TIENE ROW")}</button>
         ) : null}
         {onApply && result.status === "affected-no-row" ? (
-          <button className="rowApply" onClick={() => onApply(false)}>{tr("Use: affected player does NOT have ROW", "Usar: el afectado NO TIENE ROW")}</button>
+          <button className="rowApply" onClick={() => onApply(false, result.refs)}>{tr("Use: affected player does NOT have ROW", "Usar: el afectado NO TIENE ROW")}</button>
         ) : null}
       </div>
     </section>
