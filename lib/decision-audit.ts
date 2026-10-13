@@ -72,12 +72,21 @@ export function auditPlayDecision(
   }
 
   if (topic === "row") {
+    if (answers.rowEntitlementDerived) {
+      return {
+        level: "direct-rule-support",
+        reasonEn: "ROW entitlement was derived through a modeled Rule 24(e)-(h) physical-fact branch, and the crossing/line-change conclusion is tied to the cited Rule 24 provisions.",
+        reasonEs: "La titularidad del ROW fue derivada mediante una rama modelada de hechos físicos de Rule 24(e)-(h), y la conclusión sobre cruce/cambio de línea está ligada a las disposiciones citadas de Rule 24.",
+        scopeEn: "Direct Rule Support means the logic is explicit if the physical facts entered by the Umpire are accurate. Observation of those facts and the final call remain with the Umpire.",
+        scopeEs: "Apoyo Directo de Regla significa que la lógica es expresa si los hechos físicos cargados por el Umpire son correctos. La observación de esos hechos y la decisión final siguen siendo del Umpire.",
+      };
+    }
     return {
       level: "umpire-judgment",
-      reasonEn: "The Rule 24 application is directly supported, but the current model still accepts ROW entitlement as an Umpire-established fact rather than deriving every entitlement path in Rule 24(e)-(h).",
-      reasonEs: "La aplicación de Rule 24 tiene apoyo directo, pero el modelo actual todavía recibe la titularidad del ROW como un hecho establecido por el Umpire en vez de derivar todas las vías de Rule 24(e)-(h).",
-      scopeEn: "The ruling is reliable only if the entered ROW entitlement and observed risk facts are correct.",
-      scopeEs: "La decisión es confiable sólo si la titularidad de ROW cargada y los hechos de riesgo observados son correctos.",
+      reasonEn: "The Rule 24 application is directly supported, but ROW entitlement was entered as an Umpire-established fact rather than derived through the Rule 24(e)-(h) helper.",
+      reasonEs: "La aplicación de Rule 24 tiene apoyo directo, pero la titularidad del ROW fue cargada como un hecho establecido por el Umpire en vez de derivarse mediante el asistente de Rule 24(e)-(h).",
+      scopeEn: "Use the Rule 24 entitlement helper when possible. Otherwise the ruling is reliable only if the entered ROW entitlement and observed risk facts are correct.",
+      scopeEs: "Usá el asistente de titularidad de Rule 24 cuando sea posible. De lo contrario, la decisión es confiable sólo si la titularidad de ROW cargada y los hechos de riesgo observados son correctos.",
     };
   }
 
