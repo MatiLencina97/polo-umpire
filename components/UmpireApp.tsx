@@ -52,6 +52,7 @@ import RowEntitlementHelper from "@/components/RowEntitlementHelper";
 import CaseHistoryPanel from "@/components/CaseHistoryPanel";
 import VoiceInputButton from "@/components/VoiceInputButton";
 import HowItWorksPanel from "@/components/HowItWorksPanel";
+import OfflineStatusPanel from "@/components/OfflineStatusPanel";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import {
   bestProvisionsForRules,
@@ -81,9 +82,11 @@ import type {
   TopicId,
 } from "@/lib/types";
 
-type Tab = "resolver" | "buscar" | "reglamento" | "como" | "historial" | "estado";
+type Tab = "resolver" | "buscar" | "reglamento" | "historial";
+type InfoWindow = "how" | "offline" | null;
 type SearchFilter = "all" | Discipline;
 type FontSizePreference = "small" | "normal" | "large";
+type ThemePreference = "light" | "dark";
 type ResolverExperience = "analysis" | "match";
 
 const quickPlays: Record<Language, string[]> = {
@@ -244,6 +247,8 @@ export default function UmpireApp() {
   const [resolverExperience, setResolverExperience] = useState<ResolverExperience>("analysis");
   const [savedAnalysisFingerprint, setSavedAnalysisFingerprint] = useState("");
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
+  const [infoWindow, setInfoWindow] = useState<InfoWindow>(null);
+  const [theme, setTheme] = useState<ThemePreference>("light");
 
   const tr = (en: string, es: string) => language === "en" ? en : es;
   const optionLabel = (value: string, fallback: string) => {
@@ -357,6 +362,9 @@ export default function UmpireApp() {
       setFontSize(savedFontSize);
     }
 
+    const savedTheme = localStorage.getItem("polo-umpire-theme");
+    if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
+
     const savedExperience = localStorage.getItem("umpire-polo-resolver-experience");
     if (savedExperience === "analysis" || savedExperience === "match") setResolverExperience(savedExperience);
 
@@ -374,18 +382,25 @@ export default function UmpireApp() {
   }, []);
 
   useEffect(() => {
-    if (!sideMenuOpen) return;
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    if (!sideMenuOpen && !infoWindow) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSideMenuOpen(false);
+      if (event.key !== "Escape") return;
+      if (infoWindow) setInfoWindow(null);
+      else setSideMenuOpen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [sideMenuOpen]);
+  }, [sideMenuOpen, infoWindow]);
 
   function changeLanguage(next: Language) {
     setLanguage(next);
@@ -395,6 +410,11 @@ export default function UmpireApp() {
   function changeFontSize(next: FontSizePreference) {
     setFontSize(next);
     localStorage.setItem("polo-umpire-font-size", next);
+  }
+
+  function changeTheme(next: ThemePreference) {
+    setTheme(next);
+    localStorage.setItem("polo-umpire-theme", next);
   }
 
   function changeResolverExperience(next: ResolverExperience) {
@@ -844,10 +864,9 @@ export default function UmpireApp() {
     setTimeout(() => document.getElementById("follow-up")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 20);
   }
 
-  function openSideSection(next: Tab) {
-    setTab(next);
+  function openInfoWindow(next: Exclude<InfoWindow, null>) {
     setSideMenuOpen(false);
-    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 20);
+    setInfoWindow(next);
   }
 
   async function checkUpdates() {
@@ -933,7 +952,7 @@ export default function UmpireApp() {
             </div>
 
             <div className="sideMenuNav">
-              <button className={tab === "como" ? "active" : ""} onClick={() => openSideSection("como")}>
+              <button className={infoWindow === "how" ? "active" : ""} onClick={() => openInfoWindow("how")}>
                 <span className="sideMenuIcon" aria-hidden="true">?</span>
                 <span>
                   <b>{tr("How it works", "Cómo funciona")}</b>
@@ -941,7 +960,7 @@ export default function UmpireApp() {
                 </span>
                 <strong>›</strong>
               </button>
-              <button className={tab === "estado" ? "active" : ""} onClick={() => openSideSection("estado")}>
+              <button className={infoWindow === "offline" ? "active" : ""} onClick={() => openInfoWindow("offline")}>
                 <span className={"sideMenuIcon status " + (offlineReady ? "ready" : "warming")} aria-hidden="true">●</span>
                 <span>
                   <b>{tr("Offline & validation status", "Offline y estado de validación")}</b>
@@ -973,6 +992,17 @@ export default function UmpireApp() {
                 <button className={fontSize === "small" ? "active" : ""} onClick={() => changeFontSize("small")}>A−</button>
                 <button className={fontSize === "normal" ? "active" : ""} onClick={() => changeFontSize("normal")}>A</button>
                 <button className={fontSize === "large" ? "active" : ""} onClick={() => changeFontSize("large")}>A+</button>
+              </div>
+            </div>
+
+            <div className="sideMenuSetting">
+              <div className="sideMenuSettingTitle">
+                <span>{tr("Appearance", "Apariencia")}</span>
+                <small>{theme === "dark" ? tr("Dark", "Oscuro") : tr("Light", "Claro")}</small>
+              </div>
+              <div className="sideMenuSegmented" role="group" aria-label={tr("Appearance", "Apariencia")}>
+                <button className={theme === "light" ? "active" : ""} onClick={() => changeTheme("light")}>☀ {tr("Light", "Claro")}</button>
+                <button className={theme === "dark" ? "active" : ""} onClick={() => changeTheme("dark")}>☾ {tr("Dark", "Oscuro")}</button>
               </div>
             </div>
 
@@ -1671,20 +1701,6 @@ export default function UmpireApp() {
         </section>
       )}
 
-      {tab === "como" && db && (
-        <section className="view">
-          <HowItWorksPanel
-            language={language}
-            db={db}
-            externalDb={externalDb}
-            rulebookVersion={manifest?.activeVersion ?? "2026"}
-            metrics={guidanceMetrics}
-            onOpenProvision={setSelectedProvision}
-            onOpenExternal={(resource, section) => openExternal(resource, section)}
-          />
-        </section>
-      )}
-
       {tab === "historial" && (
         <section className="view">
           <CaseHistoryPanel
@@ -1695,51 +1711,62 @@ export default function UmpireApp() {
         </section>
       )}
 
-      {tab === "estado" && (
-        <section className="view">
-          <div className="card offlineCard">
-            <p className="eyebrow">{tr("DEVICE STATUS", "ESTADO DEL DISPOSITIVO")}</p>
-            <h2>{offlineReady ? tr("Ready to umpire without signal", "Listo para arbitrar sin señal") : tr("Preparing offline copy", "Preparando copia offline")}</h2>
-            <div className="statusRows">
-              <div><span>{tr("Application", "Aplicación")}</span><strong>{offlineReady ? tr("✓ Cached", "✓ Cacheada") : tr("Preparing", "Preparando")}</strong></div>
-              <div><span>Rulebook</span><strong>{manifest?.activeVersion ?? "2026"}</strong></div>
-              <div><span>Outdoor Rules</span><strong>{manifest ? `✓ ${manifest.counts.outdoor}` : "…"}</strong></div>
-              <div><span>Arena Rules</span><strong>{manifest ? `✓ ${manifest.counts.arena}` : "…"}</strong></div>
-              <div><span>Umpire Guide</span><strong>{manifest ? `✓ ${manifest.counts.umpireGuidePages} págs.` : "…"}</strong></div>
-              <div><span>{tr("Governing sources", "Fuentes de control")}</span><strong>{manifest?.counts.resourceSections ? `✓ ${manifest.counts.resources ?? 0} / ${manifest.counts.resourceSections} sections` : "…"}</strong></div>
-              <div><span>{tr("Current connection", "Conexión actual")}</span><strong>{networkOnline ? "Online" : "Offline"}</strong></div>
-            </div>
-            <div className="validationAuditCard">
-              <p className="eyebrow">{tr("VALIDATION & AUDIT", "VALIDACIÓN Y AUDITORÍA")}</p>
-              <h3>{tr("What the app has actually verified", "Qué verificó realmente la app")}</h3>
-              <div className="validationMetricGrid">
-                <div><strong>{guidanceMetrics?.total ?? "…"}</strong><span>{tr("official Interpretation/Example blocks indexed", "bloques oficiales de Interpretation/Example indexados")}</span></div>
-                <div><strong>{guidanceMetrics?.examples ?? "…"}</strong><span>{tr("official Examples", "Examples oficiales")}</span></div>
-                <div><strong>{guidanceMetrics?.interpretations ?? "…"}</strong><span>{tr("official Interpretations", "Interpretations oficiales")}</span></div>
-                <div><strong>{guidanceMetrics?.rulesWithGuidance ?? "…"}</strong><span>{tr("rules with official guidance", "reglas con guía oficial")}</span></div>
+      {infoWindow === "how" && db ? (
+        <div className="infoWindowBackdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setInfoWindow(null);
+        }}>
+          <section className="infoWindowPanel" role="dialog" aria-modal="true" aria-label={tr("How it works", "Cómo funciona")}>
+            <header className="infoWindowHeader">
+              <div>
+                <p className="eyebrow">{tr("REFERENCE WINDOW", "VENTANA DE CONSULTA")}</p>
+                <h2>{tr("How it works", "Cómo funciona")}</h2>
               </div>
-              <div className="validationLegend">
-                <div><b className="direct-rule-support">{tr("DIRECT RULE SUPPORT", "APOYO DIRECTO DE REGLA")}</b><span>{tr("The modeled branch follows an explicit provision when the entered facts are correct.", "La rama modelada sigue una disposición expresa si los hechos cargados son correctos.")}</span></div>
-                <div><b className="umpire-judgment">{tr("UMPIRE JUDGMENT", "JUICIO DEL UMPIRE")}</b><span>{tr("The Rulebook requires observation or discretion that software should not replace.", "El Rulebook exige observación o discreción que el software no debe reemplazar.")}</span></div>
-                <div><b className="insufficient-coverage">{tr("INSUFFICIENT VALIDATED COVERAGE", "COBERTURA VALIDADA INSUFICIENTE")}</b><span>{tr("The app refuses to close the call and sends the Umpire to the official provisions.", "La app se niega a cerrar la decisión y lleva al Umpire a las disposiciones oficiales.")}</span></div>
+              <button className="infoWindowClose" onClick={() => setInfoWindow(null)} aria-label={tr("Close and return", "Cerrar y volver")}>×</button>
+            </header>
+            <div className="infoWindowScroll">
+              <HowItWorksPanel
+                language={language}
+                db={db}
+                externalDb={externalDb}
+                rulebookVersion={manifest?.activeVersion ?? "2026"}
+                metrics={guidanceMetrics}
+                onOpenProvision={setSelectedProvision}
+                onOpenExternal={(resource, section) => openExternal(resource, section)}
+              />
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {infoWindow === "offline" ? (
+        <div className="infoWindowBackdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setInfoWindow(null);
+        }}>
+          <section className="infoWindowPanel compactInfoWindow" role="dialog" aria-modal="true" aria-label={tr("Offline & validation status", "Offline y estado de validación")}>
+            <header className="infoWindowHeader">
+              <div>
+                <p className="eyebrow">{tr("REFERENCE WINDOW", "VENTANA DE CONSULTA")}</p>
+                <h2>{tr("Offline & validation status", "Offline y estado de validación")}</h2>
               </div>
-              <p className="validationFootnote">{tr(
-                "These are validation categories, not statistical probabilities. A 90% or 99% confidence number would be misleading without a large independently adjudicated benchmark.",
-                "Estas son categorías de validación, no probabilidades estadísticas. Un número de 90% o 99% de certeza sería engañoso sin un benchmark grande e independientemente adjudicado.",
-              )}</p>
+              <button className="infoWindowClose" onClick={() => setInfoWindow(null)} aria-label={tr("Close and return", "Cerrar y volver")}>×</button>
+            </header>
+            <div className="infoWindowScroll">
+              <OfflineStatusPanel
+                language={language}
+                offlineReady={offlineReady}
+                networkOnline={networkOnline}
+                manifest={manifest}
+                metrics={guidanceMetrics}
+                updateStatus={updateStatus}
+                onCheckUpdates={() => void checkUpdates()}
+              />
             </div>
-            <div className="offlineTest">
-              <strong>{tr("Recommended test", "Prueba recomendada")}</strong>
-              <p>{tr("When it says OFFLINE READY, enable airplane mode, close the tab, reopen the app, and resolve a play. The core should not depend on Vercel, Supabase, or an LLM.", "Cuando diga OFFLINE READY, activá modo avión, cerrá la pestaña, volvé a abrir la app y resolvé una jugada. El core no debe depender de Vercel, Supabase ni un LLM.")}</p>
-            </div>
-            <button className="secondaryAction" onClick={() => void checkUpdates()}>{tr("Check published version", "Comprobar versión publicada")}</button>
-            {updateStatus && <p className="updateStatus">{updateStatus}</p>}
-          </div>
-        </section>
-      )}
+          </section>
+        </div>
+      ) : null}
 
       <footer>
-        <span>Polo Umpire Assistant v0.23</span>
+        <span>Polo Umpire Assistant v0.24</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
