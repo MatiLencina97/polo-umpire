@@ -183,18 +183,14 @@ export default function MatchMode({
       ? tr("The call cannot be closed with an unknown decisive fact.", "No se puede cerrar la decisión con un dato decisivo desconocido.")
       : decision.headline;
 
-    const ruleReferences = provisions.map((provision) => {
-      const parent = db.rules.find((item) => item.discipline === discipline && item.rule === provision.rule);
-      const page = parent
-        ? (parent.pageEnd && parent.pageEnd !== parent.pageStart ? parent.pageStart + "–" + parent.pageEnd : String(parent.pageStart))
-        : undefined;
-      return {
-        kind: "rule" as const,
-        label: provision.label,
-        page,
-        excerpt: provision.text.slice(0, 600),
-      };
-    });
+    const ruleReferences = ruleTrail.map(({ provision }) => ({
+      kind: "rule" as const,
+      label: provision.label,
+      page: provision.pageEnd && provision.pageEnd !== provision.pageStart
+        ? provision.pageStart + "–" + provision.pageEnd
+        : String(provision.pageStart),
+      excerpt: provision.text.slice(0, 600),
+    }));
 
     const externalReferences = governingSources.map((item) => ({
       kind: "external" as const,
