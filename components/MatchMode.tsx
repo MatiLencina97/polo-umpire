@@ -7,6 +7,7 @@ import { resolveProvisions } from "@/lib/subarticles";
 import { matchProgress } from "@/lib/match-flow";
 import { externalMatchesForLabels, externalPageLabel } from "@/lib/external-resources";
 import { saveCaseRecord } from "@/lib/case-history";
+import VoiceInputButton from "@/components/VoiceInputButton";
 import type { ChoiceValue, Discipline, ExternalResource, ExternalResourceDb, ExternalSection, Language, Rule, RuleDb, TopicId } from "@/lib/types";
 
 type Props = {
@@ -234,17 +235,20 @@ export default function MatchMode({
 
       {!started ? (
         <div className="matchStartCard">
-          <textarea
-            className="matchSituationInput"
-            value={situation}
-            onChange={(event) => onSituationChange(event.target.value)}
-            rows={5}
-            autoFocus
-            placeholder={tr(
-              "Example: Blue had the line. Red crossed from the left and Blue had to check.",
-              "Ej.: Blue tenía la línea. Red cruzó desde la izquierda y Blue tuvo que frenar.",
-            )}
-          />
+          <div className="voiceTextareaWrap matchVoiceWrap">
+            <textarea
+              className="matchSituationInput"
+              value={situation}
+              onChange={(event) => onSituationChange(event.target.value)}
+              rows={5}
+              autoFocus
+              placeholder={tr(
+                "Example: Blue had the line. Red crossed from the left and Blue had to check.",
+                "Ej.: Blue tenía la línea. Red cruzó desde la izquierda y Blue tuvo que frenar.",
+              )}
+            />
+            <VoiceInputButton value={situation} onChange={onSituationChange} language={language} />
+          </div>
           <button className="matchPrimaryButton" onClick={begin} disabled={!situation.trim()}>
             {tr("START QUICK RULING", "INICIAR DECISIÓN RÁPIDA")}
           </button>
