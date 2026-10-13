@@ -51,6 +51,7 @@ import DecisionRuleTrail from "@/components/DecisionRuleTrail";
 import RowEntitlementHelper from "@/components/RowEntitlementHelper";
 import CaseHistoryPanel from "@/components/CaseHistoryPanel";
 import VoiceInputButton from "@/components/VoiceInputButton";
+import HowItWorksPanel from "@/components/HowItWorksPanel";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import {
   bestProvisionsForRules,
@@ -80,7 +81,7 @@ import type {
   TopicId,
 } from "@/lib/types";
 
-type Tab = "resolver" | "buscar" | "reglamento" | "historial" | "estado";
+type Tab = "resolver" | "buscar" | "reglamento" | "como" | "historial" | "estado";
 type SearchFilter = "all" | Discipline;
 type FontSizePreference = "small" | "normal" | "large";
 type ResolverExperience = "analysis" | "match";
@@ -911,7 +912,7 @@ export default function UmpireApp() {
       </section>
 
       <nav className="tabs" aria-label={tr("Sections", "Secciones")}>
-        {(["resolver", "buscar", "reglamento", "historial", "estado"] as Tab[]).map((item) => (
+        {(["resolver", "buscar", "reglamento", "como", "historial", "estado"] as Tab[]).map((item) => (
           <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>
             {item === "resolver"
               ? tr("Resolve", "Resolver")
@@ -919,9 +920,11 @@ export default function UmpireApp() {
                 ? tr("Search", "Buscar")
                 : item === "reglamento"
                   ? tr("Rulebook", "Reglamento")
-                  : item === "historial"
-                    ? tr("Cases", "Casos")
-                    : "Offline"}
+                  : item === "como"
+                    ? tr("How it works", "Cómo funciona")
+                    : item === "historial"
+                      ? tr("Cases", "Casos")
+                      : "Offline"}
           </button>
         ))}
       </nav>
@@ -1604,6 +1607,20 @@ export default function UmpireApp() {
         </section>
       )}
 
+      {tab === "como" && db && (
+        <section className="view">
+          <HowItWorksPanel
+            language={language}
+            db={db}
+            externalDb={externalDb}
+            rulebookVersion={manifest?.activeVersion ?? "2026"}
+            metrics={guidanceMetrics}
+            onOpenProvision={setSelectedProvision}
+            onOpenExternal={(resource, section) => openExternal(resource, section)}
+          />
+        </section>
+      )}
+
       {tab === "historial" && (
         <section className="view">
           <CaseHistoryPanel
@@ -1658,7 +1675,7 @@ export default function UmpireApp() {
       )}
 
       <footer>
-        <span>Umpire Polo Assistant v0.20</span>
+        <span>Umpire Polo Assistant v0.21</span>
         <span>{tr("Installed source", "Fuente instalada")}: USPA Rulebook {manifest?.activeVersion ?? "2026"}</span>
       </footer>
 
