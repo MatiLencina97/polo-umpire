@@ -984,3 +984,95 @@ textarea,
   .caseCardActions .deleteCaseButton { margin-left:0; grid-column:1/-1; }
   .caseModalActions { grid-template-columns:1fr; }
 }
+
+/* v0.18 · voice dictation */
+.voiceTextareaWrap {
+  position:relative;
+}
+.voiceTextareaWrap textarea {
+  padding-bottom:68px;
+}
+.voiceControl {
+  position:absolute;
+  right:11px;
+  bottom:11px;
+  z-index:2;
+  display:flex;
+  flex-direction:row-reverse;
+  align-items:center;
+  gap:8px;
+}
+.voiceButton {
+  min-height:42px;
+  border:1px solid #d5c6b4;
+  border-radius:999px;
+  padding:8px 12px;
+  background:#f4ede5;
+  color:var(--navy);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-size:calc(11px * var(--font-scale));
+  font-weight:950;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(8,39,68,.10);
+}
+.voiceButton span {
+  display:grid;
+  place-items:center;
+  min-width:18px;
+  font-size:16px;
+  line-height:1;
+}
+.voiceButton.listening {
+  background:#fff1f3;
+  color:var(--red);
+  border-color:#dba1aa;
+  box-shadow:0 0 0 4px rgba(185,31,50,.09);
+  animation:voicePulse 1.25s ease-in-out infinite;
+}
+.voiceMessage {
+  max-width:230px;
+  padding:7px 9px;
+  border:1px solid #e0d6ca;
+  border-radius:9px;
+  background:#fffdf9;
+  color:#655d55;
+  font-size:calc(9px * var(--font-scale));
+  line-height:1.35;
+  box-shadow:0 5px 18px rgba(0,0,0,.08);
+}
+.voiceControl.compact .voiceButton {
+  width:42px;
+  height:42px;
+  padding:0;
+}
+.compactVoiceWrap textarea { padding-bottom:60px; }
+.matchVoiceWrap .voiceButton {
+  background:#0d315f;
+  border-color:#b7a58e;
+  color:white;
+  box-shadow:none;
+}
+.matchVoiceWrap .voiceButton.listening {
+  background:#7d2635;
+  border-color:#e1a7b0;
+  color:white;
+}
+.matchVoiceWrap .voiceMessage {
+  background:#fffdf9;
+  color:#655d55;
+}
+@keyframes voicePulse {
+  0%,100% { transform:scale(1); }
+  50% { transform:scale(1.035); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .voiceButton.listening { animation:none; }
+}
+@media (max-width:720px) {
+  .voiceTextareaWrap textarea { padding-bottom:72px; }
+  .voiceButton { min-height:46px; padding:9px 13px; }
+  .voiceMessage { max-width:180px; }
+}
