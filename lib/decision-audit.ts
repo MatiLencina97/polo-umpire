@@ -33,16 +33,35 @@ export function auditPlayDecision(
     };
   }
 
-  if (hasUnknownRelevantFact(topic, answers) || decision.status === "needs-info") {
-    if (topic === "dangerous" && (answers.balance === "yes" || answers.speedAngle === "yes" || answers.blind === "yes")) {
+  if (topic === "dangerous") {
+    if (hasUnknownRelevantFact(topic, answers)) {
       return {
-        level: "umpire-judgment",
-        reasonEn: "Rule 26 supplies relevant danger factors, but the Rulebook leaves the overall dangerous ride-off judgment to the Umpire except for specific strong indicators such as a mount being knocked off balance.",
-        reasonEs: "Rule 26 aporta factores relevantes de peligro, pero el Rulebook deja la valoración general del dangerous ride-off al Umpire salvo indicadores fuertes específicos como que un caballo pierda el equilibrio.",
-        scopeEn: "The app identifies the controlling rule and factors; the Umpire evaluates the observed contact and aggressor.",
-        scopeEs: "La app identifica la regla y los factores de control; el Umpire evalúa el contacto observado y al agresor.",
+        level: "insufficient-coverage",
+        reasonEn: "One or more decisive Dangerous Riding facts are still unknown.",
+        reasonEs: "Uno o más hechos decisivos de Dangerous Riding todavía son desconocidos.",
+        scopeEn: "Do not close the call until the Umpire has evaluated the missing observed facts.",
+        scopeEs: "No cierres la decisión hasta que el Umpire haya evaluado los hechos observados faltantes.",
       };
     }
+    if (answers.balance === "yes" && decision.status === "foul") {
+      return {
+        level: "direct-rule-support",
+        reasonEn: "Rule 26 states that when a mount is knocked off balance, a dangerous ride-off has occurred.",
+        reasonEs: "Rule 26 establece que cuando un caballo pierde el equilibrio ha ocurrido un dangerous ride-off.",
+        scopeEn: "Identifying the aggressor and selecting the penalty still require Umpire judgment.",
+        scopeEs: "Identificar al agresor y seleccionar la penalidad todavía requieren juicio del Umpire.",
+      };
+    }
+    return {
+      level: "umpire-judgment",
+      reasonEn: "Rule 26 lists non-exhaustive factors and expressly requires judgment of the total circumstances.",
+      reasonEs: "Rule 26 enumera factores no exhaustivos y exige valorar el conjunto de circunstancias.",
+      scopeEn: "The app may identify indicators, but it should not convert their absence into a definitive no-foul.",
+      scopeEs: "La app puede identificar indicadores, pero no debe convertir su ausencia en un no-foul definitivo.",
+    };
+  }
+
+  if (hasUnknownRelevantFact(topic, answers) || decision.status === "needs-info") {
     return {
       level: "insufficient-coverage",
       reasonEn: "One or more decisive facts are missing, unknown, or outside the currently validated decision model.",
@@ -59,25 +78,6 @@ export function auditPlayDecision(
       reasonEs: "La aplicación de Rule 24 tiene apoyo directo, pero el modelo actual todavía recibe la titularidad del ROW como un hecho establecido por el Umpire en vez de derivar todas las vías de Rule 24(e)-(h).",
       scopeEn: "The ruling is reliable only if the entered ROW entitlement and observed risk facts are correct.",
       scopeEs: "La decisión es confiable sólo si la titularidad de ROW cargada y los hechos de riesgo observados son correctos.",
-    };
-  }
-
-  if (topic === "dangerous") {
-    if (answers.balance === "yes" && decision.status === "foul") {
-      return {
-        level: "direct-rule-support",
-        reasonEn: "Rule 26 states that when a mount is knocked off balance, a dangerous ride-off has occurred.",
-        reasonEs: "Rule 26 establece que cuando un caballo pierde el equilibrio ha ocurrido un dangerous ride-off.",
-        scopeEn: "Identifying the aggressor and selecting the penalty still require Umpire judgment.",
-        scopeEs: "Identificar al agresor y seleccionar la penalidad todavía requieren juicio del Umpire.",
-      };
-    }
-    return {
-      level: "umpire-judgment",
-      reasonEn: "Rule 26 lists non-exhaustive factors and expressly requires judgment of the total circumstances.",
-      reasonEs: "Rule 26 enumera factores no exhaustivos y exige valorar el conjunto de circunstancias.",
-      scopeEn: "The app may identify indicators, but it should not convert their absence into a definitive no-foul.",
-      scopeEs: "La app puede identificar indicadores, pero no debe convertir su ausencia en un no-foul definitivo.",
     };
   }
 
