@@ -12,6 +12,7 @@ import { playDecisionRuleTrail } from "@/lib/decision-links";
 import DecisionRuleTrail from "@/components/DecisionRuleTrail";
 import RowEntitlementHelper from "@/components/RowEntitlementHelper";
 import VoiceInputButton from "@/components/VoiceInputButton";
+import DecisionFeedback from "@/components/DecisionFeedback";
 import type { ChoiceValue, Discipline, ExternalResource, ExternalResourceDb, ExternalSection, Language, Rule, RuleDb, TopicId } from "@/lib/types";
 import type { RuleProvision } from "@/lib/subarticles";
 
@@ -396,6 +397,26 @@ export default function MatchMode({
                 </button>
                 <button className="matchNewPlay" onClick={reset}>{tr("New play", "Nueva jugada")}</button>
               </div>
+
+              {topic ? (
+                <DecisionFeedback
+                  language={language}
+                  context={{
+                    source: "match",
+                    discipline,
+                    resolverMode: "play",
+                    topic,
+                    outcomeStatus: displayedStatus ?? decision.status,
+                    validationLevel: decisionAudit?.level ?? null,
+                    headline: hasCriticalUnknown && decision.status !== "needs-info"
+                      ? tr("The call cannot be closed with an unknown decisive fact.", "No se puede cerrar la decisión con un dato decisivo desconocido.")
+                      : decision.headline,
+                    rulebookVersion,
+                    ruleRefs: ruleTrail.map((item) => item.provision.ref),
+                    appVersion: "0.25.0",
+                  }}
+                />
+              ) : null}
 
               {showWhy ? (
                 <div className="matchWhyPanel">
