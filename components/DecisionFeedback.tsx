@@ -84,6 +84,10 @@ export default function DecisionFeedback({ language, context }: Props) {
             "Your feedback helps us identify which rule branches are working well and which ones need more review.",
             "Tu feedback nos ayuda a identificar qué ramas reglamentarias funcionan bien y cuáles necesitan más revisión.",
           )}</p>
+          <small className="feedbackPrivacy">{tr(
+            "Anonymous by default: the original play description, event name and device identifier are not sent.",
+            "Anónimo por defecto: no se envían la descripción original de la jugada, el nombre del evento ni un identificador del dispositivo.",
+          )}</small>
         </div>
         <div className="feedbackPrimaryChoices">
           <button
