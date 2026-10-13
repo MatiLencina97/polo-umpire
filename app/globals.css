@@ -2186,6 +2186,48 @@ html[data-theme="dark"] .auditScopePanel p,
 html[data-theme="dark"] .rowHelperResult p {
   color: #9cabbb;
 }
+
+/* Dark-mode contrast pass for titles, subtitles and audit labels that use the light-theme navy palette. */
+html[data-theme="dark"] .interpretations summary,
+html[data-theme="dark"] .caseContextStrip strong,
+html[data-theme="dark"] .caseSaveBar strong,
+html[data-theme="dark"] .caseHistoryEmpty strong,
+html[data-theme="dark"] .auditScopePanel strong,
+html[data-theme="dark"] .validationAuditCard h3,
+html[data-theme="dark"] .validationMetricGrid strong,
+html[data-theme="dark"] .complexRuleCard p b,
+html[data-theme="dark"] .rowEntitlementHelper label > span,
+html[data-theme="dark"] .howAuthority strong,
+html[data-theme="dark"] .howStep strong,
+html[data-theme="dark"] .howTournamentLink b,
+html[data-theme="dark"] .howTournamentLink > strong {
+  color: #dcecff;
+}
+
+html[data-theme="dark"] .caseContextStrip button,
+html[data-theme="dark"] .externalBackToIndex {
+  color: #a9cbed;
+}
+
+html[data-theme="dark"] .subarticleList p,
+html[data-theme="dark"] .complexRuleCard p,
+html[data-theme="dark"] .provisionOfficialText {
+  color: #aab9c9;
+}
+
+html[data-theme="dark"] .decisionAuditBadge.direct-rule-support b,
+html[data-theme="dark"] .validationLegend b.direct-rule-support {
+  color: #83d6b3;
+}
+html[data-theme="dark"] .decisionAuditBadge.umpire-judgment b,
+html[data-theme="dark"] .validationLegend b.umpire-judgment {
+  color: #dcc3a5;
+}
+html[data-theme="dark"] .decisionAuditBadge.insufficient-coverage b,
+html[data-theme="dark"] .validationLegend b.insufficient-coverage {
+  color: #f0cf78;
+}
+
 html[data-theme="dark"] .infoWindowPanel {
   background: var(--bg);
   border-color: var(--line);
