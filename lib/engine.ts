@@ -53,6 +53,7 @@ export const questions: Record<TopicId, QuestionDefinition[]> = {
   ],
   mallet: [
     { key: "strokeDanger", label: "¿El swing/hook puso en riesgo a otro jugador o caballo?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
+    { key: "strokeEnteredByOpponent", label: "Si hubo peligro: ¿otro jugador entró claramente en un stroke ya establecido y creó ese peligro?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"], ["unknown", "No estoy seguro"]] },
     { key: "hookPosition", label: "¿El hook se hizo desde el mismo lado del caballo rival que la pelota, o directamente desde atrás?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "hookTiming", label: "¿El rival estaba en el acto de pegarle a la pelota o de hookear/golpear el mallet?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "hookClear", label: "¿El mallet quedó libre del caballo rival, por debajo del hombro y sin fuerza excesiva?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
