@@ -45,7 +45,7 @@ export function parseRuleProvisions(rule: Rule): RuleProvision[] {
     pageEnd: rule.pageEnd,
   }];
 
-  const topMatches = [...core.matchAll(/(?:^|\n)([a-z])\.\s/gm)];
+  const topMatches = [...core.matchAll(/(?:^|\n)([a-z])\.\s*/gm)];
   if (topMatches.length) {
     for (let i = 0; i < topMatches.length; i++) {
       const match = topMatches[i];
