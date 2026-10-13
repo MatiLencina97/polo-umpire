@@ -8,8 +8,11 @@ import { matchProgress } from "@/lib/match-flow";
 import { externalMatchesForLabels, externalPageLabel } from "@/lib/external-resources";
 import { saveCaseRecord } from "@/lib/case-history";
 import { auditLevelLabel, auditPlayDecision } from "@/lib/decision-audit";
+import { playDecisionRuleTrail } from "@/lib/decision-links";
+import DecisionRuleTrail from "@/components/DecisionRuleTrail";
 import VoiceInputButton from "@/components/VoiceInputButton";
 import type { ChoiceValue, Discipline, ExternalResource, ExternalResourceDb, ExternalSection, Language, Rule, RuleDb, TopicId } from "@/lib/types";
+import type { RuleProvision } from "@/lib/subarticles";
 
 type Props = {
   language: Language;
@@ -21,6 +24,7 @@ type Props = {
   eventContext?: string;
   rulebookVersion: string;
   onOpenRule: (rule: Rule) => void;
+  onOpenProvision: (provision: RuleProvision) => void;
   onOpenExternal: (resource: ExternalResource, section: ExternalSection | null) => void;
 };
 
@@ -83,6 +87,7 @@ export default function MatchMode({
   eventContext,
   rulebookVersion,
   onOpenRule,
+  onOpenProvision,
   onOpenExternal,
 }: Props) {
   const tr = (en: string, es: string) => language === "en" ? en : es;
@@ -124,6 +129,10 @@ export default function MatchMode({
   };
   const governingSources = topic
     ? externalMatchesForLabels(externalDb, matchExternalLabels[topic], situation + " " + (decision?.summary ?? ""), 3)
+    : [];
+
+  const ruleTrail = topic && decision
+    ? playDecisionRuleTrail({ db, discipline, topic, answers, decision, language })
     : [];
 
   function begin() {
@@ -393,6 +402,14 @@ export default function MatchMode({
                       <p>{language === "en" ? decisionAudit.scopeEn : decisionAudit.scopeEs}</p>
                     </div>
                   ) : null}
+
+                  <DecisionRuleTrail
+                    language={language}
+                    ruleLinks={ruleTrail}
+                    externalLinks={governingSources}
+                    onOpenProvision={onOpenProvision}
+                    onOpenExternal={(resource, section) => onOpenExternal(resource, section)}
+                  />
 
                   <div>
                     <strong>{tr("Official provisions", "Disposiciones oficiales")}</strong>
