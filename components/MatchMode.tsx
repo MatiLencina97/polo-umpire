@@ -6,6 +6,7 @@ import { decidePlay } from "@/lib/play-decision";
 import { resolveProvisions } from "@/lib/subarticles";
 import { matchProgress } from "@/lib/match-flow";
 import { externalMatchesForLabels, externalPageLabel } from "@/lib/external-resources";
+import { saveCaseRecord } from "@/lib/case-history";
 import type { ChoiceValue, Discipline, ExternalResource, ExternalResourceDb, ExternalSection, Language, Rule, RuleDb, TopicId } from "@/lib/types";
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
   situation: string;
   onSituationChange: (value: string) => void;
   eventContext?: string;
+  rulebookVersion: string;
   onOpenRule: (rule: Rule) => void;
   onOpenExternal: (resource: ExternalResource, section: ExternalSection | null) => void;
 };
@@ -76,6 +78,7 @@ export default function MatchMode({
   situation,
   onSituationChange,
   eventContext,
+  rulebookVersion,
   onOpenRule,
   onOpenExternal,
 }: Props) {
@@ -85,6 +88,7 @@ export default function MatchMode({
   const [started, setStarted] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
+  const [savedCaseId, setSavedCaseId] = useState("");
 
   const progress = topic ? matchProgress(topic, answers) : null;
   const activeKeys = progress?.keys ?? [];
@@ -126,6 +130,7 @@ export default function MatchMode({
     setStarted(true);
     setShowWhy(false);
     setShowTopics(false);
+    setSavedCaseId("");
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
   }
 
@@ -135,6 +140,7 @@ export default function MatchMode({
     setStarted(false);
     setShowWhy(false);
     setShowTopics(false);
+    setSavedCaseId("");
     onSituationChange("");
   }
 
@@ -143,11 +149,66 @@ export default function MatchMode({
     setAnswers({});
     setShowWhy(false);
     setShowTopics(false);
+    setSavedCaseId("");
   }
 
   function answer(key: string, value: ChoiceValue) {
     setAnswers((current) => ({ ...current, [key]: value }));
+    setSavedCaseId("");
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+  }
+
+  function saveCurrentCase() {
+    if (!topic || !decision || !complete) return;
+    const status = (displayedStatus ?? decision.status) as "foul" | "no-foul" | "needs-info" | "procedure";
+    const headline = hasCriticalUnknown && decision.status !== "needs-info"
+      ? tr("The call cannot be closed with an unknown decisive fact.", "No se puede cerrar la decisión con un dato decisivo desconocido.")
+      : decision.headline;
+
+    const ruleReferences = provisions.map((provision) => {
+      const parent = db.rules.find((item) => item.discipline === discipline && item.rule === provision.rule);
+      const page = parent
+        ? (parent.pageEnd && parent.pageEnd !== parent.pageStart ? parent.pageStart + "–" + parent.pageEnd : String(parent.pageStart))
+        : undefined;
+      return {
+        kind: "rule" as const,
+        label: provision.label,
+        page,
+        excerpt: provision.text.slice(0, 600),
+      };
+    });
+
+    const externalReferences = governingSources.map((item) => ({
+      kind: "external" as const,
+      label: item.resource.shortTitle + " · " + item.section.title,
+      page: externalPageLabel(item.section),
+      excerpt: item.section.text.slice(0, 600),
+      resourceId: item.resource.id,
+      sectionId: item.section.id,
+    }));
+
+    const record = saveCaseRecord({
+      source: "match",
+      resolverMode: "play",
+      discipline,
+      language,
+      situation,
+      eventContext,
+      rulebookVersion,
+      outcome: {
+        status,
+        headline,
+        summary: decision.summary,
+      },
+      facts: topicQuestions
+        .filter((question) => answers[question.key] !== undefined && answers[question.key] !== "")
+        .map((question) => ({
+          label: labelForQuestion(question.key, question.label, language),
+          value: labelForOption(String(answers[question.key]), String(answers[question.key]), language),
+        })),
+      references: [...ruleReferences, ...externalReferences],
+    });
+    setSavedCaseId(record.id);
   }
 
   return (
@@ -273,6 +334,9 @@ export default function MatchMode({
               <div className="matchVerdictActions">
                 <button className="matchWhyButton" onClick={() => setShowWhy((current) => !current)}>
                   {showWhy ? tr("Hide details", "Ocultar detalle") : tr("Why?", "¿Por qué?")}
+                </button>
+                <button className="matchSaveCase" onClick={saveCurrentCase} disabled={Boolean(savedCaseId)}>
+                  {savedCaseId ? tr("✓ Saved", "✓ Guardado") : tr("Save case", "Guardar caso")}
                 </button>
                 <button className="matchNewPlay" onClick={reset}>{tr("New play", "Nueva jugada")}</button>
               </div>
