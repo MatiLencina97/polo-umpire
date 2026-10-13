@@ -10,6 +10,8 @@ import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/c
 import { appendTranscript, speechLocale } from "../lib/voice";
 import { extractOfficialGuidance, officialGuidanceMetrics } from "../lib/official-guidance";
 import { auditPlayDecision } from "../lib/decision-audit";
+import { defaultRowEntitlementFacts, deriveRowEntitlement } from "../lib/row-entitlement";
+import { playDecisionRuleTrail, substitutionDecisionRuleTrail } from "../lib/decision-links";
 import { questions } from "../lib/engine";
 import type { ExternalResourceDb, RuleDb } from "../lib/types";
 
@@ -511,6 +513,92 @@ test("every Outdoor quick-decision truth-table combination returns a valid audit
     }
   }
   assert.ok(evaluated >= 500);
+});
+
+
+test("Rule 24(f) helper gives ROW to following player when meeting opponent is not exact-line offside", () => {
+  const result = deriveRowEntitlement({
+    ...defaultRowEntitlementFacts,
+    nearSideDanger: "no",
+    relation: "affected-following",
+    meetingExactOffside: "no",
+  });
+  assert.equal(result.status, "affected-has-row");
+  assert.ok(result.refs.includes("24.f"));
+});
+
+test("Rule 24(f) helper gives ROW to exact-line offside meeting player", () => {
+  const result = deriveRowEntitlement({
+    ...defaultRowEntitlementFacts,
+    nearSideDanger: "no",
+    relation: "affected-following",
+    meetingExactOffside: "yes",
+  });
+  assert.equal(result.status, "affected-no-row");
+  assert.ok(result.refs.includes("24.f"));
+});
+
+test("Rule 24(g) helper resolves approximately equal angles by offside", () => {
+  const result = deriveRowEntitlement({
+    ...defaultRowEntitlementFacts,
+    nearSideDanger: "no",
+    relation: "both-follow-or-meet",
+    lesserAngle: "approximately-equal",
+    equalAngleOffside: "affected",
+  });
+  assert.equal(result.status, "affected-has-row");
+  assert.ok(result.refs.includes("24.g"));
+});
+
+test("Rule 24(h) helper gives engaged exact-line pair priority over a single player", () => {
+  const result = deriveRowEntitlement({
+    ...defaultRowEntitlementFacts,
+    nearSideDanger: "no",
+    relation: "affected-pair-vs-single",
+    pairEngagedExactLine: "yes",
+  });
+  assert.equal(result.status, "affected-has-row");
+  assert.ok(result.refs.includes("24.h"));
+});
+
+test("Rule 24(e) near-side restriction takes precedence when no exception applies", () => {
+  const result = deriveRowEntitlement({
+    ...defaultRowEntitlementFacts,
+    nearSideDanger: "yes",
+    nearSideException: "no",
+  });
+  assert.equal(result.status, "restricted");
+  assert.deepEqual(result.refs, ["24.e"]);
+});
+
+test("ROW decision rule trail includes LOB definition, entitlement provisions and applied crossing rule", () => {
+  const answers = { rowEntitled: "yes", risk: "yes", lineChanged: "yes", clearanceTime: "no" } as const;
+  const decision = decidePlay("row", "outdoor", answers, "en");
+  const trail = playDecisionRuleTrail({ db, discipline: "outdoor", topic: "row", answers, decision, language: "en" });
+  const refs = trail.map((item) => item.provision.ref);
+  for (const ref of ["23","24.b","24.c","24.d","24.e","24.f","24.g","24.h"]) {
+    assert.ok(refs.includes(ref), "Missing ROW trail ref " + ref);
+  }
+});
+
+test("substitution decision rule trail turns cross-rule checks into exact clickable provisions", () => {
+  const state = buildSubstitutionCrossRuleState({
+    discipline: "outdoor",
+    handicap: { eventUpper: 8, teamTotalBefore: 8, outgoingHandicap: 5, candidateHandicap: 3 },
+    facts: {
+      ...defaultSubstitutionCrossFacts,
+      candidateCurrentMember: "yes",
+      candidateSuspended: "no",
+      candidatePlayedOtherTeam: "no",
+    },
+    answers: { endPeriod: "yes", penalty7: "no" },
+    language: "en",
+  });
+  const trail = substitutionDecisionRuleTrail({ db, discipline: "outdoor", checks: state.checks, language: "en" });
+  const refs = trail.map((item) => item.provision.ref);
+  assert.ok(refs.includes("3.a"));
+  assert.ok(refs.includes("2.d"));
+  assert.ok(refs.includes("1.f"));
 });
 
 let passed = 0;
