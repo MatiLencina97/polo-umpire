@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { APP_VERSION } from "@/lib/app-version";
-import { classify, questions } from "@/lib/engine";
+import { classifyTopic, questions } from "@/lib/engine";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
 import { matchProgress } from "@/lib/match-flow";
@@ -103,7 +103,12 @@ export default function MatchMode({
 
   const progress = topic ? matchProgress(topic, answers) : null;
   const activeKeys = progress?.keys ?? [];
-  const topicQuestions = topic ? questions[topic].filter((question) => activeKeys.includes(question.key)) : [];
+  const topicQuestions = topic
+    ? activeKeys.flatMap((key) => {
+        const question = questions[topic].find((candidate) => candidate.key === key);
+        return question ? [question] : [];
+      })
+    : [];
   const currentQuestion = progress?.currentKey
     ? topicQuestions.find((question) => question.key === progress.currentKey) ?? null
     : null;
@@ -140,12 +145,12 @@ export default function MatchMode({
 
   function begin() {
     if (!situation.trim()) return;
-    const ranked = classify(situation);
-    setTopic(ranked[0]?.score ? ranked[0].id : "row");
+    const detected = classifyTopic(situation);
+    setTopic(detected.topic);
     setAnswers({});
     setStarted(true);
     setShowWhy(false);
-    setShowTopics(false);
+    setShowTopics(!detected.topic);
     setSavedCaseId("");
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
   }
@@ -282,8 +287,10 @@ export default function MatchMode({
       ) : (
         <>
           <div className="matchTopicBar">
-            <span>{tr("Detected", "Detectado")}: <strong>{topic ? topicNames[topic][language] : "—"}</strong></span>
-            <button onClick={() => setShowTopics((current) => !current)}>{tr("Change", "Cambiar")}</button>
+            <span>{topic
+              ? <>{tr("Detected", "Detectado")}: <strong>{topicNames[topic][language]}</strong></>
+              : <strong>{tr("Choose the closest rule family", "Elegí la familia de reglas más cercana")}</strong>}</span>
+            <button onClick={() => setShowTopics((current) => !current)}>{topic ? tr("Change", "Cambiar") : tr("Choose", "Elegir")}</button>
           </div>
 
           {showTopics ? (
