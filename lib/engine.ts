@@ -38,7 +38,7 @@ export const questions: Record<TopicId, QuestionDefinition[]> = {
     { key: "rowEntitled", label: "¿El jugador afectado tenía realmente el Right of Way en ese momento?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "risk", label: "¿La acción obligó al jugador con el Right of Way a frenar, cambiar dirección o generó riesgo de colisión?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "lineChanged", label: "¿La línea de la pelota había cambiado inmediatamente antes de la acción?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
-    { key: "clearanceTime", label: "Si cambió la línea: ¿el oponente tuvo el tiempo necesario para despejar el nuevo ROW?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"], ["unknown", "No estoy seguro"]] },
+    { key: "clearanceTime", label: "Si cambió la línea: ¿el oponente tuvo el tiempo necesario para despejar el nuevo ROW?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "parallel", label: "¿Los jugadores iban paralelos o casi paralelos al momento relevante?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
   dangerous: [
@@ -53,7 +53,7 @@ export const questions: Record<TopicId, QuestionDefinition[]> = {
   ],
   mallet: [
     { key: "strokeDanger", label: "¿El swing/hook puso en riesgo a otro jugador o caballo?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
-    { key: "strokeEnteredByOpponent", label: "Si hubo peligro: ¿otro jugador entró claramente en un stroke ya establecido y creó ese peligro?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"], ["unknown", "No estoy seguro"]] },
+    { key: "strokeEnteredByOpponent", label: "Si hubo peligro: ¿otro jugador entró claramente en un stroke ya establecido y creó ese peligro?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "hookPosition", label: "¿El hook se hizo desde el mismo lado del caballo rival que la pelota, o directamente desde atrás?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "hookTiming", label: "¿El rival estaba en el acto de pegarle a la pelota o de hookear/golpear el mallet?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "hookClear", label: "¿El mallet quedó libre del caballo rival, por debajo del hombro y sin fuerza excesiva?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
@@ -120,7 +120,7 @@ export function classifyTopic(text: string) {
   const ranked = classify(text);
   const first = ranked[0];
   const second = ranked[1];
-  const ambiguous = Boolean(first && first.score > 0 && second && second.score === first.score);
+  const ambiguous = Boolean(\n    first && first.score > 0 &&\n    second && second.score > 0 &&\n    first.score - second.score <= 1\n  );
   const topic = first && first.score > 0 && !ambiguous ? first.id : null;
   return { topic, ranked, ambiguous };
 }
