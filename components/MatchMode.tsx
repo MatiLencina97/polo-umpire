@@ -5,7 +5,7 @@ import { APP_VERSION } from "@/lib/app-version";
 import { classifyTopic, questions } from "@/lib/engine";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
-import { matchProgress } from "@/lib/match-flow";
+import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "@/lib/match-flow";
 import { externalMatchesForLabels, externalPageLabel } from "@/lib/external-resources";
 import { saveCaseRecord } from "@/lib/case-history";
 import { auditLevelLabel, auditPlayDecision } from "@/lib/decision-audit";
@@ -174,13 +174,18 @@ export default function MatchMode({
   }
 
   function answer(key: string, value: ChoiceValue) {
-    setAnswers((current) => {
-      const next = { ...current, [key]: value };
-      if (key === "rowEntitled") delete next.rowEntitlementDerived;
-      return next;
-    });
+    if (!topic) return;
+    setAnswers((current) => applyMatchAnswer(topic, current, key, value));
     setSavedCaseId("");
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+  }
+
+  function rewind() {
+    if (!topic) return;
+    setAnswers((current) => rewindLastMatchAnswer(topic, current));
+    setSavedCaseId("");
+    setShowWhy(false);
+    setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
   }
 
   function saveCurrentCase() {
@@ -316,11 +321,11 @@ export default function MatchMode({
                   resolveProvision={(ref) => getProvision(db, discipline, ref)}
                   onOpenProvision={onOpenProvision}
                   onApply={(hasRow, refs) => {
-                    setAnswers((current) => ({
-                      ...current,
-                      rowEntitled: hasRow ? "yes" : "no",
-                      rowEntitlementDerived: refs.join(","),
-                    }));
+                    setAnswers((current) => {
+                      const nextAnswers = applyMatchAnswer("row", current, "rowEntitled", hasRow ? "yes" : "no");
+                      nextAnswers.rowEntitlementDerived = refs.join(",");
+                      return nextAnswers;
+                    });
                     setSavedCaseId("");
                     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
                   }}
@@ -342,16 +347,7 @@ export default function MatchMode({
               {answeredCount > 0 ? (
                 <button
                   className="matchBackButton"
-                  onClick={() => {
-                    const previous = [...topicQuestions].reverse().find((question) => answers[question.key] !== undefined && answers[question.key] !== "");
-                    if (!previous) return;
-                    setAnswers((current) => {
-                      const next = { ...current };
-                      delete next[previous.key];
-                      if (previous.key === "rowEntitled") delete next.rowEntitlementDerived;
-                      return next;
-                    });
-                  }}
+                  onClick={rewind}
                 >
                   ← {tr("Back one answer", "Volver una respuesta")}
                 </button>
@@ -397,6 +393,9 @@ export default function MatchMode({
               ) : null}
 
               <div className="matchVerdictActions">
+                <button className="matchWhyButton" onClick={rewind}>
+                  ← {tr("Edit last answer", "Corregir última respuesta")}
+                </button>
                 <button className="matchWhyButton" onClick={() => setShowWhy((current) => !current)}>
                   {showWhy ? tr("Hide details", "Ocultar detalle") : tr("Why?", "¿Por qué?")}
                 </button>

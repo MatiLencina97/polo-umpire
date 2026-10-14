@@ -57,7 +57,7 @@ import OfflineStatusPanel from "@/components/OfflineStatusPanel";
 import DecisionFeedback from "@/components/DecisionFeedback";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import { flushPendingFeedback } from "@/lib/decision-feedback";
-import { relevantMatchKeys } from "@/lib/match-flow";
+import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -503,7 +503,6 @@ export default function UmpireApp() {
         : [])
     : (scenario ? scenarioQuestions[scenario] : []);
 
-  const mainRule = resolverMode === "play" ? resolutionRules[0] : scenarioRules[0] ?? genericSituationRules[0];
   const answerCount = activeQuestions.filter((question) => {
     const value = answers[question.key];
     return Boolean(value) && value !== "unknown";
@@ -537,6 +536,16 @@ export default function UmpireApp() {
   const playDecision = resolverMode === "play" && topic
     ? decidePlay(topic, discipline, answers, language)
     : null;
+
+  const playMainRule = playDecision
+    ? resolutionRules.find((rule) =>
+        playDecision.references.some((ref) => ref === rule.rule || ref.startsWith(rule.rule + "."))
+      ) ?? resolutionRules[0]
+    : resolutionRules[0];
+
+  const mainRule = resolverMode === "play"
+    ? playMainRule
+    : scenarioRules[0] ?? genericSituationRules[0];
 
   const playDecisionAudit = resolverMode === "play" && topic && playDecision
     ? auditPlayDecision(topic, discipline, answers, playDecision)
@@ -1384,11 +1393,11 @@ export default function UmpireApp() {
                   language={language}
                   resolveProvision={(ref) => getProvision(db, discipline, ref)}
                   onOpenProvision={setSelectedProvision}
-                  onApply={(hasRow, refs) => setAnswers((current) => ({
-                    ...current,
-                    rowEntitled: hasRow ? "yes" : "no",
-                    rowEntitlementDerived: refs.join(","),
-                  }))}
+                  onApply={(hasRow, refs) => setAnswers((current) => {
+                    const nextAnswers = applyMatchAnswer("row", current, "rowEntitled", hasRow ? "yes" : "no");
+                    nextAnswers.rowEntitlementDerived = refs.join(",");
+                    return nextAnswers;
+                  })}
                 />
               ) : null}
               <div className="questionList">
@@ -1401,9 +1410,8 @@ export default function UmpireApp() {
                           key={value}
                           className={answers[question.key] === value ? "selected" : ""}
                           onClick={() => setAnswers((current) => {
-                            const next = { ...current, [question.key]: value };
-                            if (question.key === "rowEntitled") delete next.rowEntitlementDerived;
-                            return next;
+                            if (!topic) return current;
+                            return applyMatchAnswer(topic, current, question.key, value);
                           })}
                         >
                           {optionLabel(value, label)}

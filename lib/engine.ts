@@ -4,7 +4,7 @@ export const topicDefs: Record<TopicId, TopicDefinition> = {
   row: {
     label: "Right of Way / Crossing",
     outdoor: ["24", "23"], arena: ["12", "11"],
-    terms: ["right of way", "row", "cruce", "cruzar", "cruzo", "cruza", "linea", "línea", "cross", "crossing", "trayectoria", "paso", "frenar", "check", "alterar curso"],
+    terms: ["right of way", "row", "cruce", "cruzar", "cruzo", "cruza", "linea", "línea", "cross", "crossing", "trayectoria", "frenar", "alterar curso", "change course", "alter course", "had to check", "forced to check", "checked up", "corto el paso", "le corto el paso"],
   },
   dangerous: {
     label: "Dangerous Riding",
@@ -24,12 +24,12 @@ export const topicDefs: Record<TopicId, TopicDefinition> = {
   conduct: {
     label: "Conducta antideportiva",
     outdoor: ["33", "34"], arena: ["14"],
-    terms: ["insulto", "protesta", "protestar", "unsportsmanlike", "conducta", "tarjeta", "yellow card", "red card", "reiterada", "repetida"],
+    terms: ["insulto", "protesta", "protestar", "unsportsmanlike", "conducta", "tarjeta", "yellow card", "red card", "reiterada", "repetida", "argue", "arguing", "argued", "appealing", "appeal to umpire", "abuse", "abusive", "rough conduct", "post whistle", "post-whistle", "disrespect"],
   },
   restart: {
     label: "Reanudación / pelota muerta",
     outdoor: ["20", "21", "22", "36"], arena: ["7", "8", "16"],
-    terms: ["penalty", "penalidad", "knock in", "knock-in", "throw in", "throw-in", "bowl in", "restart", "reanudar", "reanudacion", "pelota muerta", "dead ball", "called play", "call play", "before play", "antes de play", "llamar play", "llamo play"],
+    terms: ["knock in", "knock-in", "throw in", "throw-in", "bowl in", "restart", "reanudar", "reanudacion", "pelota muerta", "dead ball", "called play", "call play", "before play", "antes de play", "llamar play", "llamo play", "penalty hit", "free hit", "taking a penalty", "took the penalty", "penalty was taken", "during a penalty", "durante una penalidad", "durante un penalty", "tiro penal", "penalty 5"],
   },
 };
 
@@ -38,7 +38,7 @@ export const questions: Record<TopicId, QuestionDefinition[]> = {
     { key: "rowEntitled", label: "¿El jugador afectado tenía realmente el Right of Way en ese momento?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "risk", label: "¿La acción obligó al jugador con el Right of Way a frenar, cambiar dirección o generó riesgo de colisión?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "lineChanged", label: "¿La línea de la pelota había cambiado inmediatamente antes de la acción?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
-    { key: "clearanceTime", label: "Si cambió la línea: ¿el oponente tuvo el tiempo necesario para despejar el nuevo ROW?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"], ["unknown", "No estoy seguro"]] },
+    { key: "clearanceTime", label: "Si cambió la línea: ¿el oponente tuvo el tiempo necesario para despejar el nuevo ROW?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "parallel", label: "¿Los jugadores iban paralelos o casi paralelos al momento relevante?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
   dangerous: [
@@ -49,11 +49,11 @@ export const questions: Record<TopicId, QuestionDefinition[]> = {
   blocking: [
     { key: "restartBlock", label: "¿Ocurrió durante un knock-in, Penalty 5.a/5.b o free hit por pelota afuera?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "marking", label: "¿El atacante impidió que el defensor marcara a un compañero con posibilidad de jugar la pelota?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
-    { key: "slow", label: "Si fue durante juego abierto: ¿el jugador con pelota frenó o bajó a slow canter/walk y el bloqueo fue dentro de dos largos de caballo?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"]] },
+    { key: "slow", label: "Si fue durante juego abierto: ¿el jugador con pelota frenó o bajó a slow canter/walk y el bloqueo fue dentro de dos largos de caballo?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
   mallet: [
     { key: "strokeDanger", label: "¿El swing/hook puso en riesgo a otro jugador o caballo?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
-    { key: "strokeEnteredByOpponent", label: "Si hubo peligro: ¿otro jugador entró claramente en un stroke ya establecido y creó ese peligro?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"], ["unknown", "No estoy seguro"]] },
+    { key: "strokeEnteredByOpponent", label: "Si hubo peligro: ¿otro jugador entró claramente en un stroke ya establecido y creó ese peligro?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "hookPosition", label: "¿El hook se hizo desde el mismo lado del caballo rival que la pelota, o directamente desde atrás?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "hookTiming", label: "¿El rival estaba en el acto de pegarle a la pelota o de hookear/golpear el mallet?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "hookClear", label: "¿El mallet quedó libre del caballo rival, por debajo del hombro y sin fuerza excesiva?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
@@ -84,7 +84,21 @@ function containsTopicTerm(text: string, term: string) {
 
   // These short terms are valid rule cues but are also common substrings of
   // unrelated polo words ("play" in "player", "row" in "throw-in").
-  if (normalizedTerm === "play" || normalizedTerm === "row") {
+  if (normalizedTerm === "play" || normalizedTerm === "row" || normalizedTerm === "cross" || normalizedTerm === "linea") {
+    const haystack = searchableTopicText(normalizedText);
+    const needle = searchableTopicText(normalizedTerm);
+    return (" " + haystack + " ").includes(" " + needle + " ");
+  }
+
+  return normalizedText.includes(normalizedTerm);
+}
+
+function containsSearchTerm(text: string, term: string) {
+  const normalizedText = normalize(text);
+  const normalizedTerm = normalize(term).trim();
+  if (!normalizedTerm) return false;
+
+  if (normalizedTerm.length <= 3) {
     const haystack = searchableTopicText(normalizedText);
     const needle = searchableTopicText(normalizedTerm);
     return (" " + haystack + " ").includes(" " + needle + " ");
@@ -106,7 +120,11 @@ export function classifyTopic(text: string) {
   const ranked = classify(text);
   const first = ranked[0];
   const second = ranked[1];
-  const ambiguous = Boolean(first && first.score > 0 && second && second.score === first.score);
+  const ambiguous = Boolean(
+    first && first.score > 0 &&
+    second && second.score > 0 &&
+    first.score - second.score <= 1
+  );
   const topic = first && first.score > 0 && !ambiguous ? first.id : null;
   return { topic, ranked, ambiguous };
 }
@@ -116,11 +134,13 @@ export function scoreRule(rule: Rule, query: string) {
   const nq = normalize(query);
   const toks = words(query);
   let score = 0;
-  if (normalize(rule.title).includes(nq)) score += 20;
-  if (normalize(`rule ${rule.rule}`).includes(nq) || normalize(`regla ${rule.rule}`).includes(nq)) score += 20;
-  for (const k of rule.keywords ?? []) if (nq.includes(normalize(k)) || normalize(k).includes(nq)) score += 8;
+  if (containsSearchTerm(rule.title, nq)) score += 20;
+  if (containsSearchTerm(`rule ${rule.rule}`, nq) || containsSearchTerm(`regla ${rule.rule}`, nq)) score += 20;
+  for (const k of rule.keywords ?? []) {
+    if (containsSearchTerm(nq, k) || containsSearchTerm(k, nq)) score += 8;
+  }
   const hay = normalize(`${rule.title} ${(rule.keywords ?? []).join(" ")} ${rule.text.slice(0, 5000)}`);
-  for (const token of toks) if (hay.includes(token)) score += token.length > 5 ? 3 : 1;
+  for (const token of toks) if (containsSearchTerm(hay, token)) score += token.length > 5 ? 3 : 1;
   return score;
 }
 
