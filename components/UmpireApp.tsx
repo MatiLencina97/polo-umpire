@@ -226,7 +226,7 @@ export default function UmpireApp() {
   });
   const [situation, setSituation] = useState("");
   const [topic, setTopic] = useState<TopicId | null>(null);
-  const [rankedTopics, setRankedTopics] = useState<ReturnType<typeof classify>>([]);
+  const [rankedTopics, setRankedTopics] = useState<ReturnType<typeof classifyTopic>["ranked"]>([]);
   const [scenario, setScenario] = useState<ScenarioId | null>(null);
   const [rankedScenarios, setRankedScenarios] = useState<ReturnType<typeof classifyScenario>>([]);
   const [genericSituationRules, setGenericSituationRules] = useState<Rule[]>([]);
