@@ -58,6 +58,15 @@ function parseRecord(body: any): StoredFeedback | null {
   const appVersion = cleanString(context.appVersion, 40);
   if (!outcomeStatus || !headline || !rulebookVersion || !appVersion) return null;
 
+  const ruleRefs: string[] = Array.isArray(context.ruleRefs)
+    ? Array.from(new Set<string>(
+        context.ruleRefs
+          .filter((item: unknown): item is string => typeof item === "string")
+          .map((item: string) => item.trim().slice(0, 40))
+          .filter((item: string) => Boolean(item)),
+      )).slice(0, 20)
+    : [];
+
   return {
     id: cleanString(body.id, 120),
     createdAt: new Date(createdAt).toISOString(),
@@ -73,9 +82,7 @@ function parseRecord(body: any): StoredFeedback | null {
     validationLevel,
     headline,
     rulebookVersion,
-    ruleRefs: Array.isArray(context.ruleRefs)
-      ? [...new Set(context.ruleRefs.filter((item: unknown): item is string => typeof item === "string").map((item: string) => item.trim().slice(0, 40)).filter(Boolean))].slice(0, 20)
-      : [],
+    ruleRefs,
     appVersion,
   };
 }
