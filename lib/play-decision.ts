@@ -347,6 +347,31 @@ export function decidePlay(
     });
   }
   if (a.dead === "yes") {
+    const restartType = a.restartType;
+    if (restartType === "throwin" || restartType === "knockin" || restartType === "penalty") {
+      const refs = restartType === "throwin"
+        ? ["20.a","20.b","36"]
+        : restartType === "knockin"
+          ? ["22.a","36"]
+          : ["36"];
+      const label = restartType === "throwin"
+        ? t(language, "Throw-in", "Throw-in")
+        : restartType === "knockin"
+          ? t(language, "Knock-in", "Knock-in")
+          : t(language, "Penalty / free hit", "Penalty / free hit");
+      return makeDecision({
+        status: "procedure",
+        headline: t(language, label + " restart identified", "Reanudación " + label + " identificada"),
+        summary: t(
+          language,
+          "Play was dead, no early-play violation was entered, and the restart type is identified. Apply the cited restart procedure before the Umpire calls Play.",
+          "La pelota estaba muerta, no se indicó una ejecución anticipada y el tipo de reanudación está identificado. Aplicá el procedimiento citado antes de que el Umpire llame Play.",
+        ),
+        references: refs,
+        language,
+      });
+    }
+
     return makeDecision({
       status: "needs-info",
       headline: t(language, "Dead-ball restart depends on why play stopped", "La reanudación de dead ball depende de por qué se detuvo el juego"),
