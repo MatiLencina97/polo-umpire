@@ -93,7 +93,7 @@ const arenaMisexecution: OfficialStructuredTable = {
       "Spot hit for defending team",
       "Spot hit for defending team",
       "Spot hit no closer than center line for defending team",
-      "Spot hit for defending team",
+      "Spot hit",
     ],
     [
       "Ball not hit or hit at on second approach",
