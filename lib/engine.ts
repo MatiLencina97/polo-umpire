@@ -120,7 +120,11 @@ export function classifyTopic(text: string) {
   const ranked = classify(text);
   const first = ranked[0];
   const second = ranked[1];
-  const ambiguous = Boolean(\n    first && first.score > 0 &&\n    second && second.score > 0 &&\n    first.score - second.score <= 1\n  );
+  const ambiguous = Boolean(
+    first && first.score > 0 &&
+    second && second.score > 0 &&
+    first.score - second.score <= 1
+  );
   const topic = first && first.score > 0 && !ambiguous ? first.id : null;
   return { topic, ranked, ambiguous };
 }
