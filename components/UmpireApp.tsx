@@ -57,7 +57,7 @@ import OfflineStatusPanel from "@/components/OfflineStatusPanel";
 import DecisionFeedback from "@/components/DecisionFeedback";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import { flushPendingFeedback } from "@/lib/decision-feedback";
-import { relevantMatchKeys } from "@/lib/match-flow";
+import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -1384,11 +1384,11 @@ export default function UmpireApp() {
                   language={language}
                   resolveProvision={(ref) => getProvision(db, discipline, ref)}
                   onOpenProvision={setSelectedProvision}
-                  onApply={(hasRow, refs) => setAnswers((current) => ({
-                    ...current,
-                    rowEntitled: hasRow ? "yes" : "no",
-                    rowEntitlementDerived: refs.join(","),
-                  }))}
+                  onApply={(hasRow, refs) => setAnswers((current) => {
+                    const nextAnswers = applyMatchAnswer("row", current, "rowEntitled", hasRow ? "yes" : "no");
+                    nextAnswers.rowEntitlementDerived = refs.join(",");
+                    return nextAnswers;
+                  })}
                 />
               ) : null}
               <div className="questionList">
@@ -1401,9 +1401,8 @@ export default function UmpireApp() {
                           key={value}
                           className={answers[question.key] === value ? "selected" : ""}
                           onClick={() => setAnswers((current) => {
-                            const next = { ...current, [question.key]: value };
-                            if (question.key === "rowEntitled") delete next.rowEntitlementDerived;
-                            return next;
+                            if (!topic) return current;
+                            return applyMatchAnswer(topic, current, question.key, value);
                           })}
                         >
                           {optionLabel(value, label)}
