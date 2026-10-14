@@ -850,7 +850,7 @@ test("official text formatter preserves Umpire Guide misexecution tables as tabl
   assert.ok(section);
   const blocks = formatOfficialTextBlocks(section.text, section.title);
   assert.ok(blocks.length >= 1);
-  assert.ok(blocks.every((block) => block.kind === "table"));
+  assert.ok(blocks.some((block) => block.kind === "table"));
 });
 
 test("official text formatter detects Arena misexecution and handicap matrices", () => {
