@@ -29,7 +29,7 @@ export const topicDefs: Record<TopicId, TopicDefinition> = {
   restart: {
     label: "Reanudación / pelota muerta",
     outdoor: ["20", "21", "22", "36"], arena: ["7", "8", "16"],
-    terms: ["penalty", "penalidad", "knock in", "knock-in", "throw in", "throw-in", "bowl in", "play", "reanudar", "reanudacion", "pelota muerta", "dead ball"],
+    terms: ["penalty", "penalidad", "knock in", "knock-in", "throw in", "throw-in", "bowl in", "restart", "reanudar", "reanudacion", "pelota muerta", "dead ball", "called play", "call play", "before play", "antes de play", "llamar play", "llamo play"],
   },
 };
 
@@ -100,6 +100,15 @@ export function classify(text: string) {
     for (const term of t.terms) if (containsTopicTerm(n, term)) score += term.includes(" ") ? 3 : 2;
     return { id, score, label: t.label };
   }).sort((a, b) => b.score - a.score);
+}
+
+export function classifyTopic(text: string) {
+  const ranked = classify(text);
+  const first = ranked[0];
+  const second = ranked[1];
+  const ambiguous = Boolean(first && first.score > 0 && second && second.score === first.score);
+  const topic = first && first.score > 0 && !ambiguous ? first.id : null;
+  return { topic, ranked, ambiguous };
 }
 
 export function scoreRule(rule: Rule, query: string) {
