@@ -184,13 +184,30 @@ export function formatOfficialTextBlocks(text: string, title = ""): OfficialText
   for (const block of blocks) {
     const previous = merged[merged.length - 1];
 
-    // Never merge parsed tables: keeping each table run separate prevents unrelated
-    // schedules/fee matrices from being fused together.
     if (previous?.kind === block.kind && block.kind === "prose") {
       previous.text += "\n\n" + block.text;
-    } else {
-      merged.push({ ...block });
+      continue;
     }
+
+    // PDF page breaks often split one physical table into two consecutive text chunks.
+    // Rejoin only when both sides parsed cleanly and have the same column count.
+    if (
+      previous?.kind === "table" &&
+      block.kind === "table" &&
+      previous.table &&
+      block.table &&
+      previous.table.columnCount === block.table.columnCount
+    ) {
+      previous.text += "\n" + block.text;
+      const nextRows = block.table.hasHeader ? block.table.rows.slice(1) : block.table.rows;
+      previous.table = {
+        ...previous.table,
+        rows: [...previous.table.rows, ...nextRows],
+      };
+      continue;
+    }
+
+    merged.push({ ...block });
   }
 
   return merged;
