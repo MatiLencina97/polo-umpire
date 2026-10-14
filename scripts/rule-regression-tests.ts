@@ -14,6 +14,7 @@ import { defaultRowEntitlementFacts, deriveRowEntitlement } from "../lib/row-ent
 import { buildFeedbackRecord, normalizeFeedbackRecord, sanitizeFeedbackNote } from "../lib/decision-feedback";
 import { playDecisionRuleTrail, substitutionDecisionRuleTrail } from "../lib/decision-links";
 import { formatOfficialTextBlocks } from "../lib/official-text-format";
+import { getOfficialStructuredTable } from "../lib/official-structured-tables";
 import type { ExternalResourceDb, Rule, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
@@ -883,6 +884,37 @@ test("official text formatter detects the penalty table embedded in Arena Rule 1
   const blocks = formatOfficialTextBlocks(rule.text, "Rule 10 · " + rule.title);
   assert.ok(blocks.some((block) => block.kind === "table"));
   assert.ok(blocks.find((block) => block.kind === "table")?.text.includes("PENALTY"));
+});
+
+test("structured Outdoor misexecution table has complete 8-column rows", () => {
+  const table = getOfficialStructuredTable("umpire-guide-outdoor-rules-misexecution-of-penalty-shots-knock-ins");
+  assert.ok(table);
+  assert.equal(table.columns.length, 8);
+  assert.equal(table.rows.length, 5);
+  assert.ok(table.rows.every((row) => row.length === 8));
+  assert.equal(table.rows[0][0], "Swing and miss");
+  assert.equal(table.rows[4][7], "Penalty 5.b for attacking team");
+});
+
+test("structured Arena misexecution table has complete 6-column rows", () => {
+  const table = getOfficialStructuredTable("umpire-guide-arena-rules-misexecution-of-penalty-shots");
+  assert.ok(table);
+  assert.equal(table.columns.length, 6);
+  assert.equal(table.rows.length, 10);
+  assert.ok(table.rows.every((row) => row.length === 6));
+  assert.equal(table.rows[1][4], "Spot hit no closer than center line for defending team");
+  assert.equal(table.rows[1][5], "Spot hit");
+});
+
+test("structured handicap matrices preserve all extracted handicap rows", () => {
+  const outdoor = getOfficialStructuredTable("umpire-guide-outdoor-handicap-matrix");
+  const arena = getOfficialStructuredTable("umpire-guide-arena-handicap-matrix");
+  assert.ok(outdoor);
+  assert.ok(arena);
+  assert.equal(outdoor.rows.length, 9);
+  assert.equal(outdoor.rows.at(-1)?.join("|"), "4.0|1.5|2.0|2.5|3.5|4.0");
+  assert.equal(arena.rows.length, 6);
+  assert.equal(arena.rows.at(-1)?.join("|"), "6|3|6");
 });
 
 test("feedback normalization rejects malformed ratings", () => {
