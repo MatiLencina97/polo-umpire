@@ -78,9 +78,19 @@ function searchableTopicText(value: string) {
 }
 
 function containsTopicTerm(text: string, term: string) {
-  const haystack = searchableTopicText(text);
-  const needle = searchableTopicText(term);
-  return Boolean(needle) && (" " + haystack + " ").includes(" " + needle + " ");
+  const normalizedText = normalize(text);
+  const normalizedTerm = normalize(term).trim();
+  if (!normalizedTerm) return false;
+
+  // These short terms are valid rule cues but are also common substrings of
+  // unrelated polo words ("play" in "player", "row" in "throw-in").
+  if (normalizedTerm === "play" || normalizedTerm === "row") {
+    const haystack = searchableTopicText(normalizedText);
+    const needle = searchableTopicText(normalizedTerm);
+    return (" " + haystack + " ").includes(" " + needle + " ");
+  }
+
+  return normalizedText.includes(normalizedTerm);
 }
 
 export function classify(text: string) {
