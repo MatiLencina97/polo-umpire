@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { formatOfficialTextBlocks, type OfficialParsedTable } from "@/lib/official-text-format";
-import { getOfficialStructuredTable, type OfficialStructuredTable } from "@/lib/official-structured-tables";
+import { getOfficialSourceNotice, getOfficialStructuredTable, type OfficialStructuredTable } from "@/lib/official-structured-tables";
 import type { Language } from "@/lib/types";
 
 function FitToWidthPreview({
@@ -176,8 +176,20 @@ export default function OfficialTextView({
   sourceKey?: string;
 }) {
   const structuredTable = useMemo(() => getOfficialStructuredTable(sourceKey), [sourceKey]);
+  const sourceNotice = useMemo(() => getOfficialSourceNotice(sourceKey), [sourceKey]);
   const blocks = useMemo(() => formatOfficialTextBlocks(text, title ?? ""), [text, title]);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  if (sourceNotice && !structuredTable) {
+    return (
+      <div className={["officialText", "officialTextStructured", className].filter(Boolean).join(" ")}>
+        <div className="officialSourceNotice">
+          <strong>{language === "en" ? "Visual source" : "Fuente visual"}</strong>
+          <p>{language === "en" ? sourceNotice.en : sourceNotice.es}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (structuredTable) {
     return (
