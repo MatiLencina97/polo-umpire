@@ -93,6 +93,20 @@ function containsTopicTerm(text: string, term: string) {
   return normalizedText.includes(normalizedTerm);
 }
 
+function containsSearchTerm(text: string, term: string) {
+  const normalizedText = normalize(text);
+  const normalizedTerm = normalize(term).trim();
+  if (!normalizedTerm) return false;
+
+  if (normalizedTerm.length <= 3) {
+    const haystack = searchableTopicText(normalizedText);
+    const needle = searchableTopicText(normalizedTerm);
+    return (" " + haystack + " ").includes(" " + needle + " ");
+  }
+
+  return normalizedText.includes(normalizedTerm);
+}
+
 export function classify(text: string) {
   const n = normalize(text);
   return (Object.entries(topicDefs) as Array<[TopicId, TopicDefinition]>).map(([id, t]) => {
@@ -116,11 +130,13 @@ export function scoreRule(rule: Rule, query: string) {
   const nq = normalize(query);
   const toks = words(query);
   let score = 0;
-  if (normalize(rule.title).includes(nq)) score += 20;
-  if (normalize(`rule ${rule.rule}`).includes(nq) || normalize(`regla ${rule.rule}`).includes(nq)) score += 20;
-  for (const k of rule.keywords ?? []) if (nq.includes(normalize(k)) || normalize(k).includes(nq)) score += 8;
+  if (containsSearchTerm(rule.title, nq)) score += 20;
+  if (containsSearchTerm(`rule ${rule.rule}`, nq) || containsSearchTerm(`regla ${rule.rule}`, nq)) score += 20;
+  for (const k of rule.keywords ?? []) {
+    if (containsSearchTerm(nq, k) || containsSearchTerm(k, nq)) score += 8;
+  }
   const hay = normalize(`${rule.title} ${(rule.keywords ?? []).join(" ")} ${rule.text.slice(0, 5000)}`);
-  for (const token of toks) if (hay.includes(token)) score += token.length > 5 ? 3 : 1;
+  for (const token of toks) if (containsSearchTerm(hay, token)) score += token.length > 5 ? 3 : 1;
   return score;
 }
 
