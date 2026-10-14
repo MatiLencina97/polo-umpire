@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { classify, classifyTopic, questions } from "../lib/engine";
+import { classify, classifyTopic, questions, scoreRule } from "../lib/engine";
 import { decidePlay } from "../lib/play-decision";
 import { parseRuleProvisions, bestProvisionsForRules, resolveProvisions } from "../lib/subarticles";
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
