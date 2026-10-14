@@ -6,7 +6,16 @@ const fullKeys: Record<TopicId, string[]> = {
   blocking: ["marking", "restartBlock", "slow"],
   mallet: ["strokeDanger", "strokeEnteredByOpponent", "hookPosition", "hookTiming", "hookClear"],
   conduct: ["conductMatches", "repeat"],
-  restart: ["dead", "restartType", "early"],
+  restart: ["early", "dead", "restartType"],
+};
+
+const topicAnswerKeys: Record<TopicId, string[]> = {
+  row: ["rowEntitled", "risk", "lineChanged", "clearanceTime", "parallel"],
+  dangerous: ["balance", "speedAngle", "blind"],
+  blocking: ["marking", "restartBlock", "slow"],
+  mallet: ["strokeDanger", "strokeEnteredByOpponent", "hookPosition", "hookTiming", "hookClear"],
+  conduct: ["conductMatches", "deliberate", "repeat"],
+  restart: ["early", "dead", "restartType"],
 };
 
 export function relevantMatchKeys(topic: TopicId, answers: Record<string, ChoiceValue>) {
@@ -85,6 +94,56 @@ export function relevantMatchKeys(topic: TopicId, answers: Record<string, Choice
 
 export function isMatchAnswerPresent(value?: ChoiceValue) {
   return value !== undefined && value !== "";
+}
+
+function preserveNonFlowMetadata(
+  topic: TopicId,
+  answers: Record<string, ChoiceValue>,
+) {
+  const flowKeys = new Set(topicAnswerKeys[topic]);
+  return Object.fromEntries(
+    Object.entries(answers).filter(([key]) => !flowKeys.has(key)),
+  ) as Record<string, ChoiceValue>;
+}
+
+export function applyMatchAnswer(
+  topic: TopicId,
+  answers: Record<string, ChoiceValue>,
+  key: string,
+  value: ChoiceValue,
+) {
+  if (answers[key] === value) return { ...answers };
+
+  const path = relevantMatchKeys(topic, answers);
+  const pivot = path.indexOf(key);
+  const next = preserveNonFlowMetadata(topic, answers);
+
+  if (pivot >= 0) {
+    for (const previousKey of path.slice(0, pivot)) {
+      if (isMatchAnswerPresent(answers[previousKey])) next[previousKey] = answers[previousKey];
+    }
+  }
+
+  next[key] = value;
+  if (key === "rowEntitled") delete next.rowEntitlementDerived;
+  return next;
+}
+
+export function rewindLastMatchAnswer(
+  topic: TopicId,
+  answers: Record<string, ChoiceValue>,
+) {
+  const path = relevantMatchKeys(topic, answers);
+  const lastAnswered = [...path].reverse().find((key) => isMatchAnswerPresent(answers[key]));
+  if (!lastAnswered) return { ...answers };
+
+  const pivot = path.indexOf(lastAnswered);
+  const next = preserveNonFlowMetadata(topic, answers);
+  for (const previousKey of path.slice(0, pivot)) {
+    if (isMatchAnswerPresent(answers[previousKey])) next[previousKey] = answers[previousKey];
+  }
+  if (lastAnswered === "rowEntitled") delete next.rowEntitlementDerived;
+  return next;
 }
 
 export function matchProgress(topic: TopicId, answers: Record<string, ChoiceValue>) {
