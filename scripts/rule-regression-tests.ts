@@ -76,7 +76,7 @@ test("tied rule-family signals require an explicit family choice", () => {
 });
 
 test("near-tied rule-family signals also require an explicit family choice", () => {
-  const detected = classifyTopic("Dangerous action during a penalty hit.");
+  const detected = classifyTopic("Dangerous action during a free hit.");
   assert.equal(detected.topic, null);
   assert.equal(detected.ambiguous, true);
   assert.equal(detected.ranked[0].score - detected.ranked[1].score, 1);
