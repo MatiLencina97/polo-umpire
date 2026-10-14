@@ -57,6 +57,7 @@ import OfflineStatusPanel from "@/components/OfflineStatusPanel";
 import DecisionFeedback from "@/components/DecisionFeedback";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import { flushPendingFeedback } from "@/lib/decision-feedback";
+import { relevantMatchKeys } from "@/lib/match-flow";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -494,11 +495,13 @@ export default function UmpireApp() {
   }, [db, discipline, scenario]);
 
   const activeQuestions = resolverMode === "play"
-    ? (topic ? questions[topic] : [])
+    ? (topic
+        ? questions[topic].filter((question) => relevantMatchKeys(topic, answers).includes(question.key))
+        : [])
     : (scenario ? scenarioQuestions[scenario] : []);
 
   const mainRule = resolverMode === "play" ? resolutionRules[0] : scenarioRules[0] ?? genericSituationRules[0];
-  const answerCount = Object.keys(answers).length;
+  const answerCount = activeQuestions.filter((question) => Boolean(answers[question.key])).length;
   const questionCount = activeQuestions.length;
   const completeness = answerCount === questionCount && questionCount > 0
     ? "high"

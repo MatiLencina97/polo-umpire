@@ -73,11 +73,31 @@ export const questions: Record<TopicId, QuestionDefinition[]> = {
 export const normalize = (value = "") => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 export const words = (value = "") => normalize(value).split(/[^a-z0-9]+/).filter((x) => x.length > 1);
 
+function searchableTopicText(value: string) {
+  return normalize(value).replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+function containsTopicTerm(text: string, term: string) {
+  const normalizedText = normalize(text);
+  const normalizedTerm = normalize(term).trim();
+  if (!normalizedTerm) return false;
+
+  // These short terms are valid rule cues but are also common substrings of
+  // unrelated polo words ("play" in "player", "row" in "throw-in").
+  if (normalizedTerm === "play" || normalizedTerm === "row") {
+    const haystack = searchableTopicText(normalizedText);
+    const needle = searchableTopicText(normalizedTerm);
+    return (" " + haystack + " ").includes(" " + needle + " ");
+  }
+
+  return normalizedText.includes(normalizedTerm);
+}
+
 export function classify(text: string) {
   const n = normalize(text);
   return (Object.entries(topicDefs) as Array<[TopicId, TopicDefinition]>).map(([id, t]) => {
     let score = 0;
-    for (const term of t.terms) if (n.includes(normalize(term))) score += term.includes(" ") ? 3 : 2;
+    for (const term of t.terms) if (containsTopicTerm(n, term)) score += term.includes(" ") ? 3 : 2;
     return { id, score, label: t.label };
   }).sort((a, b) => b.score - a.score);
 }
