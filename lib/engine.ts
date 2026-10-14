@@ -4,7 +4,7 @@ export const topicDefs: Record<TopicId, TopicDefinition> = {
   row: {
     label: "Right of Way / Crossing",
     outdoor: ["24", "23"], arena: ["12", "11"],
-    terms: ["right of way", "row", "cruce", "cruzar", "cruzo", "cruza", "linea", "línea", "cross", "crossing", "trayectoria", "paso", "frenar", "check", "alterar curso"],
+    terms: ["right of way", "row", "cruce", "cruzar", "cruzo", "cruza", "linea", "línea", "cross", "crossing", "trayectoria", "frenar", "alterar curso", "change course", "alter course", "had to check", "forced to check", "checked up", "corto el paso", "le corto el paso"],
   },
   dangerous: {
     label: "Dangerous Riding",
@@ -24,12 +24,12 @@ export const topicDefs: Record<TopicId, TopicDefinition> = {
   conduct: {
     label: "Conducta antideportiva",
     outdoor: ["33", "34"], arena: ["14"],
-    terms: ["insulto", "protesta", "protestar", "unsportsmanlike", "conducta", "tarjeta", "yellow card", "red card", "reiterada", "repetida"],
+    terms: ["insulto", "protesta", "protestar", "unsportsmanlike", "conducta", "tarjeta", "yellow card", "red card", "reiterada", "repetida", "argue", "arguing", "argued", "appealing", "appeal to umpire", "abuse", "abusive", "rough conduct", "post whistle", "post-whistle", "disrespect"],
   },
   restart: {
     label: "Reanudación / pelota muerta",
     outdoor: ["20", "21", "22", "36"], arena: ["7", "8", "16"],
-    terms: ["penalty", "penalidad", "knock in", "knock-in", "throw in", "throw-in", "bowl in", "restart", "reanudar", "reanudacion", "pelota muerta", "dead ball", "called play", "call play", "before play", "antes de play", "llamar play", "llamo play"],
+    terms: ["knock in", "knock-in", "throw in", "throw-in", "bowl in", "restart", "reanudar", "reanudacion", "pelota muerta", "dead ball", "called play", "call play", "before play", "antes de play", "llamar play", "llamo play", "penalty hit", "free hit", "taking a penalty", "took the penalty", "penalty was taken", "during a penalty", "durante una penalidad", "durante un penalty", "tiro penal", "penalty 5"],
   },
 };
 
@@ -49,7 +49,7 @@ export const questions: Record<TopicId, QuestionDefinition[]> = {
   blocking: [
     { key: "restartBlock", label: "¿Ocurrió durante un knock-in, Penalty 5.a/5.b o free hit por pelota afuera?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
     { key: "marking", label: "¿El atacante impidió que el defensor marcara a un compañero con posibilidad de jugar la pelota?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
-    { key: "slow", label: "Si fue durante juego abierto: ¿el jugador con pelota frenó o bajó a slow canter/walk y el bloqueo fue dentro de dos largos de caballo?", options: [["yes", "Sí"], ["no", "No"], ["na", "No aplica"]] },
+    { key: "slow", label: "Si fue durante juego abierto: ¿el jugador con pelota frenó o bajó a slow canter/walk y el bloqueo fue dentro de dos largos de caballo?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
   ],
   mallet: [
     { key: "strokeDanger", label: "¿El swing/hook puso en riesgo a otro jugador o caballo?", options: [["yes", "Sí"], ["no", "No"], ["unknown", "No estoy seguro"]] },
@@ -84,7 +84,7 @@ function containsTopicTerm(text: string, term: string) {
 
   // These short terms are valid rule cues but are also common substrings of
   // unrelated polo words ("play" in "player", "row" in "throw-in").
-  if (normalizedTerm === "play" || normalizedTerm === "row") {
+  if (normalizedTerm === "play" || normalizedTerm === "row" || normalizedTerm === "cross") {
     const haystack = searchableTopicText(normalizedText);
     const needle = searchableTopicText(normalizedTerm);
     return (" " + haystack + " ").includes(" " + needle + " ");
