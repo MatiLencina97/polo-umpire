@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { classify } from "../lib/engine";
+import { classify, classifyTopic, questions } from "../lib/engine";
 import { decidePlay } from "../lib/play-decision";
 import { parseRuleProvisions, bestProvisionsForRules, resolveProvisions } from "../lib/subarticles";
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
@@ -13,7 +13,6 @@ import { auditPlayDecision } from "../lib/decision-audit";
 import { defaultRowEntitlementFacts, deriveRowEntitlement } from "../lib/row-entitlement";
 import { buildFeedbackRecord, normalizeFeedbackRecord, sanitizeFeedbackNote } from "../lib/decision-feedback";
 import { playDecisionRuleTrail, substitutionDecisionRuleTrail } from "../lib/decision-links";
-import { questions } from "../lib/engine";
 import type { ExternalResourceDb, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
@@ -55,6 +54,25 @@ test("exact Play still triggers restart context", () => {
   const ranked = classify("A penalty was taken before the Umpire called Play.");
   assert.equal(ranked[0].id, "restart");
   assert.ok(ranked[0].score > 0);
+});
+
+test("generic use of the word play does not classify as a restart", () => {
+  const detected = classifyTopic("Can Blue play the ball from there?");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ambiguous, false);
+});
+
+test("unknown play descriptions do not silently default to ROW", () => {
+  const detected = classifyTopic("The weather changed during the chukker.");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ranked[0].score, 0);
+});
+
+test("tied rule-family signals require an explicit family choice", () => {
+  const detected = classifyTopic("Dangerous hook.");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ambiguous, true);
+  assert.equal(detected.ranked[0].score, detected.ranked[1].score);
 });
 
 test("ROW line change with no clearance time resolves to foul", () => {

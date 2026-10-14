@@ -5,7 +5,7 @@ import { APP_VERSION } from "@/lib/app-version";
 import {
   applicationText,
   bestMatchingApplication,
-  classify,
+  classifyTopic,
   classifyScenario,
   questions,
   relatedRuleNumbers,
@@ -226,7 +226,7 @@ export default function UmpireApp() {
   });
   const [situation, setSituation] = useState("");
   const [topic, setTopic] = useState<TopicId | null>(null);
-  const [rankedTopics, setRankedTopics] = useState<ReturnType<typeof classify>>([]);
+  const [rankedTopics, setRankedTopics] = useState<ReturnType<typeof classifyTopic>["ranked"]>([]);
   const [scenario, setScenario] = useState<ScenarioId | null>(null);
   const [rankedScenarios, setRankedScenarios] = useState<ReturnType<typeof classifyScenario>>([]);
   const [genericSituationRules, setGenericSituationRules] = useState<Rule[]>([]);
@@ -496,12 +496,18 @@ export default function UmpireApp() {
 
   const activeQuestions = resolverMode === "play"
     ? (topic
-        ? questions[topic].filter((question) => relevantMatchKeys(topic, answers).includes(question.key))
+        ? relevantMatchKeys(topic, answers).flatMap((key) => {
+            const question = questions[topic].find((candidate) => candidate.key === key);
+            return question ? [question] : [];
+          })
         : [])
     : (scenario ? scenarioQuestions[scenario] : []);
 
   const mainRule = resolverMode === "play" ? resolutionRules[0] : scenarioRules[0] ?? genericSituationRules[0];
-  const answerCount = activeQuestions.filter((question) => Boolean(answers[question.key])).length;
+  const answerCount = activeQuestions.filter((question) => {
+    const value = answers[question.key];
+    return Boolean(value) && value !== "unknown";
+  }).length;
   const questionCount = activeQuestions.length;
   const completeness = answerCount === questionCount && questionCount > 0
     ? "high"
@@ -666,9 +672,9 @@ export default function UmpireApp() {
     setSelectedMissingFactKey("");
 
     if (resolverMode === "play") {
-      const ranked = classify(situation);
-      setRankedTopics(ranked);
-      setTopic(ranked[0]?.score ? ranked[0].id : "row");
+      const detected = classifyTopic(situation);
+      setRankedTopics(detected.ranked);
+      setTopic(detected.topic);
       setScenario(null);
       setGenericSituationRules([]);
     } else {
@@ -1110,8 +1116,8 @@ export default function UmpireApp() {
             </div>
 
             <div className="segmented resolverMode" role="group" aria-label={tr("Query type", "Tipo de consulta")}>
-              <button className={resolverMode === "play" ? "active" : ""} onClick={() => { setResolverMode("play"); setTopic(null); setScenario(null); setShowResolution(false); }}>{tr("Play", "Jugada")}</button>
-              <button className={resolverMode === "situation" ? "active" : ""} onClick={() => { setResolverMode("situation"); setTopic(null); setScenario(null); setShowResolution(false); }}>{tr("Rule situation", "Situación reglamentaria")}</button>
+              <button className={resolverMode === "play" ? "active" : ""} onClick={() => { setResolverMode("play"); setTopic(null); setScenario(null); setRankedTopics([]); setRankedScenarios([]); setShowResolution(false); }}>{tr("Play", "Jugada")}</button>
+              <button className={resolverMode === "situation" ? "active" : ""} onClick={() => { setResolverMode("situation"); setTopic(null); setScenario(null); setRankedTopics([]); setRankedScenarios([]); setShowResolution(false); }}>{tr("Rule situation", "Situación reglamentaria")}</button>
             </div>
 
             <div className="voiceTextareaWrap">
@@ -1130,6 +1136,33 @@ export default function UmpireApp() {
             </div>
             <button className="primaryAction" onClick={analyze} disabled={!db}>{resolverMode === "play" ? tr("Analyze play", "Analizar jugada") : tr("Analyze situation", "Analizar situación")}</button>
           </div>
+
+          {resolverMode === "play" && !topic && rankedTopics.length > 0 ? (
+            <div className="card" id="questions">
+              <p className="eyebrow">{tr("RULE FAMILY NEEDED", "FALTA DEFINIR LA FAMILIA")}</p>
+              <h2>{tr("I don't have enough signal to choose the rule family safely", "No tengo suficiente señal para elegir la familia de reglas con seguridad")}</h2>
+              <p className="muted">{rankedTopics.some((item) => item.score > 0)
+                ? tr("Two or more rule families are equally plausible from the wording. Choose the one that best matches what you observed.", "Dos o más familias de reglas son igual de plausibles por la redacción. Elegí la que mejor coincida con lo que observaste.")
+                : tr("The description did not contain a reliable rule-family cue. Choose the closest family instead of defaulting silently to Right of Way.", "La descripción no contiene una señal confiable de familia. Elegí la más cercana en vez de caer silenciosamente en Right of Way.")}</p>
+              <div className="quickchips">
+                {(rankedTopics.some((item) => item.score > 0)
+                  ? rankedTopics.filter((item) => item.score === rankedTopics[0]?.score)
+                  : rankedTopics
+                ).map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setTopic(item.id);
+                      setAnswers({});
+                      setShowResolution(false);
+                    }}
+                  >
+                    {topicLabel(item.id, item.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {resolverMode === "situation" && !scenario && genericSituationRules.length > 0 && universalGraph && (
             <div className="card" id="questions">
