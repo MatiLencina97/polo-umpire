@@ -3021,3 +3021,26 @@ html[data-theme="dark"] .officialPdfTableFrame {
   background: #0b1621;
   border-color: #344657;
 }
+
+
+/* Official-source extraction safety */
+.officialSourceNotice {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--card);
+  color: var(--text);
+}
+.officialSourceNotice strong {
+  display: block;
+  margin-bottom: 5px;
+}
+.officialSourceNotice p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+html[data-theme="dark"] .officialSourceNotice {
+  background: #101b27;
+  border-color: #344657;
+}
