@@ -1,8 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { formatOfficialTextBlocks } from "@/lib/official-text-format";
-import { getOfficialStructuredTable, type OfficialStructuredTable } from "@/lib/official-structured-tables";
+import { formatOfficialTextBlocks, type OfficialParsedTable } from "@/lib/official-text-format";
+import { getOfficialSourceNotice, getOfficialStructuredTable, type OfficialStructuredTable } from "@/lib/official-structured-tables";
 import type { Language } from "@/lib/types";
 
 function FitToWidthPreview({
@@ -70,6 +70,40 @@ function FitToWidthPreview({
         {children}
       </div>
     </div>
+  );
+}
+
+function ParsedTable({ table, compact = false }: { table: OfficialParsedTable; compact?: boolean }) {
+  const className = [
+    "officialHtmlTable",
+    compact ? "officialHtmlTableCompact" : "",
+    compact ? `officialHtmlTableCols${table.columnCount}` : "",
+  ].filter(Boolean).join(" ");
+
+  const rows = table.rows;
+  const header = table.hasHeader ? rows[0] : null;
+  const bodyRows = table.hasHeader ? rows.slice(1) : rows;
+
+  return (
+    <table className={className}>
+      {header ? (
+        <thead>
+          <tr>
+            {header.map((cell, index) => <th key={index}>{cell}</th>)}
+          </tr>
+        </thead>
+      ) : null}
+      <tbody>
+        {bodyRows.map((row, rowIndex) => (
+          <tr key={rowIndex}>
+            {row.map((cell, cellIndex) => cellIndex === 0
+              ? <th scope="row" key={cellIndex}>{cell}</th>
+              : <td key={cellIndex}>{cell}</td>
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -142,8 +176,20 @@ export default function OfficialTextView({
   sourceKey?: string;
 }) {
   const structuredTable = useMemo(() => getOfficialStructuredTable(sourceKey), [sourceKey]);
+  const sourceNotice = useMemo(() => getOfficialSourceNotice(sourceKey), [sourceKey]);
   const blocks = useMemo(() => formatOfficialTextBlocks(text, title ?? ""), [text, title]);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  if (sourceNotice && !structuredTable) {
+    return (
+      <div className={["officialText", "officialTextStructured", className].filter(Boolean).join(" ")}>
+        <div className="officialSourceNotice">
+          <strong>{language === "en" ? "Visual source" : "Fuente visual"}</strong>
+          <p>{language === "en" ? sourceNotice.en : sourceNotice.es}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (structuredTable) {
     return (
@@ -185,20 +231,45 @@ export default function OfficialTextView({
   return (
     <div className={["officialText", "officialTextStructured", className].filter(Boolean).join(" ")}>
       {blocks.map((block, index) => block.kind === "table" ? (
-        <div className="officialTableBlock" key={index}>
-          <div className="officialTableHint officialTableTapHint" aria-hidden="true">
-            ⤢ {language === "en" ? "Tap to enlarge" : "Tocá para ampliar"}
-          </div>
-          <FitToWidthPreview
-            ariaLabel={language === "en" ? "Open enlarged table" : "Abrir cuadro ampliado"}
-            onExpand={() => setExpanded(String(index))}
+        <div className="officialTableBlock officialPdfTableBlock" key={index}>
+          <button
+            type="button"
+            className="officialTableHint officialTableTapHint officialPdfTableAction"
+            onClick={() => setExpanded(String(index))}
           >
-            <pre className="officialTableText officialTableTextCompact">{block.text}</pre>
-          </FitToWidthPreview>
+            ⤢ {language === "en" ? "Enlarge table" : "Ampliar cuadro"}
+          </button>
+
+          {block.table ? (
+            <div
+              className="officialPdfTableFrame"
+              role="button"
+              tabIndex={0}
+              aria-label={language === "en" ? "Open enlarged table" : "Abrir cuadro ampliado"}
+              onClick={() => setExpanded(String(index))}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setExpanded(String(index));
+                }
+              }}
+            >
+              <ParsedTable table={block.table} compact />
+            </div>
+          ) : (
+            <FitToWidthPreview
+              ariaLabel={language === "en" ? "Open enlarged table" : "Abrir cuadro ampliado"}
+              onExpand={() => setExpanded(String(index))}
+            >
+              <pre className="officialTableText officialTableTextCompact">{block.text}</pre>
+            </FitToWidthPreview>
+          )}
 
           {expanded === String(index) ? (
             <TableLightbox title={title} language={language} onClose={() => setExpanded(null)}>
-              <pre className="officialTableText">{block.text}</pre>
+              {block.table
+                ? <ParsedTable table={block.table} />
+                : <pre className="officialTableText">{block.text}</pre>}
             </TableLightbox>
           ) : null}
         </div>

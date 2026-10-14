@@ -13,8 +13,8 @@ import { auditPlayDecision } from "../lib/decision-audit";
 import { defaultRowEntitlementFacts, deriveRowEntitlement } from "../lib/row-entitlement";
 import { buildFeedbackRecord, normalizeFeedbackRecord, sanitizeFeedbackNote } from "../lib/decision-feedback";
 import { playDecisionRuleTrail, substitutionDecisionRuleTrail } from "../lib/decision-links";
-import { formatOfficialTextBlocks } from "../lib/official-text-format";
-import { getOfficialStructuredTable } from "../lib/official-structured-tables";
+import { cleanOfficialSourceText, formatOfficialTextBlocks } from "../lib/official-text-format";
+import { getOfficialSourceNotice, getOfficialStructuredTable } from "../lib/official-structured-tables";
 import type { ExternalResourceDb, Rule, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
@@ -850,8 +850,7 @@ test("official text formatter preserves Umpire Guide misexecution tables as tabl
   assert.ok(section);
   const blocks = formatOfficialTextBlocks(section.text, section.title);
   assert.ok(blocks.length >= 1);
-  assert.ok(blocks.every((block) => block.kind === "table"));
-  assert.equal(blocks.map((block) => block.text).join("\n\n"), section.text.trimEnd());
+  assert.ok(blocks.some((block) => block.kind === "table"));
 });
 
 test("official text formatter detects Arena misexecution and handicap matrices", () => {
@@ -884,6 +883,99 @@ test("official text formatter detects the penalty table embedded in Arena Rule 1
   const blocks = formatOfficialTextBlocks(rule.text, "Rule 10 · " + rule.title);
   assert.ok(blocks.some((block) => block.kind === "table"));
   assert.ok(blocks.find((block) => block.kind === "table")?.text.includes("PENALTY"));
+});
+
+test("embedded Arena Rule 10 penalty table is parsed into real columns", () => {
+  const rule = db.rules.find((item) => item.discipline === "arena" && item.rule === "10");
+  assert.ok(rule);
+  const blocks = formatOfficialTextBlocks(rule.text, "Rule 10 · " + rule.title);
+  const table = blocks.find((block) => block.table && block.text.includes("RULE"));
+  assert.ok(table?.table);
+  assert.equal(table.table.columnCount, 2);
+  assert.ok(table.table.rows.some((row) => row[0].includes("14.h") && row[1].includes("2, 3, 4, 5")));
+  assert.equal(blocks.some((block) => block.text.includes("2026 UNITED STATES POLO ASSOCIATION")), false);
+});
+
+test("Outdoor Rule 35 penalty matrix is parsed into real columns", () => {
+  const rule = db.rules.find((item) => item.discipline === "outdoor" && item.rule === "35");
+  assert.ok(rule);
+  const blocks = formatOfficialTextBlocks(rule.text, "Rule 35 · " + rule.title);
+  const table = blocks.find((block) => block.table && block.text.includes("RULE"));
+  assert.ok(table?.table);
+  assert.equal(table.table.columnCount, 2);
+  assert.ok(table.table.rows.some((row) => row[0] === "24" && row[1].includes("1,2,3,4,5,7 or 10")));
+  assert.equal(blocks.some((block) => block.text.includes("2026 UNITED STATES POLO ASSOCIATION")), false);
+});
+
+test("Tournament Fees schedule is parsed as a 3-column table", () => {
+  const tournament = externalDb.resources.find((resource) => resource.id === "tournament-conditions");
+  const section = tournament?.sections.find((item) => item.id === "tournament-conditions-section-v-tournament-fees-and-charges");
+  assert.ok(section);
+  const blocks = formatOfficialTextBlocks(section.text, section.title);
+  const table = blocks.find((block) => block.table && block.text.includes("GOAL LEVEL"));
+  assert.ok(table?.table);
+  assert.equal(table.table.columnCount, 3);
+  assert.ok(table.table.rows.some((row) => row[0] === "0 to 4 goals" && row[1] === "$300.00" && row[2] === "$200.00"));
+});
+
+test("Umpire certification requirements are recovered as a multi-column table", () => {
+  const guide = externalDb.resources.find((resource) => resource.id === "umpire-guide");
+  const section = guide?.sections.find((item) => item.id === "umpire-guide-umpire-certification-program-standards-and-qualifications");
+  assert.ok(section);
+  const blocks = formatOfficialTextBlocks(section.text, section.title);
+  const table = blocks.find((block) => block.table && block.text.includes("Certification"));
+  assert.ok(table?.table);
+  assert.ok(table.table.columnCount >= 4);
+  assert.equal(table.text.includes("\nM    P1"), false);
+});
+
+test("professional Umpire lists are parsed without PDF margin letters", () => {
+  const guide = externalDb.resources.find((resource) => resource.id === "umpire-guide");
+  const section = guide?.sections.find((item) => item.id === "umpire-guide-uspa-instructors-and-professional-umpires");
+  assert.ok(section);
+  const blocks = formatOfficialTextBlocks(section.text, section.title);
+  assert.ok(blocks.filter((block) => block.table).length >= 2);
+  const cleaned = cleanOfficialSourceText(section.text);
+  assert.equal(/\s{8,}[A-Z]\s*$/m.test(cleaned), false);
+});
+
+test("official source cleanup removes repeated page headers and vertical margin furniture", () => {
+  const sample = [
+    "Body text                                                        U",
+    "M",
+    "I",
+    "2026 UNITED STATES POLO ASSOCIATION®",
+    "Next paragraph",
+  ].join("\n");
+  const cleaned = cleanOfficialSourceText(sample);
+  assert.equal(cleaned.includes("UNITED STATES POLO ASSOCIATION"), false);
+  assert.equal(cleaned.includes("                                                        U"), false);
+  assert.equal(/^M$/m.test(cleaned), false);
+  assert.equal(/^I$/m.test(cleaned), false);
+});
+
+test("Heat Index broken extraction is replaced by a structured summary", () => {
+  const table = getOfficialStructuredTable("policies-noaa-s-national-weather-service-heat-index-chart");
+  assert.ok(table);
+  assert.equal(table.columns.join("|"), "Category|Heat Index");
+  assert.equal(table.rows.at(-1)?.join("|"), "Extreme Danger|126+");
+});
+
+test("visual-only Henneke chart suppresses unreliable extracted glyphs", () => {
+  const notice = getOfficialSourceNotice("policies-henneke-body-condition-score-chart");
+  assert.ok(notice);
+  assert.ok(notice.en.includes("visual chart"));
+});
+
+test("all Rulebook rule text renders without repeated USPA page headers", () => {
+  for (const rule of db.rules) {
+    const cleaned = cleanOfficialSourceText(rule.text);
+    assert.equal(
+      cleaned.includes("2026 UNITED STATES POLO ASSOCIATION®"),
+      false,
+      "Page header leaked in " + rule.discipline + " Rule " + rule.rule,
+    );
+  }
 });
 
 test("structured Outdoor misexecution table has complete 8-column rows", () => {

@@ -200,13 +200,36 @@ const arenaHandicapMatrix: OfficialStructuredTable = {
   ],
 };
 
+const heatIndexSummary: OfficialStructuredTable = {
+  columns: ["Category", "Heat Index"],
+  rows: [
+    ["Caution", "80–90"],
+    ["Extreme Caution", "91–103"],
+    ["Danger", "103–124"],
+    ["Extreme Danger", "126+"],
+  ],
+};
+
 const TABLES: Record<string, OfficialStructuredTable> = {
   "umpire-guide-outdoor-rules-misexecution-of-penalty-shots-knock-ins": outdoorMisexecution,
   "umpire-guide-arena-rules-misexecution-of-penalty-shots": arenaMisexecution,
   "umpire-guide-outdoor-handicap-matrix": outdoorHandicapMatrix,
   "umpire-guide-arena-handicap-matrix": arenaHandicapMatrix,
+  "policies-noaa-s-national-weather-service-heat-index-chart": heatIndexSummary,
 };
 
 export function getOfficialStructuredTable(sourceKey?: string) {
   return sourceKey ? TABLES[sourceKey] ?? null : null;
+}
+
+
+const SOURCE_NOTICES: Record<string, { en: string; es: string }> = {
+  "policies-henneke-body-condition-score-chart": {
+    en: "This source page is a visual chart in the Rulebook. The current extracted text does not contain reliable chart data, so the app does not display the broken extraction.",
+    es: "Esta página es un cuadro visual del Rulebook. La extracción actual no contiene datos confiables del cuadro, por eso la app no muestra el texto roto.",
+  },
+};
+
+export function getOfficialSourceNotice(sourceKey?: string) {
+  return sourceKey ? SOURCE_NOTICES[sourceKey] ?? null : null;
 }
