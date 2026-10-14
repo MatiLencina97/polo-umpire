@@ -13,6 +13,7 @@ import { auditPlayDecision } from "../lib/decision-audit";
 import { defaultRowEntitlementFacts, deriveRowEntitlement } from "../lib/row-entitlement";
 import { buildFeedbackRecord, normalizeFeedbackRecord, sanitizeFeedbackNote } from "../lib/decision-feedback";
 import { playDecisionRuleTrail, substitutionDecisionRuleTrail } from "../lib/decision-links";
+import { formatOfficialTextBlocks } from "../lib/official-text-format";
 import type { ExternalResourceDb, Rule, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
@@ -840,6 +841,48 @@ test("feedback note is normalized and capped", () => {
   const note = sanitizeFeedbackNote("  Rule 24.d   should also be reviewed.  ");
   assert.equal(note, "Rule 24.d should also be reviewed.");
   assert.equal(sanitizeFeedbackNote("x".repeat(500)).length, 300);
+});
+
+test("official text formatter preserves Umpire Guide misexecution tables as table blocks", () => {
+  const guide = externalDb.resources.find((resource) => resource.id === "umpire-guide");
+  const section = guide?.sections.find((item) => item.id === "umpire-guide-outdoor-rules-misexecution-of-penalty-shots-knock-ins");
+  assert.ok(section);
+  const blocks = formatOfficialTextBlocks(section.text, section.title);
+  assert.ok(blocks.length >= 1);
+  assert.ok(blocks.every((block) => block.kind === "table"));
+  assert.equal(blocks.map((block) => block.text).join("\n\n"), section.text.trimEnd());
+});
+
+test("official text formatter detects Arena misexecution and handicap matrices", () => {
+  const guide = externalDb.resources.find((resource) => resource.id === "umpire-guide");
+  for (const id of [
+    "umpire-guide-arena-rules-misexecution-of-penalty-shots",
+    "umpire-guide-outdoor-handicap-matrix",
+    "umpire-guide-arena-handicap-matrix",
+  ]) {
+    const section = guide?.sections.find((item) => item.id === id);
+    assert.ok(section);
+    const blocks = formatOfficialTextBlocks(section.text, section.title);
+    assert.ok(blocks.some((block) => block.kind === "table"), "Expected table block for " + id);
+  }
+});
+
+test("official text formatter keeps mixed Tournament Conditions prose separate from its fee table", () => {
+  const tournament = externalDb.resources.find((resource) => resource.id === "tournament-conditions");
+  const section = tournament?.sections.find((item) => item.id === "tournament-conditions-section-v-tournament-fees-and-charges");
+  assert.ok(section);
+  const blocks = formatOfficialTextBlocks(section.text, section.title);
+  assert.ok(blocks.some((block) => block.kind === "prose"));
+  assert.ok(blocks.some((block) => block.kind === "table"));
+  assert.ok(blocks.find((block) => block.kind === "table")?.text.includes("GOAL LEVEL"));
+});
+
+test("official text formatter detects the penalty table embedded in Arena Rule 10", () => {
+  const rule = db.rules.find((item) => item.discipline === "arena" && item.rule === "10");
+  assert.ok(rule);
+  const blocks = formatOfficialTextBlocks(rule.text, "Rule 10 · " + rule.title);
+  assert.ok(blocks.some((block) => block.kind === "table"));
+  assert.ok(blocks.find((block) => block.kind === "table")?.text.includes("PENALTY"));
 });
 
 test("feedback normalization rejects malformed ratings", () => {
