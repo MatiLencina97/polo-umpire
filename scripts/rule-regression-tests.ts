@@ -13,7 +13,7 @@ import { auditPlayDecision } from "../lib/decision-audit";
 import { defaultRowEntitlementFacts, deriveRowEntitlement } from "../lib/row-entitlement";
 import { buildFeedbackRecord, normalizeFeedbackRecord, sanitizeFeedbackNote } from "../lib/decision-feedback";
 import { playDecisionRuleTrail, substitutionDecisionRuleTrail } from "../lib/decision-links";
-import type { ExternalResourceDb, RuleDb } from "../lib/types";
+import type { ExternalResourceDb, Rule, RuleDb } from "../lib/types";
 
 type TestCase = { name: string; run: () => void };
 const cases: TestCase[] = [];
@@ -97,6 +97,20 @@ test("generic penalty consequence wording does not by itself trigger Restart", (
   const detected = classifyTopic("What penalty should the Umpire award here?");
   assert.equal(detected.topic, null);
   assert.equal(detected.ranked.find((item) => item.id === "restart")?.score, 0);
+});
+
+test("short rule-search token ROW does not match inside throw-in", () => {
+  const synthetic: Rule = {
+    id: "outdoor-20",
+    discipline: "outdoor",
+    rule: "20",
+    title: "Throw-in",
+    pageStart: 1,
+    text: "The throw-in restarts play.",
+    keywords: ["throw-in"],
+  };
+  assert.equal(scoreRule(synthetic, "ROW"), 0);
+  assert.ok(scoreRule(synthetic, "throw") > 0);
 });
 
 test("Blocking open-play question offers uncertainty instead of an inapplicable escape", () => {
