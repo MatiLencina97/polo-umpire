@@ -75,6 +75,13 @@ test("tied rule-family signals require an explicit family choice", () => {
   assert.equal(detected.ranked[0].score, detected.ranked[1].score);
 });
 
+test("near-tied rule-family signals also require an explicit family choice", () => {
+  const detected = classifyTopic("Dangerous action during a penalty hit.");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ambiguous, true);
+  assert.equal(detected.ranked[0].score - detected.ranked[1].score, 1);
+});
+
 test("Spanish conversational 'qué pasó' does not falsely classify as ROW", () => {
   const detected = classifyTopic("¿Qué pasó con el jugador azul?");
   assert.equal(detected.topic, null);
@@ -83,6 +90,12 @@ test("Spanish conversational 'qué pasó' does not falsely classify as ROW", () 
 
 test("English 'across' does not falsely match the ROW cue 'cross'", () => {
   const detected = classifyTopic("He rode across the field and then turned back.");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ranked.find((item) => item.id === "row")?.score, 0);
+});
+
+test("Spanish alineado does not falsely match the ROW cue linea", () => {
+  const detected = classifyTopic("El jugador estaba alineado con el arco.");
   assert.equal(detected.topic, null);
   assert.equal(detected.ranked.find((item) => item.id === "row")?.score, 0);
 });
@@ -118,6 +131,17 @@ test("Blocking open-play question offers uncertainty instead of an inapplicable 
   assert.ok(slow);
   assert.ok(slow.options.some(([value]) => value === "unknown"));
   assert.equal(slow.options.some(([value]) => value === "na"), false);
+});
+
+test("conditional ROW and mallet questions do not offer N/A once activated", () => {
+  const clearance = questions.row.find((question) => question.key === "clearanceTime");
+  const strokeEntry = questions.mallet.find((question) => question.key === "strokeEnteredByOpponent");
+  assert.ok(clearance);
+  assert.ok(strokeEntry);
+  assert.equal(clearance.options.some(([value]) => value === "na"), false);
+  assert.ok(clearance.options.some(([value]) => value === "unknown"));
+  assert.equal(strokeEntry.options.some(([value]) => value === "na"), false);
+  assert.ok(strokeEntry.options.some(([value]) => value === "unknown"));
 });
 
 test("ROW line change with no clearance time resolves to foul", () => {
