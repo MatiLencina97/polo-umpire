@@ -16,8 +16,8 @@ const PAGE_HEADER = /^\s*2026 UNITED STATES POLO ASSOCIATION®\s*$/i;
 function stripMarginFurniture(line: string) {
   // PDF side-tabs are extracted as isolated capital letters far away from the body text.
   let cleaned = line
-    .replace(/\s{8,}[A-Z]\s*$/g, "")
-    .replace(/^[A-Z]\s{5,}(?=\S)/g, "")
+    .replace(/\s{6,}[A-Z]\s*$/g, "")
+    .replace(/^[A-Z]\s{3,}(?=\S)/g, "")
     .replace(/\s+$/g, "");
 
   return cleaned;
