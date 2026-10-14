@@ -2911,3 +2911,113 @@ html[data-theme="dark"] .officialTableLightboxClose {
   border-color: #344657;
   color: #e6eef6;
 }
+
+
+/* PDF-like readable structured tables (no transform shrinking). */
+.officialPdfTableBlock {
+  min-width: 0;
+}
+.officialPdfTableAction {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: zoom-in;
+  font: inherit;
+  font-size: calc(9px * var(--font-scale));
+  font-weight: 800;
+}
+.officialPdfTableFrame {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf9;
+  cursor: zoom-in;
+  -webkit-tap-highlight-color: transparent;
+}
+.officialPdfTableFrame:focus-visible {
+  outline: 3px solid rgba(57, 120, 177, .32);
+  outline-offset: 3px;
+}
+.officialPdfTableFrame .officialHtmlTableCompact {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: calc(8px * var(--font-scale));
+  line-height: 1.16;
+}
+.officialPdfTableFrame .officialHtmlTableCompact th,
+.officialPdfTableFrame .officialHtmlTableCompact td {
+  min-width: 0;
+  max-width: none;
+  width: auto;
+  padding: 4px 3px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
+  vertical-align: top;
+  text-align: center;
+}
+.officialPdfTableFrame .officialHtmlTableCompact thead th,
+.officialPdfTableFrame .officialHtmlTableCompact tbody th {
+  position: static;
+}
+.officialPdfTableFrame .officialHtmlTableCompact tbody th {
+  text-align: left;
+}
+.officialPdfTableFrame .officialHtmlTableCols8 {
+  font-size: calc(7.2px * var(--font-scale));
+}
+.officialPdfTableFrame .officialHtmlTableCols8 th:first-child,
+.officialPdfTableFrame .officialHtmlTableCols8 td:first-child {
+  width: 14%;
+}
+.officialPdfTableFrame .officialHtmlTableCols6 {
+  font-size: calc(8.2px * var(--font-scale));
+}
+.officialPdfTableFrame .officialHtmlTableCols6 th:first-child,
+.officialPdfTableFrame .officialHtmlTableCols6 td:first-child {
+  width: 18%;
+}
+.officialPdfTableFrame .officialHtmlTableCols3 {
+  font-size: calc(10px * var(--font-scale));
+}
+.officialPdfTableFrame .officialHtmlTableCols3 th:first-child,
+.officialPdfTableFrame .officialHtmlTableCols3 td:first-child {
+  width: 30%;
+}
+@media (max-width: 720px) {
+  .externalResourceModal .officialTextStructured:has(.officialPdfTableBlock) {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+  .externalResourceModal .officialPdfTableBlock {
+    margin-left: -1px;
+    margin-right: -1px;
+  }
+  .officialPdfTableFrame .officialHtmlTableCols8 {
+    font-size: calc(7.8px * var(--font-scale));
+    line-height: 1.14;
+  }
+  .officialPdfTableFrame .officialHtmlTableCols8 th,
+  .officialPdfTableFrame .officialHtmlTableCols8 td {
+    padding: 4px 2px;
+  }
+  .officialPdfTableFrame .officialHtmlTableCols6 {
+    font-size: calc(8.8px * var(--font-scale));
+  }
+  .officialPdfTableFrame .officialHtmlTableCols3 {
+    font-size: calc(10.5px * var(--font-scale));
+  }
+}
+html[data-theme="dark"] .officialPdfTableFrame {
+  background: #0b1621;
+  border-color: #344657;
+}
