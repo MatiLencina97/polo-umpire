@@ -147,3 +147,14 @@ Validation effort is intentionally concentrated on the rules most likely to crea
 v0.20 added a Rule 24 entitlement helper for common deterministic branches under 24(e)-(h) and a complete decision rule trail.
 
 v0.26 hardens field reliability without changing the governing-rule standard: Match Mode now stops once additional quick questions cannot change the current ruling class, and **OFFLINE READY** is only reported after the installed build's required runtime assets have been cached and re-verified.
+
+
+## v0.27 feedback audit loop
+
+v0.27 adds persistent anonymous feedback as an audit signal. The feedback system stores only structured decision context: app/rulebook version, discipline, resolver mode, topic/scenario, outcome status, validation class, headline, cited references, rating, reason and an optional sanitized note.
+
+It explicitly does **not** persist the original play narrative, event name, player names, IP address, device identifier or user identity.
+
+Dashboard metrics are labeled **usefulness rate** and **review-request rate**, always together with sample size (n). They are not an accuracy estimate and must not be used as a substitute for rule validation or qualified Umpire review.
+
+Offline retries are idempotent by feedback ID. A repeated submission with the same ID is treated as success without creating a second record.
