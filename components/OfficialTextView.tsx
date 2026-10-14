@@ -74,8 +74,14 @@ function FitToWidthPreview({
 }
 
 function StructuredTable({ table, compact = false }: { table: OfficialStructuredTable; compact?: boolean }) {
+  const className = [
+    "officialHtmlTable",
+    compact ? "officialHtmlTableCompact" : "",
+    compact ? `officialHtmlTableCols${table.columns.length}` : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <table className={compact ? "officialHtmlTable officialHtmlTableCompact" : "officialHtmlTable"}>
+    <table className={className}>
       <thead>
         <tr>
           {table.columns.map((column) => <th key={column}>{column}</th>)}
