@@ -4,7 +4,7 @@ import { classify, classifyTopic, questions } from "../lib/engine";
 import { decidePlay } from "../lib/play-decision";
 import { parseRuleProvisions, bestProvisionsForRules, resolveProvisions } from "../lib/subarticles";
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
-import { matchProgress } from "../lib/match-flow";
+import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "../lib/match-flow";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
 import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
 import { appendTranscript, speechLocale } from "../lib/voice";
@@ -75,6 +75,37 @@ test("tied rule-family signals require an explicit family choice", () => {
   assert.equal(detected.ranked[0].score, detected.ranked[1].score);
 });
 
+test("Spanish conversational 'qué pasó' does not falsely classify as ROW", () => {
+  const detected = classifyTopic("¿Qué pasó con el jugador azul?");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ranked.find((item) => item.id === "row")?.score, 0);
+});
+
+test("English 'across' does not falsely match the ROW cue 'cross'", () => {
+  const detected = classifyTopic("He rode across the field and then turned back.");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ranked.find((item) => item.id === "row")?.score, 0);
+});
+
+test("asking for the penalty for arguing is classified as conduct, not restart", () => {
+  const detected = classifyTopic("What penalty should be given for arguing with the umpire?");
+  assert.equal(detected.topic, "conduct");
+  assert.equal(detected.ranked.find((item) => item.id === "restart")?.score, 0);
+});
+
+test("generic penalty consequence wording does not by itself trigger Restart", () => {
+  const detected = classifyTopic("What penalty should the Umpire award here?");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ranked.find((item) => item.id === "restart")?.score, 0);
+});
+
+test("Blocking open-play question offers uncertainty instead of an inapplicable escape", () => {
+  const slow = questions.blocking.find((question) => question.key === "slow");
+  assert.ok(slow);
+  assert.ok(slow.options.some(([value]) => value === "unknown"));
+  assert.equal(slow.options.some(([value]) => value === "na"), false);
+});
+
 test("ROW line change with no clearance time resolves to foul", () => {
   const decision = decidePlay("row", "outdoor", {
     rowEntitled: "yes",
@@ -109,6 +140,38 @@ test("Match Mode stops ROW questions once no risk is established", () => {
   assert.equal(progress.complete, true);
   assert.equal(progress.earlyResolved, true);
   assert.deepEqual(progress.keys, ["rowEntitled", "risk"]);
+});
+
+test("changing an upstream ROW answer clears stale downstream branch answers", () => {
+  const current = {
+    rowEntitled: "yes",
+    risk: "yes",
+    lineChanged: "yes",
+    clearanceTime: "no",
+  };
+  const nextAnswers = applyMatchAnswer("row", current, "risk", "no");
+  assert.deepEqual(nextAnswers, { rowEntitled: "yes", risk: "no" });
+  assert.deepEqual(matchProgress("row", nextAnswers).keys, ["rowEntitled", "risk"]);
+});
+
+test("re-entering a changed branch does not resurrect old hidden answers", () => {
+  const first = applyMatchAnswer("row", {
+    rowEntitled: "yes",
+    risk: "yes",
+    lineChanged: "yes",
+    clearanceTime: "no",
+  }, "risk", "no");
+  const second = applyMatchAnswer("row", first, "risk", "yes");
+  assert.deepEqual(second, { rowEntitled: "yes", risk: "yes" });
+  assert.equal(matchProgress("row", second).currentKey, "lineChanged");
+});
+
+test("rewind from a completed quick flow reopens the last answered fact", () => {
+  const completed = { marking: "yes", restartBlock: "yes" };
+  assert.equal(matchProgress("blocking", completed).complete, true);
+  const rewound = rewindLastMatchAnswer("blocking", completed);
+  assert.deepEqual(rewound, { marking: "yes" });
+  assert.equal(matchProgress("blocking", rewound).currentKey, "restartBlock");
 });
 
 test("knocked-off-balance fact resolves Dangerous Riding immediately", () => {
@@ -243,6 +306,27 @@ test("Restart flow asks the early-play fact first and only then the restart type
   assert.equal(ordinary.complete, true);
   assert.equal(ordinary.earlyResolved, true);
   assert.deepEqual(ordinary.keys, ["early", "dead"]);
+});
+
+test("dead-ball restart type is actually used by the decision engine", () => {
+  const decision = decidePlay("restart", "outdoor", {
+    early: "no",
+    dead: "yes",
+    restartType: "knockin",
+  }, "en");
+  assert.equal(decision.status, "procedure");
+  assert.ok(decision.references.includes("22.a"));
+  assert.equal(decision.missing.length, 0);
+});
+
+test("unknown dead-ball restart type remains explicitly unresolved", () => {
+  const decision = decidePlay("restart", "outdoor", {
+    early: "no",
+    dead: "yes",
+    restartType: "unknown",
+  }, "en");
+  assert.equal(decision.status, "needs-info");
+  assert.ok(decision.missing.length > 0);
 });
 
 test("subarticle parser exposes Rule 24 c and d separately", () => {
