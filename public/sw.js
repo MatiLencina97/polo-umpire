@@ -1,5 +1,5 @@
-const CACHE = "polo-umpire-assistant-v0.26-2026";
-const OFFLINE_INDEX = "/__polo-umpire-offline-index-v0.26.json";
+const CACHE = "polo-umpire-assistant-v0.27-2026";
+const OFFLINE_INDEX = "/__polo-umpire-offline-index-v0.27.json";
 const CORE = [
   "/",
   "/manifest.webmanifest",

@@ -1,4 +1,4 @@
-# Polo Umpire Assistant v0.26
+# Polo Umpire Assistant v0.27
 
 Offline-first PWA for polo umpires under the Polo Umpire Assistant brand, built with Next.js + TypeScript and a local dataset extracted from the current USPA Rulebook.
 
@@ -67,11 +67,10 @@ For safety, production should eventually add an admin approval step before activ
 
 Current next layers:
 
-1. Persistent anonymous feedback analytics and review dashboard
-2. Deeper Arena deterministic coverage
-3. More official golden examples for every deterministic branch
-4. Optional AI interpretation when connected, without replacing local rule citations
-5. Admin change-review screen for materially changed Rulebook versions
+1. Deeper Arena deterministic coverage
+2. More official golden examples for every deterministic branch
+3. Optional AI interpretation when connected, without replacing local rule citations
+4. Admin change-review screen for materially changed Rulebook versions
 
 
 ## Situation rules
@@ -89,6 +88,15 @@ If the question gives the tournament upper limit and outgoing player handicap bu
 
 Decision confidence is reported as **Direct Rule Support**, **Umpire Judgment**, or **Insufficient Validated Coverage** rather than as an invented percentage. See [docs/VALIDATION.md](docs/VALIDATION.md) for the audit methodology, known limits, official-guidance coverage, and human-review policy.
 
+
+## v0.27 feedback quality loop
+
+- Umpire feedback is persisted in a dedicated Postgres store with idempotent IDs, so offline replay cannot create duplicate records.
+- Server-side validation limits accepted fields and lengths; the original play description, event name, player names, IP and device identifiers are not stored.
+- A protected `/admin/feedback` dashboard reports **usefulness rate** and **review-request rate** with sample size, grouped by topic, rule/reference, reason and app version.
+- Needs-review feedback enters a review queue that can be marked open, reviewed or dismissed.
+- A best-effort in-memory rate limiter reduces automated abuse without persisting user identity.
+- These metrics are product-quality signals and must never be presented as an accuracy percentage.
 
 ## v0.26 reliability hardening
 
