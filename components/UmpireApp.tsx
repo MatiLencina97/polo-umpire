@@ -55,6 +55,7 @@ import VoiceInputButton from "@/components/VoiceInputButton";
 import HowItWorksPanel from "@/components/HowItWorksPanel";
 import OfflineStatusPanel from "@/components/OfflineStatusPanel";
 import DecisionFeedback from "@/components/DecisionFeedback";
+import OfficialTextView from "@/components/OfficialTextView";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import { flushPendingFeedback } from "@/lib/decision-feedback";
 import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
@@ -1974,7 +1975,7 @@ export default function UmpireApp() {
                 <button className="externalBackToIndex" onClick={() => setSelectedExternal({ resource: selectedExternal.resource, section: null })}>
                   ← {tr("All sections", "Todas las secciones")}
                 </button>
-                <pre className="officialText">{selectedExternal.section.text}</pre>
+                <OfficialTextView text={selectedExternal.section.text} title={selectedExternal.section.title} language={language} />
               </>
             ) : (
               <>
@@ -2004,7 +2005,7 @@ export default function UmpireApp() {
             <div className="sourceMeta">
               {selectedProvision.discipline === "outdoor" ? "Outdoor" : "Arena"} · {tr("page", "página")} {selectedProvision.pageStart}
             </div>
-            <pre className="officialText provisionOfficialText">{selectedProvision.text}</pre>
+            <OfficialTextView text={selectedProvision.text} title={selectedProvision.label} language={language} className="provisionOfficialText" />
             {db ? (() => {
               const parent = db.rules.find((rule) => rule.discipline === selectedProvision.discipline && rule.rule === selectedProvision.rule);
               return parent ? (
@@ -2045,7 +2046,7 @@ export default function UmpireApp() {
                 </div>
               </details>
             ) : null}
-            <pre className="officialText">{selectedRule.text}</pre>
+            <OfficialTextView text={selectedRule.text} title={`Rule ${selectedRule.rule} · ${selectedRule.title}`} language={language} />
             {selectedRule.applications?.length ? (
               <div className="interpretations">
                 <h3>{tr("Detected Interpretations & Examples", "Interpretations & Examples detectados")}</h3>

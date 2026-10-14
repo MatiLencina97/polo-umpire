@@ -2623,3 +2623,66 @@ html[data-theme="dark"] .feedbackReviewMeta span {
   background: #172432;
   color: #aebdcb;
 }
+
+
+/* Structured official text: preserve PDF tables/matrices without breaking prose layout. */
+.officialTextStructured {
+  display: grid;
+  gap: 14px;
+  white-space: normal;
+  overflow-wrap: normal;
+}
+.officialProseBlock {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.officialTableBlock {
+  min-width: 0;
+}
+.officialTableHint {
+  display: none;
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: calc(9px * var(--font-scale));
+  font-weight: 800;
+}
+.officialTableScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fffdf9;
+}
+.officialTableText {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  padding: 13px 14px;
+  white-space: pre;
+  overflow-wrap: normal;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: calc(11px * var(--font-scale));
+  line-height: 1.55;
+  color: var(--text);
+  tab-size: 8;
+}
+@media (max-width: 720px) {
+  .officialTableHint { display: block; }
+  .officialTableText {
+    min-width: max-content;
+    font-size: calc(10px * var(--font-scale));
+  }
+}
+html[data-theme="dark"] .officialTableScroll {
+  background: #0b1621;
+  border-color: #344657;
+}
+html[data-theme="dark"] .officialTableText {
+  color: #e5edf6;
+}
+html[data-theme="dark"] .officialTableHint {
+  color: #9aaabd;
+}
