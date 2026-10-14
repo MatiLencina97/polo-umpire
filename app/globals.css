@@ -2686,3 +2686,88 @@ html[data-theme="dark"] .officialTableText {
 html[data-theme="dark"] .officialTableHint {
   color: #9aaabd;
 }
+
+
+/* Exact structured Umpire Guide tables */
+.officialHtmlTableScroll {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+.officialHtmlTable {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  background: transparent;
+  font-size: calc(11px * var(--font-scale));
+  line-height: 1.35;
+}
+.officialHtmlTable th,
+.officialHtmlTable td {
+  min-width: 138px;
+  max-width: 230px;
+  padding: 10px 11px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.officialHtmlTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #edf2f6;
+  color: var(--navy);
+  font-weight: 900;
+}
+.officialHtmlTable thead th:first-child,
+.officialHtmlTable tbody th {
+  min-width: 190px;
+}
+.officialHtmlTable tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #f8fafc;
+  color: var(--navy);
+  font-weight: 850;
+}
+.officialHtmlTable thead th:first-child {
+  left: 0;
+  z-index: 4;
+}
+.officialHtmlTable tr:last-child > * {
+  border-bottom: 0;
+}
+.officialHtmlTable tr > *:last-child {
+  border-right: 0;
+}
+@media (max-width: 720px) {
+  .officialHtmlTable {
+    font-size: calc(10px * var(--font-scale));
+  }
+  .officialHtmlTable th,
+  .officialHtmlTable td {
+    min-width: 150px;
+    max-width: 210px;
+    padding: 9px 10px;
+  }
+  .officialHtmlTable thead th:first-child,
+  .officialHtmlTable tbody th {
+    min-width: 170px;
+  }
+}
+html[data-theme="dark"] .officialHtmlTable thead th {
+  background: #1a2a39;
+  color: #e6eef6;
+}
+html[data-theme="dark"] .officialHtmlTable tbody th {
+  background: #111d29;
+  color: #dcecff;
+}
+html[data-theme="dark"] .officialHtmlTable th,
+html[data-theme="dark"] .officialHtmlTable td {
+  border-color: #344657;
+}

@@ -1975,7 +1975,7 @@ export default function UmpireApp() {
                 <button className="externalBackToIndex" onClick={() => setSelectedExternal({ resource: selectedExternal.resource, section: null })}>
                   ← {tr("All sections", "Todas las secciones")}
                 </button>
-                <OfficialTextView text={selectedExternal.section.text} title={selectedExternal.section.title} language={language} />
+                <OfficialTextView text={selectedExternal.section.text} title={selectedExternal.section.title} language={language} sourceKey={selectedExternal.section.id} />
               </>
             ) : (
               <>
