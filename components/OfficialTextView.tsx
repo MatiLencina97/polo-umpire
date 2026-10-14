@@ -142,16 +142,29 @@ export default function OfficialTextView({
   if (structuredTable) {
     return (
       <div className={["officialText", "officialTextStructured", className].filter(Boolean).join(" ")}>
-        <div className="officialTableBlock officialHtmlTableBlock">
-          <div className="officialTableHint officialTableTapHint" aria-hidden="true">
-            ⤢ {language === "en" ? "Tap to enlarge" : "Tocá para ampliar"}
-          </div>
-          <FitToWidthPreview
-            ariaLabel={language === "en" ? "Open enlarged table" : "Abrir cuadro ampliado"}
-            onExpand={() => setExpanded("structured")}
+        <div className="officialTableBlock officialHtmlTableBlock officialPdfTableBlock">
+          <button
+            type="button"
+            className="officialTableHint officialTableTapHint officialPdfTableAction"
+            onClick={() => setExpanded("structured")}
+          >
+            ⤢ {language === "en" ? "Enlarge table" : "Ampliar cuadro"}
+          </button>
+          <div
+            className="officialPdfTableFrame"
+            role="button"
+            tabIndex={0}
+            aria-label={language === "en" ? "Open enlarged table" : "Abrir cuadro ampliado"}
+            onClick={() => setExpanded("structured")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setExpanded("structured");
+              }
+            }}
           >
             <StructuredTable table={structuredTable} compact />
-          </FitToWidthPreview>
+          </div>
         </div>
 
         {expanded === "structured" ? (
