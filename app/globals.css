@@ -2771,3 +2771,143 @@ html[data-theme="dark"] .officialHtmlTable th,
 html[data-theme="dark"] .officialHtmlTable td {
   border-color: #344657;
 }
+
+
+/* Fit-to-width official tables: show the whole chart first, enlarge on demand. */
+.officialFitPreview {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  cursor: zoom-in;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fffdf9;
+  -webkit-tap-highlight-color: transparent;
+}
+.officialFitPreview:focus-visible {
+  outline: 3px solid rgba(57, 120, 177, .32);
+  outline-offset: 3px;
+}
+.officialFitPreviewContent {
+  width: max-content;
+  transform-origin: top left;
+  will-change: transform;
+}
+.officialFitPreviewContent .officialHtmlTable {
+  margin: 0;
+  border: 0;
+}
+.officialFitPreviewContent .officialTableText {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.officialTableTapHint {
+  display: block;
+  margin: 0 0 7px;
+  text-align: right;
+}
+.officialTableTextCompact {
+  width: max-content;
+  min-width: max-content;
+}
+.officialTableLightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  background: rgba(3, 11, 20, .86);
+  backdrop-filter: blur(5px);
+}
+.officialTableLightboxCard {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: min(1180px, 100%);
+  height: min(94vh, 920px);
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 32px 100px rgba(0,0,0,.42);
+}
+.officialTableLightboxCard h3 {
+  margin: 0 44px 4px 0;
+  color: var(--text);
+  line-height: 1.25;
+}
+.officialTableLightboxHint {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: calc(10px * var(--font-scale));
+  font-weight: 750;
+}
+.officialTableLightboxClose {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 25px;
+  line-height: 1;
+  cursor: pointer;
+}
+.officialTableLightboxViewport {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y pinch-zoom;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf9;
+}
+.officialTableLightboxViewport .officialHtmlTable {
+  min-width: max-content;
+  width: max-content;
+}
+.officialTableLightboxViewport .officialTableText {
+  min-width: max-content;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+@media (max-width: 720px) {
+  .officialTableLightbox {
+    padding: 0;
+  }
+  .officialTableLightboxCard {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    padding: 14px 10px 10px;
+    border: 0;
+    border-radius: 0;
+  }
+  .officialTableLightboxCard h3 {
+    font-size: calc(15px * var(--font-scale));
+  }
+  .officialTableLightboxViewport .officialHtmlTable {
+    font-size: calc(11px * var(--font-scale));
+  }
+}
+html[data-theme="dark"] .officialFitPreview,
+html[data-theme="dark"] .officialTableLightboxViewport {
+  background: #0b1621;
+  border-color: #344657;
+}
+html[data-theme="dark"] .officialTableLightboxCard,
+html[data-theme="dark"] .officialTableLightboxClose {
+  background: #101b27;
+  border-color: #344657;
+  color: #e6eef6;
+}
