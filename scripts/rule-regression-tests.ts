@@ -37,6 +37,26 @@ test("classifies knocked-off-balance ride-off as Dangerous Riding", () => {
   assert.ok(ranked[0].score > 0);
 });
 
+test("classifier does not treat player as restart play", () => {
+  const ranked = classify("A player approaches the ball and changes direction.");
+  const restart = ranked.find((item) => item.id === "restart");
+  assert.equal(restart?.score, 0);
+});
+
+test("classifier does not treat throw-in as ROW because throw contains row", () => {
+  const ranked = classify("The Umpire orders a throw-in.");
+  const row = ranked.find((item) => item.id === "row");
+  const restart = ranked.find((item) => item.id === "restart");
+  assert.equal(row?.score, 0);
+  assert.ok((restart?.score ?? 0) > 0);
+});
+
+test("exact Play still triggers restart context", () => {
+  const ranked = classify("A penalty was taken before the Umpire called Play.");
+  assert.equal(ranked[0].id, "restart");
+  assert.ok(ranked[0].score > 0);
+});
+
 test("ROW line change with no clearance time resolves to foul", () => {
   const decision = decidePlay("row", "outdoor", {
     rowEntitled: "yes",
