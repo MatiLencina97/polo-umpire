@@ -14,5 +14,9 @@
       "type": "image/png",
       "purpose": "any"
     }
+  ],
+  "id": "/",
+  "display_override": [
+    "standalone"
   ]
 }
