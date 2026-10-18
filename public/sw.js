@@ -1,7 +1,7 @@
 const CACHE_PREFIX = "polo-umpire-assistant-";
 const CACHE = "polo-umpire-assistant-v0.27-r2-2026";
-const OFFLINE_INDEX = "/__polo-umpire-offline-index-v0.27-r2.json";
-const CORE = [
+const OFFLINE_INDEX = "/__polo-umpire-offline-index.json";
+const PACKAGE_CORE = [
   "/",
   "/manifest.webmanifest",
   "/logo.png",
@@ -11,30 +11,63 @@ const CORE = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];
+const INSTALL_CORE = PACKAGE_CORE.filter((url) => url !== "/");
+const REFRESH_WHEN_ONLINE = new Set([
+  "/manifest.webmanifest",
+  "/data/manifest.json",
+  "/data/rules-2026.json",
+  "/data/resources-2026.json",
+]);
 
-function uniqueLocalPaths(urls) {
+function localPath(value) {
+  try {
+    const url = new URL(value, self.location.origin);
+    if (url.origin !== self.location.origin) return null;
+    return url.pathname + url.search;
+  } catch {
+    return null;
+  }
+}
+
+function uniqueLocalPaths(urls, includeCore = true) {
   const paths = [];
   for (const value of urls || []) {
-    try {
-      const url = new URL(value, self.location.origin);
-      if (url.origin !== self.location.origin) continue;
-      paths.push(url.pathname + url.search);
-    } catch {
-      // Ignore malformed cache candidates.
+    const path = localPath(value);
+    if (path) paths.push(path);
+  }
+  return [...new Set([...(includeCore ? PACKAGE_CORE : []), ...paths])];
+}
+
+function shellAssetPaths(html) {
+  const found = [];
+  const attributePattern = /(?:src|href)=["']([^"']+)["']/gi;
+  for (const match of html.matchAll(attributePattern)) {
+    const path = localPath(match[1]);
+    if (!path) continue;
+    if (
+      path.startsWith("/_next/") ||
+      path.startsWith("/icons/") ||
+      path === "/logo.png" ||
+      path === "/manifest.webmanifest"
+    ) {
+      found.push(path);
     }
   }
-  return [...new Set([...CORE, ...paths])];
+  return [...new Set(found)];
 }
 
-async function allCached(cache, urls) {
-  const checks = await Promise.all(urls.map((url) => cache.match(url)));
-  return checks.every(Boolean);
-}
-
-async function missingCached(cache, urls) {
+async function missingInCache(cache, urls) {
   const checks = await Promise.all(urls.map(async (url) => ({
     url,
     cached: Boolean(await cache.match(url)),
+  })));
+  return checks.filter((item) => !item.cached).map((item) => item.url);
+}
+
+async function missingAcrossCaches(urls) {
+  const checks = await Promise.all(urls.map(async (url) => ({
+    url,
+    cached: Boolean(await caches.match(url)),
   })));
   return checks.filter((item) => !item.cached).map((item) => item.url);
 }
@@ -70,6 +103,7 @@ async function keepCurrentAndPreviousCache() {
   const keys = (await caches.keys()).filter((key) => key.startsWith(CACHE_PREFIX));
   const stale = keys.filter((key) => key !== CACHE);
   const previous = stale.at(-1);
+
   await Promise.all(
     stale
       .filter((key) => key !== previous)
@@ -77,32 +111,83 @@ async function keepCurrentAndPreviousCache() {
   );
 }
 
+async function existingOfflineStatus() {
+  const cache = await caches.open(CACHE);
+  const index = await readOfflineIndex(cache);
+  if (!index?.urls?.length) {
+    return { ready: false, verifiedAt: null, missing: [...PACKAGE_CORE] };
+  }
+
+  const missing = await missingAcrossCaches(index.urls);
+  return {
+    ready: missing.length === 0,
+    verifiedAt: index.verifiedAt,
+    missing,
+  };
+}
+
+async function fetchAndStore(cache, path, forceRefresh = false) {
+  if (!forceRefresh && await cache.match(path)) return true;
+
+  const response = await fetch(path, {
+    cache: forceRefresh ? "reload" : "default",
+    credentials: "same-origin",
+  });
+  if (!response.ok) return false;
+  await cache.put(path, response.clone());
+  return true;
+}
+
 async function warmOfflinePackage(urls) {
   const cache = await caches.open(CACHE);
-  const candidates = uniqueLocalPaths(urls);
+
+  let shellResponse;
+  let discoveredAssets = [];
+  try {
+    shellResponse = await fetch("/", { cache: "reload", credentials: "same-origin" });
+    if (!shellResponse.ok) throw new Error("shell");
+    const html = await shellResponse.clone().text();
+    discoveredAssets = shellAssetPaths(html);
+  } catch {
+    // If there is no signal, keep using the last verified package instead of
+    // turning a healthy offline installation into a failed update.
+    return existingOfflineStatus();
+  }
+
+  const candidates = uniqueLocalPaths([
+    ...urls,
+    ...discoveredAssets,
+  ]);
+  const nonShell = candidates.filter((path) => path !== "/");
   let failed = false;
 
-  for (const url of candidates) {
+  for (const path of nonShell) {
     try {
-      const cached = await cache.match(url);
-      if (cached) continue;
-
-      const response = await fetch(url, { cache: "reload", credentials: "same-origin" });
-      if (!response.ok) {
-        failed = true;
-        continue;
-      }
-      await cache.put(url, response.clone());
+      const ok = await fetchAndStore(cache, path, REFRESH_WHEN_ONLINE.has(path));
+      if (!ok) failed = true;
     } catch {
       failed = true;
     }
   }
 
-  const missing = await missingCached(cache, candidates);
-  const ready = !failed && missing.length === 0;
+  const missingBeforeShell = await missingInCache(cache, nonShell);
+  if (failed || missingBeforeShell.length > 0) {
+    return {
+      ready: false,
+      verifiedAt: null,
+      missing: missingBeforeShell,
+    };
+  }
+
+  // Atomic cutover: only expose the new HTML shell after every asset it refers
+  // to has been cached successfully.
+  await cache.put("/", shellResponse.clone());
+
+  const missing = await missingInCache(cache, candidates);
+  const ready = missing.length === 0;
   const verifiedAt = ready ? await writeOfflineIndex(cache, candidates) : null;
 
-  // Never remove the previous working package until the new one is fully verified.
+  // Keep one previous complete package as a rollback/fallback.
   if (ready) await keepCurrentAndPreviousCache();
 
   return { ready, verifiedAt, missing };
@@ -110,12 +195,13 @@ async function warmOfflinePackage(urls) {
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
+  // The HTML shell is intentionally excluded here; WARM_CACHE performs the
+  // atomic shell+asset cutover after the client has loaded.
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(INSTALL_CORE)));
 });
 
 self.addEventListener("activate", (event) => {
-  // Do not delete the previous cache here. A newly activated worker can still be
-  // missing runtime JS/CSS chunks until the client finishes WARM_CACHE.
+  // Never delete the previous cache just because a worker activated.
   event.waitUntil(self.clients.claim());
 });
 
@@ -134,15 +220,7 @@ self.addEventListener("message", (event) => {
 
   if (event.data?.type === "OFFLINE_STATUS" && event.ports?.[0]) {
     event.waitUntil((async () => {
-      const cache = await caches.open(CACHE);
-      const index = await readOfflineIndex(cache);
-      const missing = index?.urls?.length ? await missingCached(cache, index.urls) : [...CORE];
-      const ready = Boolean(index?.urls?.length) && missing.length === 0;
-      event.ports[0].postMessage({
-        ready,
-        verifiedAt: index?.verifiedAt ?? null,
-        missing,
-      });
+      event.ports[0].postMessage(await existingOfflineStatus());
     })());
   }
 });
@@ -157,30 +235,10 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       const cached = (await caches.match(request)) || (await caches.match("/"));
-
-      if (cached) {
-        // Launch from disk immediately. Refresh the shell in the background when online.
-        event.waitUntil((async () => {
-          try {
-            const response = await fetch(request);
-            if (response.ok) {
-              const cache = await caches.open(CACHE);
-              await cache.put(request.url === self.location.origin + "/" ? "/" : request, response.clone());
-            }
-          } catch {
-            // Offline is expected.
-          }
-        })());
-        return cached;
-      }
+      if (cached) return cached;
 
       try {
-        const response = await fetch(request);
-        if (response.ok) {
-          const cache = await caches.open(CACHE);
-          await cache.put(request, response.clone());
-        }
-        return response;
+        return await fetch(request);
       } catch {
         return Response.error();
       }
