@@ -397,7 +397,8 @@ export default function UmpireApp() {
     const prepareOffline = async (force = false) => {
       if (!("serviceWorker" in navigator)) return;
       const now = Date.now();
-      if (!force && (offlineRepairingRef.current || now - lastOfflineRepairRef.current < 60_000)) return;
+      if (offlineRepairingRef.current) return;
+      if (!force && now - lastOfflineRepairRef.current < 60_000) return;
 
       offlineRepairingRef.current = true;
       lastOfflineRepairRef.current = now;
@@ -448,11 +449,16 @@ export default function UmpireApp() {
       setOfflineMissingCount(Array.isArray(event.data?.missing) ? event.data.missing.length : 0);
     };
 
+    const onControllerChange = () => {
+      if (navigator.onLine) void prepareOffline(true);
+    };
+
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     navigator.serviceWorker?.addEventListener("message", message);
+    navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
 
     const repairInterval = window.setInterval(() => {
       if (navigator.onLine && document.visibilityState === "visible") void prepareOffline();
@@ -470,6 +476,7 @@ export default function UmpireApp() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       navigator.serviceWorker?.removeEventListener("message", message);
+      navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
     };
   }, []);
 
