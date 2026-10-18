@@ -12,6 +12,10 @@ type Metrics = {
 type Props = {
   language: Language;
   offlineReady: boolean;
+  offlineVerifiedAt: string | null;
+  offlineMissingCount: number;
+  storagePersistent: boolean | null;
+  installedAsPwa: boolean;
   networkOnline: boolean;
   manifest: RuleManifest | null;
   metrics: Metrics | null;
@@ -22,6 +26,10 @@ type Props = {
 export default function OfflineStatusPanel({
   language,
   offlineReady,
+  offlineVerifiedAt,
+  offlineMissingCount,
+  storagePersistent,
+  installedAsPwa,
   networkOnline,
   manifest,
   metrics,
@@ -29,6 +37,12 @@ export default function OfflineStatusPanel({
   onCheckUpdates,
 }: Props) {
   const tr = (en: string, es: string) => language === "en" ? en : es;
+  const verifiedLabel = offlineVerifiedAt
+    ? new Date(offlineVerifiedAt).toLocaleString(language === "en" ? "en-US" : "es-AR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      })
+    : tr("Not verified yet", "Todavía no verificada");
 
   return (
     <div className="offlineWindowContent">
@@ -42,6 +56,10 @@ export default function OfflineStatusPanel({
           <div><span>Arena Rules</span><strong>{manifest ? `✓ ${manifest.counts.arena}` : "…"}</strong></div>
           <div><span>Umpire Guide</span><strong>{manifest ? `✓ ${manifest.counts.umpireGuidePages} ${tr("pages", "págs.")}` : "…"}</strong></div>
           <div><span>{tr("Governing sources", "Fuentes de control")}</span><strong>{manifest?.counts.resourceSections ? `✓ ${manifest.counts.resources ?? 0} / ${manifest.counts.resourceSections} ${tr("sections", "secciones")}` : "…"}</strong></div>
+          <div><span>{tr("Installed as app", "Instalada como app")}</span><strong>{installedAsPwa ? tr("✓ Home Screen PWA", "✓ PWA en pantalla de inicio") : tr("Browser tab", "Pestaña del navegador")}</strong></div>
+          <div><span>{tr("Storage protection", "Protección de almacenamiento")}</span><strong>{storagePersistent === true ? tr("✓ Persistent", "✓ Persistente") : storagePersistent === false ? tr("Best effort", "Mejor esfuerzo") : tr("Browser managed", "Gestionado por el navegador")}</strong></div>
+          <div><span>{tr("Last offline verification", "Última verificación offline")}</span><strong>{verifiedLabel}</strong></div>
+          <div><span>{tr("Missing offline files", "Archivos offline faltantes")}</span><strong>{offlineMissingCount === 0 ? "✓ 0" : offlineMissingCount}</strong></div>
           <div><span>{tr("Current connection", "Conexión actual")}</span><strong>{networkOnline ? "Online" : "Offline"}</strong></div>
         </div>
 
@@ -64,6 +82,16 @@ export default function OfflineStatusPanel({
             "Estas son categorías de validación, no probabilidades estadísticas. Un número de 90% o 99% de certeza sería engañoso sin un benchmark grande e independientemente adjudicado.",
           )}</p>
         </div>
+
+        {!installedAsPwa ? (
+          <div className="offlineTest">
+            <strong>{tr("For long-term offline reliability", "Para mayor durabilidad offline")}</strong>
+            <p>{tr(
+              "On iPhone/iPad, use Share → Add to Home Screen and open Polo Umpire Assistant from that icon. Home Screen web apps receive stronger storage treatment than a normal Safari tab.",
+              "En iPhone/iPad, usá Compartir → Agregar a pantalla de inicio y abrí Polo Umpire Assistant desde ese ícono. Las web apps de pantalla de inicio reciben un tratamiento de almacenamiento más resistente que una pestaña normal de Safari.",
+            )}</p>
+          </div>
+        ) : null}
 
         <div className="offlineTest">
           <strong>{tr("Recommended test", "Prueba recomendada")}</strong>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { APP_VERSION } from "@/lib/app-version";
 import {
   applicationText,
@@ -218,6 +218,12 @@ export default function UmpireApp() {
   const [manifest, setManifest] = useState<RuleManifest | null>(null);
   const [networkOnline, setNetworkOnline] = useState(true);
   const [offlineReady, setOfflineReady] = useState(false);
+  const [offlineVerifiedAt, setOfflineVerifiedAt] = useState<string | null>(null);
+  const [offlineMissingCount, setOfflineMissingCount] = useState(0);
+  const [storagePersistent, setStoragePersistent] = useState<boolean | null>(null);
+  const [installedAsPwa, setInstalledAsPwa] = useState(false);
+  const offlineRepairingRef = useRef(false);
+  const lastOfflineRepairRef = useRef(0);
   const [loadError, setLoadError] = useState("");
   const [substitutionInputs, setSubstitutionInputs] = useState({
     eventUpper: "",
@@ -272,15 +278,34 @@ export default function UmpireApp() {
   const topicLabel = (id: string, fallback: string) => language === "en" ? (topicLabelsEn[id] ?? fallback) : fallback;
 
   useEffect(() => {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches
+      || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    setInstalledAsPwa(standalone);
     setNetworkOnline(navigator.onLine);
-    if (navigator.onLine) void flushPendingFeedback();
-    const on = () => {
-      setNetworkOnline(true);
-      void flushPendingFeedback();
+
+    const requestPersistentStorage = async () => {
+      try {
+        if (!navigator.storage?.persisted) {
+          setStoragePersistent(null);
+          return;
+        }
+
+        const alreadyPersistent = await navigator.storage.persisted();
+        if (alreadyPersistent) {
+          setStoragePersistent(true);
+          return;
+        }
+
+        if (navigator.storage.persist) {
+          const granted = await navigator.storage.persist();
+          setStoragePersistent(granted);
+        } else {
+          setStoragePersistent(false);
+        }
+      } catch {
+        setStoragePersistent(null);
+      }
     };
-    const off = () => setNetworkOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
 
     const load = async () => {
       try {
@@ -312,53 +337,146 @@ export default function UmpireApp() {
       }
     };
 
-    const prepareOffline = async () => {
+    const collectOfflineUrls = () => {
+      const urls = new Set<string>([
+        "/",
+        "/manifest.webmanifest",
+        "/logo.png",
+        "/data/manifest.json",
+        "/data/rules-2026.json",
+        "/data/resources-2026.json",
+        "/icons/icon-192.png",
+        "/icons/icon-512.png",
+      ]);
+
+      const addLocal = (value: string | null | undefined) => {
+        if (!value) return;
+        try {
+          const url = new URL(value, location.origin);
+          if (url.origin === location.origin) urls.add(url.pathname + url.search);
+        } catch {
+          // Ignore malformed asset URLs.
+        }
+      };
+
+      performance
+        .getEntriesByType("resource")
+        .forEach((entry) => addLocal(entry.name));
+
+      document
+        .querySelectorAll<HTMLScriptElement>("script[src]")
+        .forEach((element) => addLocal(element.src));
+
+      document
+        .querySelectorAll<HTMLLinkElement>('link[href][rel="stylesheet"], link[href][rel="preload"], link[href][rel="modulepreload"], link[href][rel="icon"], link[href][rel="manifest"]')
+        .forEach((element) => addLocal(element.href));
+
+      document
+        .querySelectorAll<HTMLImageElement>("img[src]")
+        .forEach((element) => addLocal(element.src));
+
+      return Array.from(urls);
+    };
+
+    const queryOfflineStatus = async (registration: ServiceWorkerRegistration) => {
+      const active = registration.active;
+      if (!active) return;
+
+      const channel = new MessageChannel();
+      const timeout = window.setTimeout(() => channel.port1.close(), 4000);
+      channel.port1.onmessage = (event) => {
+        window.clearTimeout(timeout);
+        setOfflineReady(Boolean(event.data?.ready));
+        setOfflineVerifiedAt(typeof event.data?.verifiedAt === "string" ? event.data.verifiedAt : null);
+        setOfflineMissingCount(Array.isArray(event.data?.missing) ? event.data.missing.length : 0);
+        channel.port1.close();
+      };
+      active.postMessage({ type: "OFFLINE_STATUS" }, [channel.port2]);
+    };
+
+    const prepareOffline = async (force = false) => {
       if (!("serviceWorker" in navigator)) return;
+      const now = Date.now();
+      if (offlineRepairingRef.current) return;
+      if (!force && now - lastOfflineRepairRef.current < 60_000) return;
+
+      offlineRepairingRef.current = true;
+      lastOfflineRepairRef.current = now;
+
       try {
         const registration = await navigator.serviceWorker.register("/sw.js");
-        await navigator.serviceWorker.ready;
-        const urls = Array.from(
-          new Set([
-            "/",
-            "/manifest.webmanifest",
-            "/data/manifest.json",
-            "/data/rules-2026.json",
-            "/data/resources-2026.json",
-            "/icons/icon-192.png",
-            "/icons/icon-512.png",
-            ...performance
-              .getEntriesByType("resource")
-              .map((entry) => entry.name)
-              .filter((url) => url.startsWith(location.origin))
-              .map((url) => new URL(url).pathname),
-          ]),
-        );
-
-        const worker = registration.active ?? registration.waiting ?? registration.installing;
-        worker?.postMessage({ type: "WARM_CACHE", urls });
-
-        const channel = new MessageChannel();
-        const active = registration.active;
-        if (active) {
-          active.postMessage({ type: "OFFLINE_STATUS" }, [channel.port2]);
-          channel.port1.onmessage = (event) => setOfflineReady(Boolean(event.data?.ready));
+        if (navigator.onLine) {
+          try {
+            await registration.update();
+          } catch {
+            // The installed worker remains usable when update checks fail.
+          }
         }
+
+        await navigator.serviceWorker.ready;
+        const worker = registration.active ?? registration.waiting ?? registration.installing;
+        const urls = collectOfflineUrls();
+
+        if (worker) {
+          worker.postMessage({ type: navigator.onLine ? "REPAIR_OFFLINE" : "WARM_CACHE", urls });
+        }
+
+        await queryOfflineStatus(registration);
       } catch {
         setOfflineReady(false);
+      } finally {
+        offlineRepairingRef.current = false;
       }
     };
 
-    const message = (event: MessageEvent) => {
-      if (event.data?.type === "OFFLINE_READY") setOfflineReady(Boolean(event.data?.ready));
+    const onOnline = () => {
+      setNetworkOnline(true);
+      void flushPendingFeedback();
+      void prepareOffline(true);
     };
-    navigator.serviceWorker?.addEventListener("message", message);
+    const onOffline = () => setNetworkOnline(false);
+    const onFocus = () => {
+      if (navigator.onLine) void prepareOffline();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) void prepareOffline();
+    };
 
+    const message = (event: MessageEvent) => {
+      if (event.data?.type !== "OFFLINE_READY") return;
+      setOfflineReady(Boolean(event.data?.ready));
+      setOfflineVerifiedAt(typeof event.data?.verifiedAt === "string" ? event.data.verifiedAt : null);
+      setOfflineMissingCount(Array.isArray(event.data?.missing) ? event.data.missing.length : 0);
+    };
+
+    const onControllerChange = () => {
+      if (navigator.onLine) void prepareOffline(true);
+    };
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    navigator.serviceWorker?.addEventListener("message", message);
+    navigator.serviceWorker?.addEventListener("controllerchange", onControllerChange);
+
+    const repairInterval = window.setInterval(() => {
+      if (navigator.onLine && document.visibilityState === "visible") void prepareOffline();
+    }, 6 * 60 * 60 * 1000);
+
+    if (navigator.onLine) void flushPendingFeedback();
+    void requestPersistentStorage();
     void load();
-    void prepareOffline();
+    void prepareOffline(true);
+
     return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
+      window.clearInterval(repairInterval);
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
       navigator.serviceWorker?.removeEventListener("message", message);
+      navigator.serviceWorker?.removeEventListener("controllerchange", onControllerChange);
     };
   }, []);
 
@@ -1845,6 +1963,10 @@ export default function UmpireApp() {
               <OfflineStatusPanel
                 language={language}
                 offlineReady={offlineReady}
+                offlineVerifiedAt={offlineVerifiedAt}
+                offlineMissingCount={offlineMissingCount}
+                storagePersistent={storagePersistent}
+                installedAsPwa={installedAsPwa}
                 networkOnline={networkOnline}
                 manifest={manifest}
                 metrics={guidanceMetrics}
