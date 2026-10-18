@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "tsc --noEmit",
     "test:rules": "tsc -p tsconfig.rule-tests.json && node .rule-test-build/scripts/rule-regression-tests.js",
-    "test:sw": "node --check public/sw.js"
+    "test:sw": "node --check public/sw.js && node scripts/offline-regression-tests.mjs"
   },
   "dependencies": {
     "next": "16.3.8",
