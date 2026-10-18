@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 const sw = fs.readFileSync("public/sw.js", "utf8");
 
 assert.match(sw, /const CACHE_PREFIX = "polo-umpire-assistant-"/);
-assert.match(sw, /const OFFLINE_INDEX = "/__polo-umpire-offline-index.json"/);
+assert.ok(sw.includes('const OFFLINE_INDEX = "/__polo-umpire-offline-index.json";'));
 assert.match(sw, /REPAIR_OFFLINE/);
 assert.match(sw, /keepCurrentAndPreviousCache/);
 assert.match(sw, /Atomic cutover/);
