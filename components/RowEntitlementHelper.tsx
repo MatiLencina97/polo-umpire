@@ -31,12 +31,29 @@ function SafeRowSelect({
   const selectedLabel = options.find(([optionValue]) => optionValue === value)?.[1] ?? "";
   const showFullValue = value !== "unknown" && selectedLabel.length >= 34;
 
+  const commitValue = (nextValue: string) => {
+    onChange(nextValue);
+
+    // iOS Safari can leave the visual viewport horizontally shifted after
+    // dismissing a native picker whose selected option is very long.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ left: 0, top: window.scrollY, behavior: "auto" });
+      });
+    });
+  };
+
   return (
     <div className="rowSafeSelectWrap">
       <select
         className="rowSafeSelect"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => commitValue(event.target.value)}
+        onBlur={() => {
+          requestAnimationFrame(() => {
+            window.scrollTo({ left: 0, top: window.scrollY, behavior: "auto" });
+          });
+        }}
       >
         {options.map(([optionValue, label]) => (
           <option key={optionValue} value={optionValue}>{label}</option>
