@@ -100,6 +100,7 @@ export default function MatchMode({
   const [showWhy, setShowWhy] = useState(false);
   const [showTopics, setShowTopics] = useState(false);
   const [savedCaseId, setSavedCaseId] = useState("");
+  const [caseSaveError, setCaseSaveError] = useState(false);
 
   const progress = topic ? matchProgress(topic, answers) : null;
   const activeKeys = progress?.keys ?? [];
@@ -152,6 +153,7 @@ export default function MatchMode({
     setShowWhy(false);
     setShowTopics(!detected.topic);
     setSavedCaseId("");
+    setCaseSaveError(false);
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
   }
 
@@ -162,6 +164,7 @@ export default function MatchMode({
     setShowWhy(false);
     setShowTopics(false);
     setSavedCaseId("");
+    setCaseSaveError(false);
     onSituationChange("");
   }
 
@@ -171,12 +174,14 @@ export default function MatchMode({
     setShowWhy(false);
     setShowTopics(false);
     setSavedCaseId("");
+    setCaseSaveError(false);
   }
 
   function answer(key: string, value: ChoiceValue) {
     if (!topic) return;
     setAnswers((current) => applyMatchAnswer(topic, current, key, value));
     setSavedCaseId("");
+    setCaseSaveError(false);
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
   }
 
@@ -184,6 +189,7 @@ export default function MatchMode({
     if (!topic) return;
     setAnswers((current) => rewindLastMatchAnswer(topic, current));
     setSavedCaseId("");
+    setCaseSaveError(false);
     setShowWhy(false);
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
   }
@@ -234,7 +240,12 @@ export default function MatchMode({
         })),
       references: [...ruleReferences, ...externalReferences],
     });
-    setSavedCaseId(record.id);
+    if (record) {
+      setSavedCaseId(record.id);
+      setCaseSaveError(false);
+    } else {
+      setCaseSaveError(true);
+    }
   }
 
   return (
@@ -404,6 +415,12 @@ export default function MatchMode({
                 </button>
                 <button className="matchNewPlay" onClick={reset}>{tr("New play", "Nueva jugada")}</button>
               </div>
+              {caseSaveError ? (
+                <p className="matchSaveError">{tr(
+                  "This case could not be saved on this device. Browser storage may be unavailable or full.",
+                  "No se pudo guardar este caso en el dispositivo. El almacenamiento del navegador puede estar bloqueado o lleno.",
+                )}</p>
+              ) : null}
 
               {topic ? (
                 <DecisionFeedback
