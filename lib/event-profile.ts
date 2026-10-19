@@ -64,13 +64,13 @@ export function profileToCaseFacts(profile: EventProfile): Record<string, CaseFa
   if (profile.format.trim()) {
     facts.matchFormat = profile.format.trim();
     facts.specialTournamentFormat = profile.format.trim();
-    facts.arenaFormatType = profile.format.trim();
+    if (profile.discipline === "arena") facts.arenaFormatType = profile.format.trim();
   }
 
   if (profile.conditionsKnown !== "unknown") {
     facts.eventConditionsKnown = profile.conditionsKnown;
-    facts.arenaEventConditions = profile.conditionsKnown;
     facts.eventSpecificEquipment = profile.conditionsKnown;
+    if (profile.discipline === "arena") facts.arenaEventConditions = profile.conditionsKnown;
   }
 
   if (profile.sponsorStructure !== "unknown") facts.sponsorStructure = profile.sponsorStructure;
