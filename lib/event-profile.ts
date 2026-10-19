@@ -33,6 +33,46 @@ export const defaultEventProfile: EventProfile = {
   conditionsNotes: "",
 };
 
+
+function text(value: unknown, max = 160) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function finiteNumberOrNull(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function choice(value: unknown): ChoiceValue {
+  return value === "yes" || value === "no" || value === "unknown" ? value : "unknown";
+}
+
+export function normalizeEventProfile(value: unknown): EventProfile {
+  const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const discipline: Discipline = item.discipline === "arena" ? "arena" : "outdoor";
+  const eventType: EventType =
+    item.eventType === "uspa" || item.eventType === "npc" || item.eventType === "club" || item.eventType === "other"
+      ? item.eventType
+      : "unknown";
+  const sponsorStructure: SponsorStructure =
+    item.sponsorStructure === "playing" || item.sponsorStructure === "nonplaying"
+      ? item.sponsorStructure
+      : "unknown";
+
+  return {
+    name: text(item.name),
+    club: text(item.club),
+    discipline,
+    eventType,
+    upperHandicap: finiteNumberOrNull(item.upperHandicap),
+    lowerHandicap: finiteNumberOrNull(item.lowerHandicap),
+    sponsorStructure,
+    affiliateHostException: choice(item.affiliateHostException),
+    format: text(item.format),
+    conditionsKnown: choice(item.conditionsKnown),
+    conditionsNotes: text(item.conditionsNotes, 500),
+  };
+}
+
 export function profileToSubstitutionFacts(profile: EventProfile): Partial<SubstitutionCrossFacts> {
   return {
     uspaNpcEvent:
