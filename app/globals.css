@@ -23,6 +23,11 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 button, input, textarea, select { font: inherit; }
+select {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
 button { -webkit-tap-highlight-color: transparent; }
 
 .appShell { min-height: 100vh; padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
@@ -1361,7 +1366,18 @@ textarea,
   line-height:1.35;
   text-align:right;
 }
-.rowEntitlementHelper label { display:grid; gap:5px; }
+.rowEntitlementHelper label {
+  display:grid;
+  gap:5px;
+  min-width:0;
+  max-width:100%;
+}
+.rowEntitlementHelper,
+.rowEntitlementHelper > *,
+.rowSafeSelectWrap {
+  min-width:0;
+  max-width:100%;
+}
 .rowEntitlementHelper label > span {
   color:#40556a;
   font-size:calc(11px * var(--font-scale));
@@ -1370,12 +1386,33 @@ textarea,
 }
 .rowEntitlementHelper select {
   width:100%;
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
   border:1px solid #cfc5ba;
   border-radius:10px;
-  padding:10px;
+  padding:10px 38px 10px 10px;
   background:white;
   color:var(--navy);
   font:inherit;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.rowSafeSelectWrap {
+  display:grid;
+  gap:6px;
+  overflow:hidden;
+}
+.rowSafeSelectValue {
+  padding:8px 10px;
+  border:1px solid #ded6cc;
+  border-radius:9px;
+  background:#fffdf9;
+  color:#40556a;
+  font-size:calc(10px * var(--font-scale));
+  line-height:1.35;
+  overflow-wrap:anywhere;
 }
 .rowHelperResult {
   display:grid;
@@ -3043,4 +3080,27 @@ html[data-theme="dark"] .officialPdfTableFrame {
 html[data-theme="dark"] .officialSourceNotice {
   background: #101b27;
   border-color: #344657;
+}
+
+
+/* iOS Safari: long native select values must never widen the document. */
+.missingFactPicker,
+.missingFactSelect,
+.profileField,
+.rowEntitlementHelper {
+  min-width: 0;
+}
+.missingFactPicker select,
+.missingFactSelect select,
+.profileField select,
+.rowEntitlementHelper select {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+html[data-theme="dark"] .rowSafeSelectValue {
+  background:#101b27;
+  border-color:#344657;
+  color:#dcecff;
 }
