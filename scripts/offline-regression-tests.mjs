@@ -2,8 +2,13 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 
 const sw = fs.readFileSync("public/sw.js", "utf8");
+const css = fs.readFileSync("app/globals.css", "utf8");
+const rowHelper = fs.readFileSync("components/RowEntitlementHelper.tsx", "utf8");
+const appVersion = fs.readFileSync("lib/app-version.ts", "utf8");
 
 assert.match(sw, /const CACHE_PREFIX = "polo-umpire-assistant-"/);
+assert.ok(sw.includes('const CACHE = "polo-umpire-assistant-v0.27.1-r3-2026";'));
+assert.ok(appVersion.includes('APP_VERSION = "0.27.1"'));
 assert.ok(sw.includes('const OFFLINE_INDEX = "/__polo-umpire-offline-index.json";'));
 assert.match(sw, /REPAIR_OFFLINE/);
 assert.match(sw, /keepCurrentAndPreviousCache/);
@@ -36,3 +41,11 @@ for (const path of [
 }
 
 console.log("Offline durability regression suite: passed.");
+
+
+assert.match(css, /html\s*\{[\s\S]*overflow-x:\s*hidden/);
+assert.match(css, /body\s*\{[\s\S]*overflow-x:\s*hidden/);
+assert.match(css, /\.appShell\s*\{[\s\S]*overflow-x:\s*clip/);
+assert.match(rowHelper, /window\.scrollTo\(\{ left: 0, top: window\.scrollY/);
+
+console.log("iOS viewport regression checks: passed.");

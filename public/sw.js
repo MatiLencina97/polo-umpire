@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "polo-umpire-assistant-";
-const CACHE = "polo-umpire-assistant-v0.27-r2-2026";
+const CACHE = "polo-umpire-assistant-v0.27.1-r3-2026";
 const OFFLINE_INDEX = "/__polo-umpire-offline-index.json";
 const PACKAGE_CORE = [
   "/",

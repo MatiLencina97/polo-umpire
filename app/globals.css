@@ -15,8 +15,17 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg); scroll-behavior: smooth; }
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: var(--bg);
+  scroll-behavior: smooth;
+}
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   margin: 0;
   color: var(--text);
   background: var(--bg);
@@ -30,7 +39,14 @@ select {
 }
 button { -webkit-tap-highlight-color: transparent; }
 
-.appShell { min-height: 100vh; padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+.appShell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  overflow-x: clip;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
 .topbar {
   position: sticky;
   top: 0;
@@ -3103,4 +3119,21 @@ html[data-theme="dark"] .rowSafeSelectValue {
   background:#101b27;
   border-color:#344657;
   color:#dcecff;
+}
+
+
+/* iOS native picker safety: the document itself must never become horizontally scrollable. */
+.topbar,
+.hero,
+.tabs,
+.view,
+.card,
+.rowEntitlementHelper,
+.rowEntitlementHelper label,
+.rowSafeSelectWrap {
+  min-width: 0;
+  max-width: 100%;
+}
+@supports not (overflow: clip) {
+  .appShell { overflow-x: hidden; }
 }
