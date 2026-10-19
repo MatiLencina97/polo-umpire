@@ -37,6 +37,21 @@ export type FeedbackRecord = {
 
 const STORAGE_KEY = "polo-umpire-feedback-v1";
 const MAX_LOCAL_RECORDS = 200;
+const VALID_REASONS = new Set<FeedbackReason>([
+  "clear",
+  "rules-helped",
+  "disagree-call",
+  "missing-fact",
+  "missing-rule",
+  "unclear",
+  "other",
+]);
+
+class FeedbackPostError extends Error {
+  constructor(public status: number, public retryable: boolean) {
+    super("feedback-submit-failed");
+  }
+}
 
 function id() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -88,7 +103,7 @@ export function normalizeFeedbackRecord(value: unknown): FeedbackRecord | null {
     id: item.id,
     createdAt: item.createdAt,
     rating: item.rating,
-    reason: item.reason,
+    reason: typeof item.reason === "string" && VALID_REASONS.has(item.reason as FeedbackReason) ? item.reason as FeedbackReason : undefined,
     note: typeof item.note === "string" ? sanitizeFeedbackNote(item.note) : undefined,
     context: {
       source: context.source,
@@ -135,7 +150,9 @@ async function postFeedback(record: FeedbackRecord) {
     body: JSON.stringify(record),
     cache: "no-store",
   });
-  if (!response.ok) throw new Error("feedback-submit-failed");
+  if (!response.ok) {
+    throw new FeedbackPostError(response.status, response.status === 429 || response.status >= 500);
+  }
 }
 
 export async function submitFeedbackRecord(record: FeedbackRecord) {
@@ -168,9 +185,15 @@ export async function flushPendingFeedback() {
       await postFeedback(record);
       next.push({ ...record, delivery: "sent" });
       delivered += 1;
-    } catch {
-      // Stop after the first delivery failure. Hammering the endpoint with the
-      // rest of the queue only makes outages and rate limits worse.
+    } catch (error) {
+      if (error instanceof FeedbackPostError && !error.retryable) {
+        // A permanently rejected legacy/corrupt record must not block every
+        // valid feedback item behind it.
+        continue;
+      }
+
+      // Stop after the first retryable delivery failure. Hammering the endpoint
+      // with the rest of the queue only makes outages and rate limits worse.
       next.push(record, ...records.slice(index + 1));
       break;
     }
