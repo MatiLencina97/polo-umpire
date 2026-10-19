@@ -259,6 +259,7 @@ export default function UmpireApp() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [resolverExperience, setResolverExperience] = useState<ResolverExperience>("analysis");
   const [savedAnalysisFingerprint, setSavedAnalysisFingerprint] = useState("");
+  const [analysisSaveError, setAnalysisSaveError] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [infoWindow, setInfoWindow] = useState<InfoWindow>(null);
   const [theme, setTheme] = useState<ThemePreference>("light");
@@ -594,6 +595,7 @@ export default function UmpireApp() {
     setSelectedMissingFactKey("");
     setShowResolution(false);
     setSavedAnalysisFingerprint("");
+    setAnalysisSaveError(false);
   }
 
   function openEventProfile() {
@@ -832,6 +834,7 @@ export default function UmpireApp() {
   function analyze() {
     if (!situation.trim() || !db) return;
     setSavedAnalysisFingerprint("");
+    setAnalysisSaveError(false);
     setAnswers({});
     setShowResolution(false);
     setFollowUpText("");
@@ -987,7 +990,12 @@ export default function UmpireApp() {
       facts,
       references: [...ruleReferences, ...externalReferences],
     });
-    if (savedRecord) setSavedAnalysisFingerprint(currentAnalysisFingerprint);
+    if (savedRecord) {
+      setSavedAnalysisFingerprint(currentAnalysisFingerprint);
+      setAnalysisSaveError(false);
+    } else {
+      setAnalysisSaveError(true);
+    }
   }
 
   function reuseSavedCase(record: CaseRecord) {
@@ -1004,6 +1012,7 @@ export default function UmpireApp() {
     setCaseFacts({});
     setShowResolution(false);
     setSavedAnalysisFingerprint("");
+    setAnalysisSaveError(false);
     setTab("resolver");
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 30);
   }
@@ -1776,6 +1785,12 @@ export default function UmpireApp() {
                   {savedAnalysisFingerprint === currentAnalysisFingerprint ? tr("✓ Saved", "✓ Guardado") : tr("Save case", "Guardar caso")}
                 </button>
               </div>
+              {analysisSaveError ? (
+                <p className="matchSaveError">{tr(
+                  "This ruling could not be saved on this device. Browser storage may be unavailable or full.",
+                  "No se pudo guardar esta decisión en el dispositivo. El almacenamiento del navegador puede estar bloqueado o lleno.",
+                )}</p>
+              ) : null}
 
               <DecisionFeedback
                 language={language}
