@@ -1,4 +1,5 @@
 import type { Discipline, ResolverMode } from "./types";
+import { localStore, safeStorageGet, safeStorageSet } from "./browser-storage";
 
 export type FeedbackRating = "useful" | "needs-review";
 export type FeedbackReason =
@@ -107,9 +108,10 @@ export function normalizeFeedbackRecord(value: unknown): FeedbackRecord | null {
 }
 
 export function readFeedbackRecords(): FeedbackRecord[] {
-  if (typeof window === "undefined") return [];
+  const stored = safeStorageGet(localStore(), STORAGE_KEY);
+  if (!stored) return [];
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const raw = JSON.parse(stored);
     if (!Array.isArray(raw)) return [];
     return raw.map(normalizeFeedbackRecord).filter((item): item is FeedbackRecord => Boolean(item));
   } catch {
@@ -118,14 +120,12 @@ export function readFeedbackRecords(): FeedbackRecord[] {
 }
 
 export function writeFeedbackRecords(records: FeedbackRecord[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records.slice(0, MAX_LOCAL_RECORDS)));
+  return safeStorageSet(localStore(), STORAGE_KEY, JSON.stringify(records.slice(0, MAX_LOCAL_RECORDS)));
 }
 
 export function saveFeedbackRecord(record: FeedbackRecord) {
   const existing = readFeedbackRecords().filter((item) => item.id !== record.id);
-  writeFeedbackRecords([record, ...existing]);
-  return record;
+  return writeFeedbackRecords([record, ...existing]);
 }
 
 async function postFeedback(record: FeedbackRecord) {
@@ -139,16 +139,16 @@ async function postFeedback(record: FeedbackRecord) {
 }
 
 export async function submitFeedbackRecord(record: FeedbackRecord) {
-  saveFeedbackRecord(record);
-  if (typeof navigator !== "undefined" && !navigator.onLine) return { delivered: false };
+  const queuedLocally = saveFeedbackRecord(record);
+  if (typeof navigator !== "undefined" && !navigator.onLine) return { delivered: false, queuedLocally };
 
   try {
     await postFeedback(record);
     const updated = readFeedbackRecords().map((item) => item.id === record.id ? { ...item, delivery: "sent" as const } : item);
     writeFeedbackRecords(updated);
-    return { delivered: true };
+    return { delivered: true, queuedLocally };
   } catch {
-    return { delivered: false };
+    return { delivered: false, queuedLocally };
   }
 }
 
@@ -158,7 +158,8 @@ export async function flushPendingFeedback() {
   let delivered = 0;
   const next: FeedbackRecord[] = [];
 
-  for (const record of records) {
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index];
     if (record.delivery === "sent") {
       next.push(record);
       continue;
@@ -168,7 +169,10 @@ export async function flushPendingFeedback() {
       next.push({ ...record, delivery: "sent" });
       delivered += 1;
     } catch {
-      next.push(record);
+      // Stop after the first delivery failure. Hammering the endpoint with the
+      // rest of the queue only makes outages and rate limits worse.
+      next.push(record, ...records.slice(index + 1));
+      break;
     }
   }
 
