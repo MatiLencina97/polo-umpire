@@ -12,6 +12,8 @@ import { extractOfficialGuidance, officialGuidanceMetrics } from "../lib/officia
 import { auditPlayDecision } from "../lib/decision-audit";
 import { defaultRowEntitlementFacts, deriveRowEntitlement } from "../lib/row-entitlement";
 import { buildFeedbackRecord, normalizeFeedbackRecord, sanitizeFeedbackNote } from "../lib/decision-feedback";
+import { normalizeEventProfile, profileToCaseFacts } from "../lib/event-profile";
+import { safeStorageGet, safeStorageRemove, safeStorageSet, type KeyValueStorage } from "../lib/browser-storage";
 import { playDecisionRuleTrail, substitutionDecisionRuleTrail } from "../lib/decision-links";
 import { cleanOfficialSourceText, formatOfficialTextBlocks } from "../lib/official-text-format";
 import { getOfficialSourceNotice, getOfficialStructuredTable } from "../lib/official-structured-tables";
@@ -818,6 +820,82 @@ test("substitution decision rule trail turns cross-rule checks into exact clicka
   assert.ok(refs.includes("1.f"));
 });
 
+
+test("safe storage helpers absorb blocked-browser storage errors", () => {
+  const broken: KeyValueStorage = {
+    getItem() { throw new Error("blocked"); },
+    setItem() { throw new Error("blocked"); },
+    removeItem() { throw new Error("blocked"); },
+  };
+  assert.equal(safeStorageGet(broken, "x"), null);
+  assert.equal(safeStorageSet(broken, "x", "1"), false);
+  assert.equal(safeStorageRemove(broken, "x"), false);
+});
+
+test("persisted Event Profile is normalized before it can affect a ruling", () => {
+  const profile = normalizeEventProfile({
+    name: 42,
+    discipline: "invalid",
+    eventType: "mystery",
+    upperHandicap: "8",
+    lowerHandicap: Number.NaN,
+    sponsorStructure: "other",
+    affiliateHostException: "maybe",
+    format: "  Standard  ",
+    conditionsKnown: "yes",
+    conditionsNotes: " note ",
+  });
+  assert.equal(profile.discipline, "outdoor");
+  assert.equal(profile.eventType, "unknown");
+  assert.equal(profile.upperHandicap, null);
+  assert.equal(profile.lowerHandicap, null);
+  assert.equal(profile.sponsorStructure, "unknown");
+  assert.equal(profile.affiliateHostException, "unknown");
+  assert.equal(profile.format, "Standard");
+  assert.equal(profile.conditionsKnown, "yes");
+  assert.equal(profile.conditionsNotes, "note");
+});
+
+test("Outdoor Event Profile does not inject Arena-only facts", () => {
+  const outdoor = normalizeEventProfile({
+    discipline: "outdoor",
+    format: "6 chukkers",
+    conditionsKnown: "yes",
+  });
+  const facts = profileToCaseFacts(outdoor);
+  assert.equal("arenaFormatType" in facts, false);
+  assert.equal("arenaEventConditions" in facts, false);
+  assert.equal(facts.matchFormat, "6 chukkers");
+});
+
+test("Arena Event Profile keeps Arena-specific facts", () => {
+  const arena = normalizeEventProfile({
+    discipline: "arena",
+    format: "4 periods",
+    conditionsKnown: "yes",
+  });
+  const facts = profileToCaseFacts(arena);
+  assert.equal(facts.arenaFormatType, "4 periods");
+  assert.equal(facts.arenaEventConditions, "yes");
+});
+
+test("legacy feedback with an invalid reason is sanitized instead of poisoning the queue", () => {
+  const base = buildFeedbackRecord({
+    source: "analysis",
+    discipline: "outdoor",
+    resolverMode: "play",
+    topic: "row",
+    outcomeStatus: "needs-info",
+    headline: "Needs info",
+    rulebookVersion: "2026",
+    ruleRefs: ["24"],
+    appVersion: "0.27.1",
+  }, "needs-review", "missing-fact", "", "legacy-feedback", "2026-10-19T20:00:00.000Z");
+
+  const normalized = normalizeFeedbackRecord({ ...base, reason: "old-invalid-reason" });
+  assert.ok(normalized);
+  assert.equal(normalized.reason, undefined);
+});
 
 test("feedback records never require the original play description", () => {
   const record = buildFeedbackRecord({

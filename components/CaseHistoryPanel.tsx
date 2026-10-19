@@ -83,14 +83,28 @@ export default function CaseHistoryPanel({ language, installedRulebookVersion, o
 
   function remove(record: CaseRecord) {
     if (!window.confirm(tr("Delete this saved case?", "¿Eliminar este caso guardado?"))) return;
-    deleteCaseRecord(record.id);
+    const deleted = deleteCaseRecord(record.id);
+    if (!deleted) {
+      window.alert(tr(
+        "This case could not be deleted because browser storage is unavailable or full.",
+        "No se pudo eliminar este caso porque el almacenamiento del navegador no está disponible o está lleno.",
+      ));
+      return;
+    }
     if (selected?.id === record.id) setSelected(null);
   }
 
   function removeAll() {
     if (!history.length) return;
     if (!window.confirm(tr("Delete all saved cases from this device?", "¿Eliminar todos los casos guardados de este dispositivo?"))) return;
-    clearCaseHistory();
+    const cleared = clearCaseHistory();
+    if (!cleared) {
+      window.alert(tr(
+        "Saved cases could not be cleared because browser storage is unavailable.",
+        "No se pudieron borrar los casos guardados porque el almacenamiento del navegador no está disponible.",
+      ));
+      return;
+    }
     setSelected(null);
   }
 
@@ -100,8 +114,10 @@ export default function CaseHistoryPanel({ language, installedRulebookVersion, o
     const link = document.createElement("a");
     link.href = url;
     link.download = "umpire-polo-cases.json";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   return (

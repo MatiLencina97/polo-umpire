@@ -30,6 +30,8 @@
     "lib/row-entitlement.ts",
     "lib/decision-links.ts",
     "lib/complex-rules.ts",
-    "lib/decision-feedback.ts"
+    "lib/decision-feedback.ts",
+    "lib/browser-storage.ts",
+    "lib/event-profile.ts"
   ]
 }

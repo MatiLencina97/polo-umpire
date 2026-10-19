@@ -32,6 +32,7 @@ export default function DecisionFeedback({ language, context }: Props) {
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [delivered, setDelivered] = useState<boolean | null>(null);
+  const [queuedLocally, setQueuedLocally] = useState<boolean | null>(null);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function DecisionFeedback({ language, context }: Props) {
     setNote("");
     setSubmitted(false);
     setDelivered(null);
+    setQueuedLocally(null);
   }, [fingerprint]);
 
   useEffect(() => {
@@ -51,11 +53,15 @@ export default function DecisionFeedback({ language, context }: Props) {
 
   async function send(nextRating: FeedbackRating, nextReason?: FeedbackReason) {
     setSending(true);
-    const record = buildFeedbackRecord(context, nextRating, nextReason, note);
-    const result = await submitFeedbackRecord(record);
-    setDelivered(result.delivered);
-    setSubmitted(true);
-    setSending(false);
+    try {
+      const record = buildFeedbackRecord(context, nextRating, nextReason, note);
+      const result = await submitFeedbackRecord(record);
+      setDelivered(result.delivered);
+      setQueuedLocally(result.queuedLocally);
+      setSubmitted(true);
+    } finally {
+      setSending(false);
+    }
   }
 
   if (submitted) {
@@ -65,9 +71,11 @@ export default function DecisionFeedback({ language, context }: Props) {
           <strong>{tr("Thanks — this helps us audit the assistant.", "Gracias — esto nos ayuda a auditar el asistente.")}</strong>
           <span>{delivered
             ? tr("Feedback received.", "Feedback recibido.")
-            : tr("Saved on this device and queued to send when a connection is available.", "Guardado en este dispositivo y en cola para enviarse cuando haya conexión.")}</span>
+            : queuedLocally
+              ? tr("Saved on this device and queued to send when a connection is available.", "Guardado en este dispositivo y en cola para enviarse cuando haya conexión.")
+              : tr("Could not send or save this feedback. Please try again when storage or connectivity is available.", "No se pudo enviar ni guardar este feedback. Probá de nuevo cuando haya almacenamiento o conexión disponible.")}</span>
         </div>
-        <button onClick={() => { setSubmitted(false); setRating(null); setReason(undefined); setNote(""); }}>
+        <button onClick={() => { setSubmitted(false); setRating(null); setReason(undefined); setNote(""); setDelivered(null); setQueuedLocally(null); }}>
           {tr("Change", "Cambiar")}
         </button>
       </div>

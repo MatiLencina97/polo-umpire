@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "polo-umpire-assistant-";
-const CACHE = "polo-umpire-assistant-v0.27.1-r3-2026";
+const CACHE = "polo-umpire-assistant-v0.27.2-r4-2026";
 const OFFLINE_INDEX = "/__polo-umpire-offline-index.json";
 const PACKAGE_CORE = [
   "/",
@@ -64,12 +64,23 @@ async function missingInCache(cache, urls) {
   return checks.filter((item) => !item.cached).map((item) => item.url);
 }
 
-async function missingAcrossCaches(urls) {
-  const checks = await Promise.all(urls.map(async (url) => ({
-    url,
-    cached: Boolean(await caches.match(url)),
-  })));
-  return checks.filter((item) => !item.cached).map((item) => item.url);
+async function previousCacheNames() {
+  const keys = (await caches.keys()).filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE);
+  return keys.reverse();
+}
+
+async function matchPrevious(request) {
+  for (const name of await previousCacheNames()) {
+    const cache = await caches.open(name);
+    const response = await cache.match(request);
+    if (response) return response;
+  }
+  return undefined;
+}
+
+async function matchCurrentThenPrevious(request) {
+  const current = await caches.open(CACHE);
+  return (await current.match(request)) || (await matchPrevious(request));
 }
 
 async function readOfflineIndex(cache) {
@@ -118,7 +129,7 @@ async function existingOfflineStatus() {
     return { ready: false, verifiedAt: null, missing: [...PACKAGE_CORE] };
   }
 
-  const missing = await missingAcrossCaches(index.urls);
+  const missing = await missingInCache(cache, index.urls);
   return {
     ready: missing.length === 0,
     verifiedAt: index.verifiedAt,
@@ -234,20 +245,30 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith((async () => {
-      const cached = (await caches.match(request)) || (await caches.match("/"));
-      if (cached) return cached;
+      if (url.pathname === "/") {
+        const cachedShell = await matchCurrentThenPrevious("/");
+        if (cachedShell) return cachedShell;
+      }
 
+      // Non-root pages (for example /admin/feedback) must not be replaced by
+      // the cached app shell while online.
       try {
-        return await fetch(request);
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await caches.open(CACHE);
+          await cache.put(request, response.clone());
+        }
+        return response;
       } catch {
-        return Response.error();
+        const exactCached = await matchCurrentThenPrevious(request);
+        return exactCached || Response.error();
       }
     })());
     return;
   }
 
   event.respondWith((async () => {
-    const cached = await caches.match(request);
+    const cached = await matchCurrentThenPrevious(request);
     if (cached) return cached;
 
     try {

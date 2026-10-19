@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { safeStorageGet, safeStorageRemove, safeStorageSet, sessionStore } from "@/lib/browser-storage";
 
 type GroupMetric = {
   key: string;
@@ -88,7 +89,7 @@ export default function FeedbackAdminDashboard() {
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "unauthorized" | "error">("idle");
 
   useEffect(() => {
-    const saved = sessionStorage.getItem("polo-feedback-admin-token");
+    const saved = safeStorageGet(sessionStore(), "polo-feedback-admin-token");
     if (saved) {
       setToken(saved);
       void load(saved);
@@ -110,7 +111,7 @@ export default function FeedbackAdminDashboard() {
       }
       if (!response.ok) throw new Error("dashboard-fetch-failed");
       const data = await response.json();
-      sessionStorage.setItem("polo-feedback-admin-token", nextToken.trim());
+      safeStorageSet(sessionStore(), "polo-feedback-admin-token", nextToken.trim());
       setDashboard(data.dashboard);
       setStatus("ready");
     } catch {
@@ -180,7 +181,7 @@ export default function FeedbackAdminDashboard() {
         <div className="feedbackAdminHeaderActions">
           <button onClick={() => void load()}>Actualizar</button>
           <button onClick={() => {
-            sessionStorage.removeItem("polo-feedback-admin-token");
+            safeStorageRemove(sessionStore(), "polo-feedback-admin-token");
             setDashboard(null);
             setToken("");
             setStatus("idle");

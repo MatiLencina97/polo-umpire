@@ -37,6 +37,7 @@ import {
 } from "@/lib/rule-graphs";
 import {
   defaultEventProfile,
+  normalizeEventProfile,
   profileSummary,
   profileToCaseFacts,
   profileToSubstitutionFacts,
@@ -58,6 +59,7 @@ import DecisionFeedback from "@/components/DecisionFeedback";
 import OfficialTextView from "@/components/OfficialTextView";
 import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import { flushPendingFeedback } from "@/lib/decision-feedback";
+import { localStore, safeStorageGet, safeStorageRemove, safeStorageSet } from "@/lib/browser-storage";
 import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
 import {
   bestProvisionsForRules,
@@ -257,11 +259,31 @@ export default function UmpireApp() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [resolverExperience, setResolverExperience] = useState<ResolverExperience>("analysis");
   const [savedAnalysisFingerprint, setSavedAnalysisFingerprint] = useState("");
+  const [analysisSaveError, setAnalysisSaveError] = useState(false);
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const [infoWindow, setInfoWindow] = useState<InfoWindow>(null);
   const [theme, setTheme] = useState<ThemePreference>("light");
 
   const tr = (en: string, es: string) => language === "en" ? en : es;
+  const eventProfileConfigured = Boolean(
+    eventProfile.name.trim()
+    || eventProfile.club.trim()
+    || eventProfile.upperHandicap !== null
+    || eventProfile.lowerHandicap !== null
+    || eventProfile.eventType !== "unknown"
+    || eventProfile.sponsorStructure !== "unknown"
+    || eventProfile.format.trim()
+    || eventProfile.conditionsKnown !== "unknown"
+    || eventProfile.conditionsNotes.trim()
+  );
+  const eventProfileApplies = eventProfile.discipline === discipline;
+  const activeEventProfile = eventProfileApplies
+    ? eventProfile
+    : { ...defaultEventProfile, discipline };
+  const activeEventContext = eventProfileConfigured && eventProfileApplies
+    ? profileSummary(eventProfile)
+    : undefined;
+
   const optionLabel = (value: string, fallback: string) => {
     if (language === "es") return fallback;
     if (value === "yes") return "Yes";
@@ -320,6 +342,7 @@ export default function UmpireApp() {
         const nextDb = (await dbResponse.json()) as RuleDb;
         setManifest(nextManifest);
         setDb(nextDb);
+        setLoadError("");
 
         if (nextManifest.resourcesFile) {
           try {
@@ -433,6 +456,7 @@ export default function UmpireApp() {
       setNetworkOnline(true);
       void flushPendingFeedback();
       void prepareOffline(true);
+      void load();
     };
     const onOffline = () => setNetworkOnline(false);
     const onFocus = () => {
@@ -481,24 +505,25 @@ export default function UmpireApp() {
   }, []);
 
   useEffect(() => {
-    const savedLanguage = localStorage.getItem("polo-umpire-language");
+    const storage = localStore();
+    const savedLanguage = safeStorageGet(storage, "polo-umpire-language");
     if (savedLanguage === "en" || savedLanguage === "es") setLanguage(savedLanguage);
 
-    const savedFontSize = localStorage.getItem("polo-umpire-font-size");
+    const savedFontSize = safeStorageGet(storage, "polo-umpire-font-size");
     if (savedFontSize === "small" || savedFontSize === "normal" || savedFontSize === "large") {
       setFontSize(savedFontSize);
     }
 
-    const savedTheme = localStorage.getItem("polo-umpire-theme");
+    const savedTheme = safeStorageGet(storage, "polo-umpire-theme");
     if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
 
-    const savedExperience = localStorage.getItem("umpire-polo-resolver-experience");
+    const savedExperience = safeStorageGet(storage, "umpire-polo-resolver-experience");
     if (savedExperience === "analysis" || savedExperience === "match") setResolverExperience(savedExperience);
 
-    const savedProfile = localStorage.getItem("umpire-polo-event-profile");
+    const savedProfile = safeStorageGet(storage, "umpire-polo-event-profile");
     if (savedProfile) {
       try {
-        const parsed = { ...defaultEventProfile, ...JSON.parse(savedProfile) } as EventProfile;
+        const parsed = normalizeEventProfile(JSON.parse(savedProfile));
         setEventProfile(parsed);
         setProfileDraft(parsed);
         setDiscipline(parsed.discipline);
@@ -531,26 +556,50 @@ export default function UmpireApp() {
 
   function changeLanguage(next: Language) {
     setLanguage(next);
-    localStorage.setItem("polo-umpire-language", next);
+    safeStorageSet(localStore(), "polo-umpire-language", next);
   }
 
   function changeFontSize(next: FontSizePreference) {
     setFontSize(next);
-    localStorage.setItem("polo-umpire-font-size", next);
+    safeStorageSet(localStore(), "polo-umpire-font-size", next);
   }
 
   function changeTheme(next: ThemePreference) {
     setTheme(next);
-    localStorage.setItem("polo-umpire-theme", next);
+    safeStorageSet(localStore(), "polo-umpire-theme", next);
   }
 
   function changeResolverExperience(next: ResolverExperience) {
     setResolverExperience(next);
-    localStorage.setItem("umpire-polo-resolver-experience", next);
+    safeStorageSet(localStore(), "umpire-polo-resolver-experience", next);
     if (next === "match") {
       setResolverMode("play");
       setShowResolution(false);
     }
+  }
+
+  function resetDerivedResolverState() {
+    setTopic(null);
+    setScenario(null);
+    setRankedTopics([]);
+    setRankedScenarios([]);
+    setGenericSituationRules([]);
+    setAnswers({});
+    setCaseFacts({});
+    setSubstitutionInputs({ eventUpper: "", teamTotalBefore: "", outgoingHandicap: "", candidateHandicap: "" });
+    setNationalityInputs({ ...defaultNationalityInputs });
+    setFollowUpText("");
+    setFollowUps([]);
+    setSelectedMissingFactKey("");
+    setShowResolution(false);
+    setSavedAnalysisFingerprint("");
+    setAnalysisSaveError(false);
+  }
+
+  function changeDiscipline(nextDiscipline: Discipline) {
+    if (nextDiscipline === discipline) return;
+    setDiscipline(nextDiscipline);
+    resetDerivedResolverState();
   }
 
   function openEventProfile() {
@@ -562,8 +611,9 @@ export default function UmpireApp() {
     const next = { ...profileDraft };
     setEventProfile(next);
     setProfileDraft(next);
-    setDiscipline(next.discipline);
-    localStorage.setItem("umpire-polo-event-profile", JSON.stringify(next));
+    if (next.discipline !== discipline) setDiscipline(next.discipline);
+    resetDerivedResolverState();
+    safeStorageSet(localStore(), "umpire-polo-event-profile", JSON.stringify(next));
     setProfileOpen(false);
   }
 
@@ -571,7 +621,8 @@ export default function UmpireApp() {
     const next = { ...defaultEventProfile, discipline };
     setEventProfile(next);
     setProfileDraft(next);
-    localStorage.removeItem("umpire-polo-event-profile");
+    resetDerivedResolverState();
+    safeStorageRemove(localStore(), "umpire-polo-event-profile");
   }
 
   const searchedRules = useMemo(() => {
@@ -789,12 +840,13 @@ export default function UmpireApp() {
   function analyze() {
     if (!situation.trim() || !db) return;
     setSavedAnalysisFingerprint("");
+    setAnalysisSaveError(false);
     setAnswers({});
     setShowResolution(false);
     setFollowUpText("");
     setFollowUps([]);
-    const profileCrossFacts = profileToSubstitutionFacts(eventProfile);
-    const profileCaseFacts = profileToCaseFacts(eventProfile);
+    const profileCrossFacts = profileToSubstitutionFacts(activeEventProfile);
+    const profileCaseFacts = profileToCaseFacts(activeEventProfile);
     setNationalityInputs({ ...defaultNationalityInputs, ...profileCrossFacts });
     setCaseFacts(profileCaseFacts);
     setSelectedMissingFactKey("");
@@ -818,8 +870,8 @@ export default function UmpireApp() {
         setSubstitutionInputs({
           eventUpper: parsed.eventUpper != null
             ? String(parsed.eventUpper)
-            : eventProfile.upperHandicap != null
-              ? String(eventProfile.upperHandicap)
+            : activeEventProfile.upperHandicap != null
+              ? String(activeEventProfile.upperHandicap)
               : "",
           teamTotalBefore: parsed.teamTotalBefore != null ? String(parsed.teamTotalBefore) : "",
           outgoingHandicap: parsed.outgoingHandicap != null ? String(parsed.outgoingHandicap) : "",
@@ -827,7 +879,7 @@ export default function UmpireApp() {
         });
         setNationalityInputs({
           ...defaultNationalityInputs,
-          ...profileToSubstitutionFacts(eventProfile),
+          ...profileToSubstitutionFacts(activeEventProfile),
           ...nationality,
           ...crossFacts,
         });
@@ -848,9 +900,7 @@ export default function UmpireApp() {
   function saveAnalysisCase() {
     if (!showResolution) return;
 
-    const eventContext = eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown"
-      ? profileSummary(eventProfile)
-      : undefined;
+    const eventContext = activeEventContext;
 
     let status: CaseRecord["outcome"]["status"] = "reference";
     let headline = universalGraph?.label ?? tr("Rule situation analysis", "Análisis de situación reglamentaria");
@@ -934,7 +984,7 @@ export default function UmpireApp() {
       sectionId: item.section.id,
     }));
 
-    saveCaseRecord({
+    const savedRecord = saveCaseRecord({
       source: "analysis",
       resolverMode,
       discipline,
@@ -946,11 +996,16 @@ export default function UmpireApp() {
       facts,
       references: [...ruleReferences, ...externalReferences],
     });
-    setSavedAnalysisFingerprint(currentAnalysisFingerprint);
+    if (savedRecord) {
+      setSavedAnalysisFingerprint(currentAnalysisFingerprint);
+      setAnalysisSaveError(false);
+    } else {
+      setAnalysisSaveError(true);
+    }
   }
 
   function reuseSavedCase(record: CaseRecord) {
-    setDiscipline(record.discipline);
+    changeDiscipline(record.discipline);
     setResolverMode(record.resolverMode);
     setResolverExperience(record.source === "match" && record.resolverMode === "play" ? "match" : "analysis");
     setSituation(record.situation);
@@ -963,6 +1018,7 @@ export default function UmpireApp() {
     setCaseFacts({});
     setShowResolution(false);
     setSavedAnalysisFingerprint("");
+    setAnalysisSaveError(false);
     setTab("resolver");
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 30);
   }
@@ -1206,13 +1262,14 @@ export default function UmpireApp() {
 
           {resolverExperience === "match" && db ? (
             <MatchMode
+              key={discipline}
               language={language}
               discipline={discipline}
               db={db}
               externalDb={externalDb}
               situation={situation}
               onSituationChange={setSituation}
-              eventContext={eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown" ? profileSummary(eventProfile) : undefined}
+              eventContext={activeEventContext}
               rulebookVersion={manifest?.activeVersion ?? "2026"}
               onOpenRule={setSelectedRule}
               onOpenProvision={setSelectedProvision}
@@ -1222,9 +1279,11 @@ export default function UmpireApp() {
 
           <div className={resolverExperience === "match" ? "fullAnalysisHidden" : ""}>
           <div className="card primaryCard">
-            {eventProfile.name.trim() || eventProfile.upperHandicap !== null || eventProfile.eventType !== "unknown" ? (
+            {eventProfileConfigured ? (
               <div className="caseContextStrip">
-                <span>{tr("Using event context", "Usando contexto del evento")}</span>
+                <span>{eventProfileApplies
+                  ? tr("Using event context", "Usando contexto del evento")
+                  : tr("Event profile not applied to this discipline", "El perfil del evento no se aplica a esta disciplina")}</span>
                 <strong>{profileSummary(eventProfile)}</strong>
                 <button onClick={openEventProfile}>{tr("Change", "Cambiar")}</button>
               </div>
@@ -1236,7 +1295,7 @@ export default function UmpireApp() {
               </div>
               <div className="segmented" role="group" aria-label={tr("Discipline", "Disciplina")}>
                 {(["outdoor", "arena"] as Discipline[]).map((d) => (
-                  <button key={d} className={discipline === d ? "active" : ""} onClick={() => setDiscipline(d)}>
+                  <button key={d} className={discipline === d ? "active" : ""} onClick={() => changeDiscipline(d)}>
                     {d === "outdoor" ? "Outdoor" : "Arena"}
                   </button>
                 ))}
@@ -1732,6 +1791,12 @@ export default function UmpireApp() {
                   {savedAnalysisFingerprint === currentAnalysisFingerprint ? tr("✓ Saved", "✓ Guardado") : tr("Save case", "Guardar caso")}
                 </button>
               </div>
+              {analysisSaveError ? (
+                <p className="matchSaveError">{tr(
+                  "This ruling could not be saved on this device. Browser storage may be unavailable or full.",
+                  "No se pudo guardar esta decisión en el dispositivo. El almacenamiento del navegador puede estar bloqueado o lleno.",
+                )}</p>
+              ) : null}
 
               <DecisionFeedback
                 language={language}

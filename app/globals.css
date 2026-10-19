@@ -3137,3 +3137,15 @@ html[data-theme="dark"] .rowSafeSelectValue {
 @supports not (overflow: clip) {
   .appShell { overflow-x: hidden; }
 }
+
+
+.matchSaveError {
+  margin: 9px 0 0;
+  color: #9a3f47;
+  font-size: calc(10px * var(--font-scale));
+  font-weight: 750;
+  line-height: 1.4;
+}
+html[data-theme="dark"] .matchSaveError {
+  color: #f0a4aa;
+}

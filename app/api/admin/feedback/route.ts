@@ -29,21 +29,29 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   if (!adminAuthorized(request.headers.get("authorization"))) return unauthorized();
 
+  let body: unknown;
   try {
-    const body = await request.json();
-    const id = typeof body?.id === "string" ? body.id.trim().slice(0, 120) : "";
-    const status = typeof body?.status === "string" ? body.status : "";
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ ok: false, error: "invalid-json" }, { status: 400 });
+  }
 
-    if (!id || !allowedStatuses.has(status)) {
-      return NextResponse.json({ ok: false, error: "invalid-review-update" }, { status: 400 });
-    }
+  const candidate = body && typeof body === "object" ? body as Record<string, unknown> : {};
+  const id = typeof candidate.id === "string" ? candidate.id.trim().slice(0, 120) : "";
+  const status = typeof candidate.status === "string" ? candidate.status : "";
 
+  if (!id || !allowedStatuses.has(status)) {
+    return NextResponse.json({ ok: false, error: "invalid-review-update" }, { status: 400 });
+  }
+
+  try {
     const updated = await setFeedbackReviewStatus(id, status as "open" | "reviewed" | "dismissed");
     return NextResponse.json(
       { ok: updated },
       { status: updated ? 200 : 404, headers: { "cache-control": "no-store" } },
     );
-  } catch {
-    return NextResponse.json({ ok: false, error: "invalid-json" }, { status: 400 });
+  } catch (error) {
+    console.error("POLO_UMPIRE_FEEDBACK_ADMIN_UPDATE_FAILED", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json({ ok: false, error: "dashboard-unavailable" }, { status: 503 });
   }
 }
