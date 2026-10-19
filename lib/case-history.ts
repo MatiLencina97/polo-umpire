@@ -1,4 +1,5 @@
 import type { Discipline, Language, ResolverMode } from "./types";
+import { localStore, safeStorageGet, safeStorageSet } from "./browser-storage";
 
 export type CaseStatus =
   | "foul"
@@ -101,30 +102,32 @@ function newCaseId() {
 }
 
 export function loadCaseHistory(): CaseRecord[] {
-  if (typeof window === "undefined") return [];
+  const raw = safeStorageGet(localStore(), CASE_HISTORY_KEY);
+  if (!raw) return [];
   try {
-    return normalizeCaseHistory(JSON.parse(window.localStorage.getItem(CASE_HISTORY_KEY) ?? "[]"));
+    return normalizeCaseHistory(JSON.parse(raw));
   } catch {
     return [];
   }
 }
 
 function writeCaseHistory(history: CaseRecord[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(CASE_HISTORY_KEY, JSON.stringify(history));
-  window.dispatchEvent(new Event(CASE_HISTORY_EVENT));
+  const saved = safeStorageSet(localStore(), CASE_HISTORY_KEY, JSON.stringify(history));
+  if (saved && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CASE_HISTORY_EVENT));
+  }
+  return saved;
 }
 
 export function saveCaseRecord(draft: CaseDraft) {
   const record = buildCaseRecord(draft, newCaseId(), new Date().toISOString());
-  writeCaseHistory(mergeCaseRecord(loadCaseHistory(), record));
-  return record;
+  return writeCaseHistory(mergeCaseRecord(loadCaseHistory(), record)) ? record : null;
 }
 
 export function deleteCaseRecord(id: string) {
-  writeCaseHistory(loadCaseHistory().filter((item) => item.id !== id));
+  return writeCaseHistory(loadCaseHistory().filter((item) => item.id !== id));
 }
 
 export function clearCaseHistory() {
-  writeCaseHistory([]);
+  return writeCaseHistory([]);
 }
