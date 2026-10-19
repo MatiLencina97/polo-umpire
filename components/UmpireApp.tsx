@@ -37,6 +37,7 @@ import {
 } from "@/lib/rule-graphs";
 import {
   defaultEventProfile,
+  normalizeEventProfile,
   profileSummary,
   profileToCaseFacts,
   profileToSubstitutionFacts,
@@ -521,7 +522,7 @@ export default function UmpireApp() {
     const savedProfile = safeStorageGet(storage, "umpire-polo-event-profile");
     if (savedProfile) {
       try {
-        const parsed = { ...defaultEventProfile, ...JSON.parse(savedProfile) } as EventProfile;
+        const parsed = normalizeEventProfile(JSON.parse(savedProfile));
         setEventProfile(parsed);
         setProfileDraft(parsed);
         setDiscipline(parsed.discipline);
