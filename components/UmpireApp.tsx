@@ -578,9 +578,7 @@ export default function UmpireApp() {
     }
   }
 
-  function changeDiscipline(nextDiscipline: Discipline) {
-    if (nextDiscipline === discipline) return;
-    setDiscipline(nextDiscipline);
+  function resetDerivedResolverState() {
     setTopic(null);
     setScenario(null);
     setRankedTopics([]);
@@ -598,6 +596,12 @@ export default function UmpireApp() {
     setAnalysisSaveError(false);
   }
 
+  function changeDiscipline(nextDiscipline: Discipline) {
+    if (nextDiscipline === discipline) return;
+    setDiscipline(nextDiscipline);
+    resetDerivedResolverState();
+  }
+
   function openEventProfile() {
     setProfileDraft({ ...eventProfile });
     setProfileOpen(true);
@@ -607,7 +611,8 @@ export default function UmpireApp() {
     const next = { ...profileDraft };
     setEventProfile(next);
     setProfileDraft(next);
-    changeDiscipline(next.discipline);
+    if (next.discipline !== discipline) setDiscipline(next.discipline);
+    resetDerivedResolverState();
     safeStorageSet(localStore(), "umpire-polo-event-profile", JSON.stringify(next));
     setProfileOpen(false);
   }
@@ -616,6 +621,7 @@ export default function UmpireApp() {
     const next = { ...defaultEventProfile, discipline };
     setEventProfile(next);
     setProfileDraft(next);
+    resetDerivedResolverState();
     safeStorageRemove(localStore(), "umpire-polo-event-profile");
   }
 
