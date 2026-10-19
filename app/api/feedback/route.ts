@@ -17,12 +17,20 @@ function clientKey(request: NextRequest) {
   // Used transiently for best-effort abuse protection only. It is never logged or persisted.
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     || request.headers.get("x-real-ip")
-    || "unknown";
+    || null;
 }
 
 function rateLimited(request: NextRequest) {
   const now = Date.now();
   const key = clientKey(request);
+  if (!key) return false;
+
+  if (rateBuckets.size > 500) {
+    for (const [bucketKey, bucket] of rateBuckets) {
+      if (now >= bucket.resetAt) rateBuckets.delete(bucketKey);
+    }
+  }
+
   const bucket = rateBuckets.get(key);
   if (!bucket || now >= bucket.resetAt) {
     rateBuckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
