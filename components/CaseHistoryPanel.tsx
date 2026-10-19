@@ -100,8 +100,10 @@ export default function CaseHistoryPanel({ language, installedRulebookVersion, o
     const link = document.createElement("a");
     link.href = url;
     link.download = "umpire-polo-cases.json";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   return (
