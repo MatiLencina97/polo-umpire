@@ -77,6 +77,80 @@ test("English crosses/crossed/crossing variants classify as ROW without matching
   assert.equal(classifyTopic("He rode across the field.").topic, null);
 });
 
+test("natural field-language corpus routes common umpire descriptions without clarification", () => {
+  const samples: Array<[string, string]> = [
+    // Right of Way / Crossing
+    ["Red cut Blue off and Blue had to pull up.", "row"],
+    ["Red rode into Blue's line and forced him to check.", "row"],
+    ["He closed his line and made him change course.", "row"],
+    ["Blue needed to slow down because Red came across his path.", "row"],
+    ["Se le cruzó adelante y lo obligó a frenar.", "row"],
+    ["Le cerró la línea y lo hizo cambiar de rumbo.", "row"],
+
+    // Dangerous Riding
+    ["There was a hard ride-off and the pony lost its balance.", "dangerous"],
+    ["He came in at a sharp angle at speed.", "dangerous"],
+    ["The horse lost its balance after the contact.", "dangerous"],
+    ["He hit the opponent hard from the blind side.", "dangerous"],
+    ["Lo chocó de costado durante el ride-off.", "dangerous"],
+    ["El petiso perdió el equilibrio con el contacto.", "dangerous"],
+
+    // Improper Blocking
+    ["The attacker screened the defender so his teammate could play the ball.", "blocking"],
+    ["He picked off the defender and freed his teammate.", "blocking"],
+    ["He prevented the defender from marking the teammate.", "blocking"],
+    ["He rode between the defender and his teammate to keep him away.", "blocking"],
+    ["Le hizo pantalla al defensor para liberar al compañero.", "blocking"],
+    ["No lo dejó marcar y liberó a su compañero.", "blocking"],
+
+    // Mallet / Hook
+    ["He hooked from the wrong side.", "mallet"],
+    ["The swing passed close to the pony.", "mallet"],
+    ["His mallet struck the opponent's horse.", "mallet"],
+    ["He reached across to hook the opponent.", "mallet"],
+    ["Hookeó del lado equivocado.", "mallet"],
+    ["El taco tocó al caballo rival.", "mallet"],
+
+    // Conduct
+    ["He yelled at the umpire after the call.", "conduct"],
+    ["He kept arguing with the umpire.", "conduct"],
+    ["There was verbal abuse toward the official.", "conduct"],
+    ["He hit after the whistle.", "conduct"],
+    ["Le gritó al árbitro y siguió protestando.", "conduct"],
+    ["Puteó al umpire después de la jugada.", "conduct"],
+
+    // Restart / dead ball
+    ["The ball rolled over the sideline.", "restart"],
+    ["The ball left the field off Red.", "restart"],
+    ["The whistle stopped play.", "restart"],
+    ["The ball went over the end line.", "restart"],
+    ["La bocha se fue afuera por el lateral.", "restart"],
+    ["Rebotó en el rival y salió afuera.", "restart"],
+  ];
+
+  for (const [description, expected] of samples) {
+    const detected = classifyTopic(description);
+    assert.equal(detected.topic, expected, description + " => " + JSON.stringify(detected.ranked.slice(0, 2)));
+    assert.equal(detected.ambiguous, false, description);
+  }
+});
+
+test("natural-language collision traps stay out of the wrong family", () => {
+  const cases: Array<[string, string | null, string]> = [
+    ["Red picked up the ball and continued.", null, "blocking"],
+    ["Blue tried to marcar un gol.", null, "blocking"],
+    ["He rode across the field to the pony line.", null, "row"],
+    ["The scoreboard is beside the boards.", null, "restart"],
+    ["The umpire yelled Play and the game continued.", null, "conduct"],
+  ];
+
+  for (const [description, expectedTopic, forbidden] of cases) {
+    const detected = classifyTopic(description);
+    assert.equal(detected.topic, expectedTopic, description);
+    assert.equal(detected.ranked.find((item) => item.id === forbidden)?.score, 0, description);
+  }
+});
+
 test("ambiguous classifier output becomes observable-action clarification choices", () => {
   const detected = classifyTopic("Dangerous hook.");
   assert.equal(detected.topic, null);
