@@ -386,6 +386,7 @@ export default function MatchMode({
                       <strong>{topicNames[relation.from][language]} ↔ {topicNames[relation.to][language]}</strong>
                     </div>
                     <p>{language === "en" ? relation.summaryEn : relation.summaryEs}</p>
+                    <small><strong>{tr("Order:", "Orden:")}</strong> {language === "en" ? relation.priorityEn : relation.priorityEs}</small>
                   </div>
                 ))}
               </div>
