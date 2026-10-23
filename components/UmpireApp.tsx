@@ -63,6 +63,7 @@ import { saveCaseRecord, type CaseRecord } from "@/lib/case-history";
 import { flushPendingFeedback } from "@/lib/decision-feedback";
 import { localStore, safeStorageGet, safeStorageRemove, safeStorageSet } from "@/lib/browser-storage";
 import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
+import { extractExplicitPlayFacts, type ExtractedPlayFact } from "@/lib/play-fact-extractor";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -242,6 +243,7 @@ export default function UmpireApp() {
   const [rankedScenarios, setRankedScenarios] = useState<ReturnType<typeof classifyScenario>>([]);
   const [genericSituationRules, setGenericSituationRules] = useState<Rule[]>([]);
   const [answers, setAnswers] = useState<Record<string, ChoiceValue>>({});
+  const [autoDetectedFacts, setAutoDetectedFacts] = useState<ExtractedPlayFact[]>([]);
   const [showResolution, setShowResolution] = useState(false);
   const [search, setSearch] = useState("");
   const [searchFilter, setSearchFilter] = useState<SearchFilter>("all");
@@ -587,6 +589,7 @@ export default function UmpireApp() {
     setRankedScenarios([]);
     setGenericSituationRules([]);
     setAnswers({});
+    setAutoDetectedFacts([]);
     setCaseFacts({});
     setSubstitutionInputs({ eventUpper: "", teamTotalBefore: "", outgoingHandicap: "", candidateHandicap: "" });
     setNationalityInputs({ ...defaultNationalityInputs });
@@ -838,12 +841,14 @@ export default function UmpireApp() {
 
   const unresolvedQuestions = activeQuestions.filter((question) => !answers[question.key] || answers[question.key] === "unknown");
   const answeredQuestions = activeQuestions.filter((question) => answers[question.key] && answers[question.key] !== "unknown");
+  const activeAutoDetectedFacts = autoDetectedFacts.filter((fact) => answers[fact.key] === fact.value);
 
   function analyze() {
     if (!situation.trim() || !db) return;
     setSavedAnalysisFingerprint("");
     setAnalysisSaveError(false);
     setAnswers({});
+    setAutoDetectedFacts([]);
     setShowResolution(false);
     setFollowUpText("");
     setFollowUps([]);
@@ -857,6 +862,11 @@ export default function UmpireApp() {
       const detected = classifyTopic(situation);
       setRankedTopics(detected.ranked);
       setTopic(detected.topic);
+      if (detected.topic) {
+        const extracted = extractExplicitPlayFacts(situation, detected.topic);
+        setAnswers(extracted.answers);
+        setAutoDetectedFacts(extracted.facts);
+      }
       setScenario(null);
       setGenericSituationRules([]);
     } else {
@@ -1344,8 +1354,10 @@ export default function UmpireApp() {
                   <button
                     key={id}
                     onClick={() => {
+                      const extracted = extractExplicitPlayFacts(situation, id);
                       setTopic(id);
-                      setAnswers({});
+                      setAnswers(extracted.answers);
+                      setAutoDetectedFacts(extracted.facts);
                       setShowResolution(false);
                     }}
                   >
@@ -1582,6 +1594,22 @@ export default function UmpireApp() {
                     return nextAnswers;
                   })}
                 />
+              ) : null}
+              {resolverMode === "play" && activeAutoDetectedFacts.length ? (
+                <div className="callout secondaryCallout">
+                  <strong>{tr("Facts detected directly from your description", "Datos detectados directamente de tu descripción")}</strong>
+                  <p>{tr(
+                    "These answers were prefilled only when the wording stated the fact explicitly. You can change any of them below before applying the Rulebook.",
+                    "Estas respuestas se precargaron sólo cuando la descripción expresó el dato de forma explícita. Podés cambiar cualquiera abajo antes de aplicar el reglamento.",
+                  )}</p>
+                  <div className="quickchips">
+                    {activeAutoDetectedFacts.map((fact) => (
+                      <span className="ruleTag" key={fact.key}>
+                        {language === "en" ? fact.reasonEn : fact.reasonEs}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               ) : null}
               <div className="questionList">
                 {activeQuestions.map((question) => (
