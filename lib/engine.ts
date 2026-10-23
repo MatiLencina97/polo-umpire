@@ -1,4 +1,5 @@
 import type { ChoiceValue, Discipline, Language, QuestionDefinition, Rule, TopicDefinition, TopicId } from "./types";
+import { playPrototypeScore, playTopicContextPenalty } from "./play-language-model";
 
 export const topicDefs: Record<TopicId, TopicDefinition> = {
   row: {
@@ -160,7 +161,7 @@ const naturalTopicCues: Record<TopicId, NaturalTopicCue[]> = {
     { pattern: /(?:^| )(?:screened|screens|screening) (?:the )?defender(?: |$)/, score: 7 },
     { pattern: /(?:^| )(?:picked|picks|picking) (?:off )?(?:the )?defender(?: |$)/, score: 7 },
     { pattern: /(?:^| )(?:kept|stopped|prevented|prevents) (?:the )?defender from (?:marking|getting to|playing)(?: |$)/, score: 7 },
-    { pattern: /(?:^| )(?:stood|rode|stayed) between (?:the )?defender and (?:his|the) teammate(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:stood|rode|stayed) between (?:the )?defender and (?:(?:his|the) )?teammate(?: |$)/, score: 6 },
     { pattern: /(?:^| )(?:le hizo pantalla|le puso una pantalla|no lo dejo marcar|no la dejo marcar|lo bloqueo para liberar|la bloqueo para liberar)(?: |$)/, score: 7 },
   ],
   mallet: [
@@ -203,8 +204,9 @@ function naturalTopicScore(text: string, topic: TopicId) {
 export function classify(text: string) {
   const n = normalize(text);
   return (Object.entries(topicDefs) as Array<[TopicId, TopicDefinition]>).map(([id, t]) => {
-    let score = naturalTopicScore(n, id);
+    let score = naturalTopicScore(n, id) + playPrototypeScore(n, id);
     for (const term of t.terms) if (containsTopicTerm(n, term)) score += term.includes(" ") ? 3 : 2;
+    score = Math.max(0, score + playTopicContextPenalty(n, id));
     return { id, score, label: t.label };
   }).sort((a, b) => b.score - a.score);
 }

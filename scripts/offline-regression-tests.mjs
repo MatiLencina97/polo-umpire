@@ -9,8 +9,8 @@ const umpireApp = fs.readFileSync("components/UmpireApp.tsx", "utf8");
 const matchMode = fs.readFileSync("components/MatchMode.tsx", "utf8");
 
 assert.match(sw, /const CACHE_PREFIX = "polo-umpire-assistant-"/);
-assert.ok(sw.includes('const CACHE = "polo-umpire-assistant-v0.27.5-r1-2026";'));
-assert.ok(appVersion.includes('APP_VERSION = "0.27.5"'));
+assert.ok(sw.includes('const CACHE = "polo-umpire-assistant-v0.27.6-r1-2026";'));
+assert.ok(appVersion.includes('APP_VERSION = "0.27.6"'));
 
 assert.equal(umpireApp.includes("I don't have enough signal to choose the rule family safely"), false);
 assert.equal(umpireApp.includes("RULE FAMILY NEEDED"), false);

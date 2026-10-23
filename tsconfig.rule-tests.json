@@ -18,6 +18,7 @@
     "scripts/rule-regression-tests.ts",
     "lib/types.ts",
     "lib/engine.ts",
+    "lib/play-language-model.ts",
     "lib/play-decision.ts",
     "lib/subarticles.ts",
     "lib/cross-rule.ts",
