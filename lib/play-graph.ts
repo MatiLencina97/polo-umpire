@@ -53,10 +53,14 @@ function strongTopicsForText(text: string) {
   const top = ranked[0]?.score ?? 0;
   if (top <= 0) return [];
 
-  return ranked.filter((item, index) => {
+  return ranked.filter((item) => {
     if (item.score <= 0) return false;
-    if (item.score >= 3 && item.score >= top - 2) return true;
-    return index === 0 && item.score >= 2;
+    // A score of 3+ normally comes from an exact multi-word cue or a strong
+    // contextual/example match and should survive even when another family is
+    // much stronger in the same sentence. Tied 2-point cues are also kept so
+    // genuinely ambiguous short descriptions can form a multi-branch graph.
+    if (item.score >= 3) return true;
+    return item.score === top && top >= 2;
   });
 }
 
