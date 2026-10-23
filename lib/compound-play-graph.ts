@@ -21,6 +21,8 @@ export type CompoundPlayRelation = {
   kind: CompoundPlayRelationKind;
   summaryEn: string;
   summaryEs: string;
+  priorityEn: string;
+  priorityEs: string;
   ruleRefs: string[];
 };
 
@@ -49,6 +51,8 @@ function relationFor(
       kind: "related",
       summaryEn: "Improper Blocking and Dangerous Riding must be evaluated separately. Outdoor Rule 26A expressly says improper blocking may or may not also constitute Dangerous Riding.",
       summaryEs: "Improper Blocking y Dangerous Riding deben evaluarse por separado. Outdoor Rule 26A dice expresamente que un bloqueo indebido puede o no constituir también Dangerous Riding.",
+      priorityEn: "Establish the blocking violation first; then decide independently whether the same conduct also rises to Dangerous Riding.",
+      priorityEs: "Establecé primero si hubo Improper Blocking; después decidí de forma independiente si la misma conducta también alcanza Dangerous Riding.",
       ruleRefs: discipline === "outdoor" ? ["26A", "26", penaltySelectionRef] : ["13", penaltySelectionRef],
     };
   }
@@ -62,6 +66,8 @@ function relationFor(
       kind: "overlay",
       summaryEn: "The underlying play and the conduct issue remain separate rule branches. Resolve the play first, then review any disciplinary overlay without automatically stacking penalties.",
       summaryEs: "La jugada de base y la conducta siguen siendo ramas reglamentarias separadas. Resolvé primero la jugada y después revisá la consecuencia disciplinaria, sin sumar penalidades automáticamente.",
+      priorityEn: "Resolve the underlying play first, then evaluate the conduct/disciplinary overlay.",
+      priorityEs: "Resolvé primero la jugada de base y después evaluá la capa disciplinaria de conducta.",
       ruleRefs: [conductRef, penaltySelectionRef],
     };
   }
@@ -74,6 +80,8 @@ function relationFor(
       kind: "related",
       summaryEn: "The stoppage/restart context can change how the other event is administered. Keep the restart procedure separate from the underlying foul analysis.",
       summaryEs: "El contexto de detención/reanudación puede cambiar cómo se administra el otro evento. Mantené separado el procedimiento de restart del análisis de la falta de base.",
+      priorityEn: "Establish whether play was live or dead and the restart context before deciding administration of the other branch.",
+      priorityEs: "Establecé primero si la pelota estaba viva o muerta y el contexto de reanudación antes de decidir cómo administrar la otra rama.",
       ruleRefs: [restartRef, penaltySelectionRef],
     };
   }
@@ -85,6 +93,8 @@ function relationFor(
       kind: "parallel",
       summaryEn: "A Right of Way infringement and Dangerous Riding can coexist, but neither should be inferred from the other. Evaluate entitlement/risk and dangerous contact independently.",
       summaryEs: "Una infracción de Right of Way y Dangerous Riding pueden coexistir, pero ninguna debe inferirse de la otra. Evaluá de forma independiente el ROW/riesgo y el contacto peligroso.",
+      priorityEn: "No branch has automatic priority: establish ROW entitlement/risk and dangerous contact as separate findings before penalty selection.",
+      priorityEs: "Ninguna rama tiene prioridad automática: establecé por separado el ROW/riesgo y el contacto peligroso antes de seleccionar la penalidad.",
       ruleRefs: discipline === "outdoor" ? ["24", "26", penaltySelectionRef] : ["12", "13", penaltySelectionRef],
     };
   }
@@ -95,6 +105,8 @@ function relationFor(
     kind: "parallel",
     summaryEn: "More than one rule family has independent support in the description. Keep both branches open until their decisive facts are resolved.",
     summaryEs: "Más de una familia reglamentaria tiene respaldo independiente en la descripción. Mantené ambas ramas abiertas hasta resolver sus datos decisivos.",
+    priorityEn: "Resolve each branch independently before using the penalty-selection rule.",
+    priorityEs: "Resolvé cada rama de forma independiente antes de aplicar la regla de selección de penalidad.",
     ruleRefs: [penaltySelectionRef],
   };
 }
