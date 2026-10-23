@@ -1418,6 +1418,7 @@ export default function UmpireApp() {
                       <strong>{topicLabel(relation.from, topicDefs[relation.from].label)} ↔ {topicLabel(relation.to, topicDefs[relation.to].label)}</strong>
                     </div>
                     <p>{language === "en" ? relation.summaryEn : relation.summaryEs}</p>
+                    <p><strong>{tr("Resolution order:", "Orden de resolución:")}</strong> {language === "en" ? relation.priorityEn : relation.priorityEs}</p>
                     <small>{relation.ruleRefs.map((ref) => "Rule " + ref).join(" · ")}</small>
                   </div>
                 ))}
