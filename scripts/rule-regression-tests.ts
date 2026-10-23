@@ -5,6 +5,7 @@ import { decidePlay } from "../lib/play-decision";
 import { parseRuleProvisions, bestProvisionsForRules, resolveProvisions } from "../lib/subarticles";
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "../lib/match-flow";
+import { extractExplicitPlayFacts } from "../lib/play-fact-extractor";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
 import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
 import { appendTranscript, speechLocale } from "../lib/voice";
@@ -166,6 +167,59 @@ test("negated family cues are suppressed instead of creating false ties", () => 
     assert.equal(detected.topic, expected, description + " => " + JSON.stringify(detected.ranked.slice(0, 3)));
     assert.equal(detected.ranked.find((item) => item.id === suppressed)?.score, 0, description);
   }
+});
+
+test("explicit fact extractor prefills only facts actually stated in the play", () => {
+  const row = extractExplicitPlayFacts("Red crossed in front and forced Blue to pull up. The line had changed and there was no time to clear.", "row");
+  assert.equal(row.answers.risk, "yes");
+  assert.equal(row.answers.lineChanged, "yes");
+  assert.equal(row.answers.clearanceTime, "no");
+  assert.equal(row.answers.rowEntitled, undefined);
+
+  const dangerous = extractExplicitPlayFacts("A hard ride-off knocked the pony off balance from the blind side.", "dangerous");
+  assert.equal(dangerous.answers.balance, "yes");
+  assert.equal(dangerous.answers.blind, "yes");
+
+  const mallet = extractExplicitPlayFacts("He hooked from the wrong side. The swing passed close to the pony.", "mallet");
+  assert.equal(mallet.answers.hookPosition, "no");
+  assert.equal(mallet.answers.strokeDanger, "yes");
+
+  const conduct = extractExplicitPlayFacts("He kept arguing with the umpire after a previous warning.", "conduct");
+  assert.equal(conduct.answers.conductMatches, "yes");
+  assert.equal(conduct.answers.repeat, "yes");
+
+  const restart = extractExplicitPlayFacts("The ball went out over the boards and they prepared for a knock-in.", "restart");
+  assert.equal(restart.answers.dead, "yes");
+  assert.equal(restart.answers.restartType, "knockin");
+});
+
+test("fact extractor preserves uncertainty when wording conflicts", () => {
+  const facts = extractExplicitPlayFacts("The pony lost its balance, but another angle says the pony remained balanced.", "dangerous");
+  assert.equal(facts.answers.balance, undefined);
+  assert.equal(facts.facts.some((fact) => fact.key === "balance"), false);
+});
+
+test("fact extraction can shorten the quick flow without inventing missing ROW entitlement", () => {
+  const dangerousFacts = extractExplicitPlayFacts("The pony lost its balance during the ride-off.", "dangerous");
+  const dangerousProgress = matchProgress("dangerous", dangerousFacts.answers);
+  assert.equal(dangerousProgress.complete, true);
+  assert.equal(dangerousProgress.earlyResolved, true);
+
+  const rowFacts = extractExplicitPlayFacts("Red crossed in front and forced Blue to pull up.", "row");
+  const rowProgress = matchProgress("row", rowFacts.answers);
+  assert.equal(rowProgress.currentKey, "rowEntitled");
+  assert.equal(rowProgress.complete, false);
+});
+
+test("explicit dead-ball wording changes restart question order", () => {
+  const restartFacts = extractExplicitPlayFacts("The ball went out over the boards for a knock-in.", "restart");
+  const progress = matchProgress("restart", restartFacts.answers);
+  assert.deepEqual(progress.keys, ["dead", "restartType"]);
+  assert.equal(progress.complete, true);
+
+  const decision = decidePlay("restart", "outdoor", restartFacts.answers, "en");
+  assert.equal(decision.status, "procedure");
+  assert.ok(decision.references.some((ref) => ref.startsWith("22")));
 });
 
 test("natural-language collision traps stay out of the wrong family", () => {

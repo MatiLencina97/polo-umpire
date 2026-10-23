@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { APP_VERSION } from "@/lib/app-version";
 import { classifyTopic, playClarifierCandidates, playClarifierLabel, questions } from "@/lib/engine";
+import { extractExplicitPlayFacts } from "@/lib/play-fact-extractor";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "@/lib/match-flow";
@@ -103,7 +104,19 @@ export default function MatchMode({
   const [savedCaseId, setSavedCaseId] = useState("");
   const [caseSaveError, setCaseSaveError] = useState(false);
 
-  const progress = topic ? matchProgress(topic, answers) : null;
+  const extractedFacts = useMemo(
+    () => topic ? extractExplicitPlayFacts(situation, topic) : { answers: {}, facts: [] },
+    [situation, topic],
+  );
+  const effectiveAnswers = useMemo(
+    () => ({ ...extractedFacts.answers, ...answers }),
+    [extractedFacts, answers],
+  );
+  const activeDetectedFacts = extractedFacts.facts.filter(
+    (fact) => answers[fact.key] === undefined || answers[fact.key] === fact.value,
+  );
+
+  const progress = topic ? matchProgress(topic, effectiveAnswers) : null;
   const activeKeys = progress?.keys ?? [];
   const topicQuestions = topic
     ? activeKeys.flatMap((key) => {
@@ -117,9 +130,9 @@ export default function MatchMode({
   const answeredCount = progress?.answeredKeys.length ?? 0;
   const complete = Boolean(progress?.complete);
 
-  const decision = topic ? decidePlay(topic, discipline, answers, language) : null;
-  const decisionAudit = topic && decision ? auditPlayDecision(topic, discipline, answers, decision) : null;
-  const hasCriticalUnknown = topicQuestions.some((question) => answers[question.key] === "unknown");
+  const decision = topic ? decidePlay(topic, discipline, effectiveAnswers, language) : null;
+  const decisionAudit = topic && decision ? auditPlayDecision(topic, discipline, effectiveAnswers, decision) : null;
+  const hasCriticalUnknown = topicQuestions.some((question) => effectiveAnswers[question.key] === "unknown");
   const displayedStatus = hasCriticalUnknown && decision && decision.status !== "needs-info"
     ? "needs-info"
     : decision?.status;
@@ -142,7 +155,7 @@ export default function MatchMode({
     : [];
 
   const ruleTrail = topic && decision
-    ? playDecisionRuleTrail({ db, discipline, topic, answers, decision, language })
+    ? playDecisionRuleTrail({ db, discipline, topic, answers: effectiveAnswers, decision, language })
     : [];
 
   function begin() {
@@ -182,7 +195,7 @@ export default function MatchMode({
 
   function answer(key: string, value: ChoiceValue) {
     if (!topic) return;
-    setAnswers((current) => applyMatchAnswer(topic, current, key, value));
+    setAnswers((current) => applyMatchAnswer(topic, { ...extractedFacts.answers, ...current }, key, value));
     setSavedCaseId("");
     setCaseSaveError(false);
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
@@ -190,7 +203,9 @@ export default function MatchMode({
 
   function rewind() {
     if (!topic) return;
-    setAnswers((current) => rewindLastMatchAnswer(topic, current));
+    const lastAnswered = [...(progress?.answeredKeys ?? [])].reverse()[0];
+    if (!lastAnswered) return;
+    setAnswers((current) => ({ ...current, [lastAnswered]: "unknown" }));
     setSavedCaseId("");
     setCaseSaveError(false);
     setShowWhy(false);
@@ -236,10 +251,10 @@ export default function MatchMode({
         summary: decision.summary,
       },
       facts: topicQuestions
-        .filter((question) => answers[question.key] !== undefined && answers[question.key] !== "")
+        .filter((question) => effectiveAnswers[question.key] !== undefined && effectiveAnswers[question.key] !== "")
         .map((question) => ({
           label: labelForQuestion(question.key, question.label, language),
-          value: labelForOption(String(answers[question.key]), String(answers[question.key]), language),
+          value: labelForOption(String(effectiveAnswers[question.key]), String(effectiveAnswers[question.key]), language),
         })),
       references: [...ruleReferences, ...externalReferences],
     });
@@ -327,6 +342,22 @@ export default function MatchMode({
             </div>
           ) : null}
 
+          {topic && activeDetectedFacts.length ? (
+            <div className="matchContext">
+              <span>{tr("DETECTED FROM YOUR DESCRIPTION", "DETECTADO EN TU DESCRIPCIÓN")}</span>
+              <strong>{activeDetectedFacts.map((fact) => language === "en" ? fact.reasonEn : fact.reasonEs).join(" · ")}</strong>
+              <button
+                className="matchBackButton"
+                onClick={() => setAnswers((current) => ({
+                  ...current,
+                  ...Object.fromEntries(activeDetectedFacts.map((fact) => [fact.key, "unknown"])),
+                }))}
+              >
+                {tr("Review detected facts", "Revisar datos detectados")}
+              </button>
+            </div>
+          ) : null}
+
           {!complete && currentQuestion ? (
             <section className="matchQuestionCard" id="match-question">
               <div className="matchQuestionMeta">
@@ -341,7 +372,7 @@ export default function MatchMode({
                   onOpenProvision={onOpenProvision}
                   onApply={(hasRow, refs) => {
                     setAnswers((current) => {
-                      const nextAnswers = applyMatchAnswer("row", current, "rowEntitled", hasRow ? "yes" : "no");
+                      const nextAnswers = applyMatchAnswer("row", { ...extractedFacts.answers, ...current }, "rowEntitled", hasRow ? "yes" : "no");
                       nextAnswers.rowEntitlementDerived = refs.join(",");
                       return nextAnswers;
                     });
@@ -455,9 +486,9 @@ export default function MatchMode({
                   <div>
                     <strong>{tr("Facts used", "Hechos utilizados")}</strong>
                     <ul>
-                      {topicQuestions.filter((question) => answers[question.key] !== undefined && answers[question.key] !== "").map((question) => (
+                      {topicQuestions.filter((question) => effectiveAnswers[question.key] !== undefined && effectiveAnswers[question.key] !== "").map((question) => (
                         <li key={question.key}>
-                          {labelForQuestion(question.key, question.label, language)} <b>{labelForOption(String(answers[question.key] ?? ""), String(answers[question.key] ?? ""), language)}</b>
+                          {labelForQuestion(question.key, question.label, language)} <b>{labelForOption(String(effectiveAnswers[question.key] ?? ""), String(effectiveAnswers[question.key] ?? ""), language)}</b>
                         </li>
                       ))}
                     </ul>
