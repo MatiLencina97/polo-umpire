@@ -317,7 +317,8 @@ const negativeContext: Partial<Record<TopicId, RegExp[]>> = {
 };
 
 export function playTopicContextPenalty(value: string, topic: TopicId) {
+  const raw = baseNormalize(value);
   const canonical = canonicalPlayText(value);
   const patterns = negativeContext[topic] ?? [];
-  return patterns.some((pattern) => pattern.test(canonical)) ? -8 : 0;
+  return patterns.some((pattern) => pattern.test(raw) || pattern.test(canonical)) ? -8 : 0;
 }
