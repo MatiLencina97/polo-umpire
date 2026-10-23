@@ -1,6 +1,7 @@
 import { classify, classifyTopic } from "./engine";
 import { extractExplicitPlayFacts, type ExtractedPlayFact } from "./play-fact-extractor";
 import { decidePlay, type PlayDecision } from "./play-decision";
+import { nextDecisiveQuestion, type QuestionImpact } from "./decision-intelligence";
 import type { Discipline, Language, TopicId } from "./types";
 
 export type CompoundPlayNode = {
@@ -11,6 +12,7 @@ export type CompoundPlayNode = {
   facts: ExtractedPlayFact[];
   answers: Record<string, string>;
   decision: PlayDecision;
+  nextQuestion: QuestionImpact | null;
 };
 
 export type CompoundPlayRelationKind = "overlay" | "related" | "parallel";
@@ -32,6 +34,7 @@ export type CompoundPlayGraph = {
   nodes: CompoundPlayNode[];
   relations: CompoundPlayRelation[];
   penaltySelectionRef: string;
+  nextDecisiveQuestion: QuestionImpact | null;
 };
 
 const pairKey = (left: TopicId, right: TopicId) => [left, right].sort().join(":");
@@ -152,6 +155,7 @@ export function buildCompoundPlayGraph(
     facts: item.facts,
     answers: item.answers,
     decision: decidePlay(item.id, discipline, item.answers, language),
+    nextQuestion: nextDecisiveQuestion(item.id, discipline, item.answers, language),
   }));
 
   const relations: CompoundPlayRelation[] = [];
@@ -161,11 +165,32 @@ export function buildCompoundPlayGraph(
     }
   }
 
+  const relationPriorityBonus = (topic: TopicId) => relations.reduce((bonus, relation) => {
+    if (relation.kind === "overlay") {
+      if (relation.from === topic) return bonus + 4;
+      if (relation.to === topic) return bonus - 2;
+    }
+    if ((relation.from === "restart" || relation.to === "restart") && topic === "restart") return bonus + 3;
+    const pair = new Set([relation.from, relation.to]);
+    if (pair.has("blocking") && pair.has("dangerous") && topic === "blocking") return bonus + 2;
+    return bonus;
+  }, 0);
+
+  const nextQuestionCandidates = nodes
+    .flatMap((node) => node.nextQuestion ? [{
+      question: node.nextQuestion,
+      adjustedScore: node.nextQuestion.score
+        + relationPriorityBonus(node.topic)
+        + (node.primary ? 1 : 0),
+    }] : [])
+    .sort((a, b) => b.adjustedScore - a.adjustedScore || b.question.score - a.question.score);
+
   return {
     compound: nodes.length > 1,
     primaryTopic,
     nodes,
     relations,
     penaltySelectionRef: discipline === "outdoor" ? "35" : "10",
+    nextDecisiveQuestion: nextQuestionCandidates[0]?.question ?? null,
   };
 }
