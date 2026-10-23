@@ -123,6 +123,17 @@ test("crossed-the-sideline wording classifies as Restart", () => {
   assert.equal(detected.ambiguous, false);
 });
 
+test("crossing boards remains out-of-bounds and does not create a ROW tie", () => {
+  for (const text of [
+    "The ball crossed the boards after touching Red's horse.",
+    "The ball crosses the boards off an opponent.",
+  ]) {
+    const detected = classifyTopic(text);
+    assert.equal(detected.topic, "restart", text);
+    assert.equal(detected.ranked.find((item) => item.id === "row")?.score, 0, text);
+  }
+});
+
 test("Spanish tablas wording classifies as Restart", () => {
   const detected = classifyTopic("La pelota salió por las tablas después de tocar el caballo rival.");
   assert.equal(detected.topic, "restart");
