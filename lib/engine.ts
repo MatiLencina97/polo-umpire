@@ -120,10 +120,78 @@ function containsSearchTerm(text: string, term: string) {
   return normalizedText.includes(normalizedTerm);
 }
 
+type NaturalTopicCue = {
+  pattern: RegExp;
+  score: number;
+};
+
+const naturalTopicCues: Record<TopicId, NaturalTopicCue[]> = {
+  row: [
+    { pattern: /(?:^| )(?:cut|cuts|cutting) (?:him|her|the player|blue|red) off(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:rode|rides|came|comes|moved|moves|turned|turns) (?:into|across) (?:his|her|the|blue s|red s) (?:line|path)(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:closed|closes|blocked) (?:his|her|the) line(?: |$)/, score: 5 },
+    { pattern: /(?:^| )(?:made|forced) (?:him|her|blue|red) (?:check|pull up|slow down|change course|turn away)(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:had|needed) to (?:check|pull up|slow down|change course|turn away)(?: |$)/, score: 5 },
+    { pattern: /(?:^| )(?:se le cruzo|se cruzo adelante|se metio adelante|le corto el paso|le cerro la linea|le corto la linea)(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:lo|la) (?:obligo|hizo) a (?:frenar|desviar|cambiar de rumbo|cambiar de linea)(?: |$)/, score: 6 },
+  ],
+  dangerous: [
+    { pattern: /(?:^| )(?:hard|heavy|strong|dangerous|unsafe) (?:contact|ride off|rideoff|bump|collision)(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:hit|bumped|rode into|collided with) (?:him|her|the opponent|the horse|the pony) (?:hard|from the blind side|at speed)(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:sharp|steep|strong) (?:angle|converging angle)(?: |$)/, score: 5 },
+    { pattern: /(?:^| )(?:horse|pony) (?:lost|loses) (?:its )?balance(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:knocked|forced) (?:the )?(?:horse|pony) off balance(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:lo choco|la choco|entro de costado|entro muy fuerte|entro a mucha velocidad|lo agarro de atras)(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:caballo|petiso) (?:perdio|pierde) el equilibrio(?: |$)/, score: 7 },
+  ],
+  blocking: [
+    { pattern: /(?:^| )(?:screened|screens|screening) (?:the )?defender(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:picked|picks|picking) (?:off )?(?:the )?defender(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:kept|stopped|prevented|prevents) (?:the )?defender from (?:marking|getting to|playing)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:stood|rode|stayed) between (?:the )?defender and (?:his|the) teammate(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:le hizo pantalla|le puso una pantalla|no lo dejo marcar|no la dejo marcar|lo bloqueo para liberar|la bloqueo para liberar)(?: |$)/, score: 7 },
+  ],
+  mallet: [
+    { pattern: /(?:^| )(?:hooked|hooks|hooking) (?:from )?(?:the )?(?:wrong|far|other) side(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:hooked|hooks|hooking) (?:under|across) (?:the )?(?:horse|pony|opponent)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:swing|mallet|stick) (?:passed|passes|came|comes) (?:close|near) (?:the )?(?:horse|pony|player)(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:mallet|stick) (?:hit|struck|touched|contacted) (?:the )?(?:horse|pony|player)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:reached|reaches|reaching) across to hook(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:hookeo|engancho) (?:del lado equivocado|por abajo|desde atras|del otro lado)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:taco|mallet) (?:toco|golpeo|paso cerca de) (?:al |el )?(?:caballo|petiso|jugador)(?: |$)/, score: 7 },
+  ],
+  conduct: [
+    { pattern: /(?:^| )(?:yelled|shouted|swore|cursed) at (?:the )?(?:umpire|referee|official)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:kept|continued) (?:arguing|appealing|protesting)(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:dissent|verbal abuse|abused the umpire|insulted the umpire)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:hit|swung|struck) (?:after|following) (?:the )?(?:whistle|play stopped)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:le grito|insulto|puteo|protesto|siguio protestando|siguio discutiendo) (?:al |con el )?(?:umpire|arbitro|juez)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:golpeo|pego) despues (?:del|de el) (?:silbato|whistle)(?: |$)/, score: 7 },
+  ],
+  restart: [
+    { pattern: /(?:^| )(?:ball|bocha|pelota) (?:went|goes|rolled|rolls|was hit|is hit) (?:out|outside|over|through) (?:the )?(?:boards|sideline|side line|boundary)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:ball|bocha|pelota) (?:left|leaves) (?:the )?(?:field|ground|playing area)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:went|goes|out) off (?:blue|red|an opponent|the opponent|a horse|the horse)(?: |$)/, score: 5 },
+    { pattern: /(?:^| )(?:whistle|umpire) (?:stopped|stops) play(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:hit|went|goes) over (?:the )?end line(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:salio|sale|se fue) (?:afuera|por afuera|de la cancha|por las tablas|por el lateral|por la linea lateral)(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:reboto|toco) en (?:el |un )?(?:rival|caballo|petiso) y (?:salio|se fue) afuera(?: |$)/, score: 7 },
+    { pattern: /(?:^| )(?:el arbitro|el umpire) (?:paro|detuvo) el juego(?: |$)/, score: 6 },
+  ],
+};
+
+function naturalTopicScore(text: string, topic: TopicId) {
+  const haystack = searchableTopicText(text);
+  return naturalTopicCues[topic].reduce(
+    (score, cue) => score + (cue.pattern.test(haystack) ? cue.score : 0),
+    0,
+  );
+}
+
 export function classify(text: string) {
   const n = normalize(text);
   return (Object.entries(topicDefs) as Array<[TopicId, TopicDefinition]>).map(([id, t]) => {
-    let score = 0;
+    let score = naturalTopicScore(n, id);
     for (const term of t.terms) if (containsTopicTerm(n, term)) score += term.includes(" ") ? 3 : 2;
     return { id, score, label: t.label };
   }).sort((a, b) => b.score - a.score);
