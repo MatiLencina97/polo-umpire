@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { APP_VERSION } from "@/lib/app-version";
-import { classifyTopic, questions } from "@/lib/engine";
+import { classifyTopic, playClarifierCandidates, playClarifierLabel, questions } from "@/lib/engine";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "@/lib/match-flow";
@@ -95,6 +95,7 @@ export default function MatchMode({
 }: Props) {
   const tr = (en: string, es: string) => language === "en" ? en : es;
   const [topic, setTopic] = useState<TopicId | null>(null);
+  const [rankedTopics, setRankedTopics] = useState<ReturnType<typeof classifyTopic>["ranked"]>([]);
   const [answers, setAnswers] = useState<Record<string, ChoiceValue>>({});
   const [started, setStarted] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
@@ -148,6 +149,7 @@ export default function MatchMode({
     if (!situation.trim()) return;
     const detected = classifyTopic(situation);
     setTopic(detected.topic);
+    setRankedTopics(detected.ranked);
     setAnswers({});
     setStarted(true);
     setShowWhy(false);
@@ -159,6 +161,7 @@ export default function MatchMode({
 
   function reset() {
     setTopic(null);
+    setRankedTopics([]);
     setAnswers({});
     setStarted(false);
     setShowWhy(false);
@@ -305,15 +308,20 @@ export default function MatchMode({
           <div className="matchTopicBar">
             <span>{topic
               ? <>{tr("Detected", "Detectado")}: <strong>{topicNames[topic][language]}</strong></>
-              : <strong>{tr("Choose the closest rule family", "Elegí la familia de reglas más cercana")}</strong>}</span>
-            <button onClick={() => setShowTopics((current) => !current)}>{topic ? tr("Change", "Cambiar") : tr("Choose", "Elegir")}</button>
+              : <strong>{tr("Clarify the play", "Aclará la jugada")}</strong>}</span>
+            {topic ? (
+              <button onClick={() => setShowTopics((current) => !current)}>{tr("Change", "Cambiar")}</button>
+            ) : null}
           </div>
 
           {showTopics ? (
             <div className="matchTopicPicker">
-              {(Object.keys(topicNames) as TopicId[]).map((id) => (
+              {(topic
+                ? (Object.keys(topicNames) as TopicId[])
+                : playClarifierCandidates(rankedTopics)
+              ).map((id) => (
                 <button key={id} className={topic === id ? "selected" : ""} onClick={() => chooseTopic(id)}>
-                  {topicNames[id][language]}
+                  {topic ? topicNames[id][language] : playClarifierLabel(id, language)}
                 </button>
               ))}
             </div>
