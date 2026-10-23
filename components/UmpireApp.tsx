@@ -64,6 +64,7 @@ import { flushPendingFeedback } from "@/lib/decision-feedback";
 import { localStore, safeStorageGet, safeStorageRemove, safeStorageSet } from "@/lib/browser-storage";
 import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
 import { extractExplicitPlayFacts, type ExtractedPlayFact } from "@/lib/play-fact-extractor";
+import { buildPlayGraph } from "@/lib/play-graph";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -269,6 +270,10 @@ export default function UmpireApp() {
   const [theme, setTheme] = useState<ThemePreference>("light");
 
   const tr = (en: string, es: string) => language === "en" ? en : es;
+  const playGraph = useMemo(
+    () => buildPlayGraph(situation, discipline),
+    [situation, discipline],
+  );
   const eventProfileConfigured = Boolean(
     eventProfile.name.trim()
     || eventProfile.club.trim()
@@ -1336,7 +1341,47 @@ export default function UmpireApp() {
             <button className="primaryAction" onClick={analyze} disabled={!db}>{resolverMode === "play" ? tr("Analyze play", "Analizar jugada") : tr("Analyze situation", "Analizar situación")}</button>
           </div>
 
-          {resolverMode === "play" && !topic && rankedTopics.length > 0 ? (
+          {resolverMode === "play" && rankedTopics.length > 0 && playGraph.multiFamily ? (
+            <div className="card" id="play-graph">
+              <p className="eyebrow">{tr("MULTI-RULE PLAY GRAPH", "GRAFO DE JUGADA MULTIRREGLA")}</p>
+              <h2>{tr("More than one rule path is active", "Hay más de un camino reglamentario activo")}</h2>
+              <p className="muted">{tr(
+                "The engine separated the play into rule branches instead of forcing one family. Review the branches in the suggested order; each branch keeps its own detected facts and Rulebook references.",
+                "El motor separó la jugada en ramas reglamentarias en vez de forzar una sola familia. Revisá las ramas en el orden sugerido; cada rama conserva sus propios hechos detectados y referencias del Rulebook.",
+              )}</p>
+              <div className="ruleGraphNodes">
+                {playGraph.recommendedReviewOrder.map((id, index) => {
+                  const node = playGraph.nodes.find((item) => item.topic === id);
+                  if (!node) return null;
+                  return (
+                    <button
+                      className={"ruleGraphNode graphRuleButton" + (topic === id ? " available" : "")}
+                      key={id}
+                      onClick={() => {
+                        const extracted = extractExplicitPlayFacts(situation, id);
+                        setTopic(id);
+                        setAnswers(extracted.answers);
+                        setAutoDetectedFacts(extracted.facts);
+                        setShowResolution(false);
+                      }}
+                    >
+                      <b>{index + 1}. {topicLabel(id, topicDefs[id].label)}</b>
+                      <span>{node.rules.map((rule) => "Rule " + rule).join(" · ")} · {node.facts.length} {tr("explicit fact(s)", "dato(s) explícito(s)")}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {playGraph.edges.map((edge) => (
+                <div className="callout secondaryCallout" key={edge.from + "-" + edge.to}>
+                  <strong>{topicLabel(edge.from, topicDefs[edge.from].label)} ↔ {topicLabel(edge.to, topicDefs[edge.to].label)}</strong>
+                  <p>{language === "en" ? edge.explanationEn : edge.explanationEs}</p>
+                  {edge.ruleRefs.length ? <small>{edge.ruleRefs.map((ref) => "Rule " + ref).join(" · ")}</small> : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {resolverMode === "play" && !topic && rankedTopics.length > 0 && !playGraph.multiFamily ? (
             <div className="card" id="questions">
               <p className="eyebrow">{tr("CLARIFY THE PLAY", "ACLARÁ LA JUGADA")}</p>
               <h2>{tr("Which part of the play needs the ruling?", "¿Qué parte de la jugada necesitás resolver?")}</h2>
