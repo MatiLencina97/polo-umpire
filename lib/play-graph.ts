@@ -16,6 +16,7 @@ export type PlayGraphEdge = {
   to: TopicId;
   kind: "sequence" | "overlap" | "context" | "related";
   ruleRefs: string[];
+  reviewFirst: TopicId | null;
   explanationEn: string;
   explanationEs: string;
 };
@@ -26,6 +27,7 @@ export type PlayGraph = {
   edges: PlayGraphEdge[];
   events: string[];
   multiFamily: boolean;
+  recommendedReviewOrder: TopicId[];
 };
 
 const topicOrder: TopicId[] = ["row", "dangerous", "blocking", "mallet", "conduct", "restart"];
@@ -65,6 +67,7 @@ function interactionEdge(left: TopicId, right: TopicId): Omit<PlayGraphEdge, "fr
     return {
       kind: "overlap",
       ruleRefs: ["24", "26", "35"],
+      reviewFirst: null,
       explanationEn: "A ROW/crossing violation and Dangerous Riding can coexist. Resolve ROW entitlement/risk and dangerous-riding factors separately before penalty selection.",
       explanationEs: "Una infracción de ROW/cruce y Dangerous Riding pueden coexistir. Resolvé por separado el ROW/riesgo y los factores de Dangerous Riding antes de seleccionar la penalidad.",
     };
@@ -74,6 +77,7 @@ function interactionEdge(left: TopicId, right: TopicId): Omit<PlayGraphEdge, "fr
     return {
       kind: "context",
       ruleRefs: ["22", "26A", "35"],
+      reviewFirst: "restart",
       explanationEn: "Rule 26A has specific blocking restrictions during knock-ins, Penalty 5 and free hits after an out-of-bounds ball.",
       explanationEs: "Rule 26A tiene restricciones específicas de blocking durante knock-ins, Penalty 5 y free hits después de pelota afuera.",
     };
@@ -83,6 +87,7 @@ function interactionEdge(left: TopicId, right: TopicId): Omit<PlayGraphEdge, "fr
     return {
       kind: "overlap",
       ruleRefs: ["26", "26A", "35"],
+      reviewFirst: "blocking",
       explanationEn: "Improper Blocking may also constitute Dangerous Riding, so the blocking elements and danger level must be checked separately.",
       explanationEs: "Improper Blocking también puede constituir Dangerous Riding, por lo que deben revisarse por separado los elementos del bloqueo y el nivel de peligro.",
     };
@@ -92,6 +97,7 @@ function interactionEdge(left: TopicId, right: TopicId): Omit<PlayGraphEdge, "fr
     return {
       kind: "overlap",
       ruleRefs: ["28", "33", "35"],
+      reviewFirst: "mallet",
       explanationEn: "Improper mallet use can create a Rule 28 foul and also a Rule 33 conduct issue, especially for deliberate, abusive or post-whistle actions.",
       explanationEs: "El uso indebido del mallet puede generar una falta bajo Rule 28 y también una cuestión de conducta bajo Rule 33, especialmente si es deliberada, abusiva o posterior al whistle.",
     };
@@ -101,6 +107,7 @@ function interactionEdge(left: TopicId, right: TopicId): Omit<PlayGraphEdge, "fr
     return {
       kind: "overlap",
       ruleRefs: ["26", "33", "34", "35"],
+      reviewFirst: "dangerous",
       explanationEn: "Dangerous Riding can also feed unsportsmanlike-conduct or repeated-foul escalation. Keep the riding violation and conduct escalation as separate checks.",
       explanationEs: "Dangerous Riding también puede alimentar escalamiento por conducta antideportiva o faltas reiteradas. Mantené separadas la infracción de riding y la escalada de conducta.",
     };
@@ -110,6 +117,7 @@ function interactionEdge(left: TopicId, right: TopicId): Omit<PlayGraphEdge, "fr
     return {
       kind: "sequence",
       ruleRefs: ["21", "22", "33", "35"],
+      reviewFirst: "restart",
       explanationEn: "Conduct after the whistle/dead ball is a separate event from the restart itself and may affect the sanction without changing why play stopped.",
       explanationEs: "La conducta después del whistle/dead ball es un evento separado de la reanudación y puede afectar la sanción sin cambiar por qué se detuvo el juego.",
     };
@@ -119,6 +127,7 @@ function interactionEdge(left: TopicId, right: TopicId): Omit<PlayGraphEdge, "fr
     return {
       kind: "overlap",
       ruleRefs: ["26", "28", "33", "35"],
+      reviewFirst: null,
       explanationEn: "A dangerous mallet action and dangerous riding are distinct foul paths. Evaluate the riding/contact facts separately from the stroke/hook facts.",
       explanationEs: "Una acción peligrosa con el mallet y Dangerous Riding son caminos de falta distintos. Evaluá por separado los hechos de riding/contacto y los del stroke/hook.",
     };
@@ -127,6 +136,7 @@ function interactionEdge(left: TopicId, right: TopicId): Omit<PlayGraphEdge, "fr
   return {
     kind: "related",
     ruleRefs: [],
+    reviewFirst: null,
     explanationEn: "The description contains more than one rule family. Review each branch independently before combining the result.",
     explanationEs: "La descripción contiene más de una familia reglamentaria. Revisá cada rama de forma independiente antes de combinar el resultado.",
   };
@@ -204,11 +214,26 @@ export function buildPlayGraph(text: string, discipline: Discipline): PlayGraph 
 
   const primaryTopic = nodes[0]?.topic ?? null;
 
+  const preferred = new Set(
+    edges.map((edge) => edge.reviewFirst).filter((topic): topic is TopicId => Boolean(topic)),
+  );
+  const recommendedReviewOrder = [...nodes]
+    .sort((a, b) => {
+      const aPreferred = preferred.has(a.topic) ? 0 : 1;
+      const bPreferred = preferred.has(b.topic) ? 0 : 1;
+      return aPreferred - bPreferred
+        || a.firstEventIndex - b.firstEventIndex
+        || b.score - a.score
+        || topicOrder.indexOf(a.topic) - topicOrder.indexOf(b.topic);
+    })
+    .map((node) => node.topic);
+
   return {
     primaryTopic,
     nodes,
     edges,
     events,
     multiFamily: nodes.length > 1,
+    recommendedReviewOrder,
   };
 }
