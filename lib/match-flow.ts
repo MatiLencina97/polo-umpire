@@ -80,6 +80,11 @@ export function relevantMatchKeys(topic: TopicId, answers: Record<string, Choice
     return keys;
   }
 
+  if ((answers.early === undefined || answers.early === "") && answers.dead === "yes") {
+    const keys = ["dead", "restartType"];
+    return keys;
+  }
+
   const keys = ["early"];
   if (answers.early === "yes") {
     keys.push("restartType");
