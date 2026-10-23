@@ -8,6 +8,7 @@ import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "../lib/m
 import { extractExplicitPlayFacts } from "../lib/play-fact-extractor";
 import { buildCompoundPlayGraph } from "../lib/compound-play-graph";
 import { nextDecisiveQuestion, rankDecisiveQuestions } from "../lib/decision-intelligence";
+import { buildLearningGapRecord } from "../lib/learning-gap";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
 import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
 import { appendTranscript, speechLocale } from "../lib/voice";
@@ -353,6 +354,78 @@ test("compound conduct overlay does not outrank an unresolved underlying play fa
   assert.equal(graph.compound, true);
   assert.ok(graph.nextDecisiveQuestion);
   assert.notEqual(graph.nextDecisiveQuestion?.topic, "conduct");
+});
+
+test("learning gap records are structured and exclude original play text", () => {
+  const decision = decidePlay("row", "outdoor", {}, "en");
+  const audit = auditPlayDecision("row", "outdoor", {}, decision);
+  const record = buildLearningGapRecord({
+    source: "analysis",
+    discipline: "outdoor",
+    topic: "row",
+    answers: {},
+    decision,
+    audit,
+    rulebookVersion: "2026",
+    appVersion: "0.28.0",
+    language: "en",
+    createdAt: "2026-10-23T21:00:00.000Z",
+  });
+  assert.ok(record);
+  assert.equal(record?.reason, "missing-fact");
+  assert.ok(record?.missingFactKeys.includes("rowEntitled"));
+  assert.equal(record?.nextDecisiveFact, "rowEntitled");
+  assert.equal("situation" in (record as any), false);
+  assert.equal("description" in (record as any), false);
+});
+
+test("learning gap fingerprints are stable for equivalent structured gaps", () => {
+  const decision = decidePlay("row", "outdoor", {}, "en");
+  const audit = auditPlayDecision("row", "outdoor", {}, decision);
+  const first = buildLearningGapRecord({
+    source: "analysis", discipline: "outdoor", topic: "row", answers: {},
+    decision, audit, rulebookVersion: "2026", appVersion: "0.28.0", language: "en",
+    createdAt: "2026-10-23T21:00:00.000Z",
+  });
+  const second = buildLearningGapRecord({
+    source: "match", discipline: "outdoor", topic: "row", answers: {},
+    decision, audit, rulebookVersion: "2026", appVersion: "0.28.0", language: "en",
+    createdAt: "2026-10-24T21:00:00.000Z",
+  });
+  assert.equal(first?.fingerprint, second?.fingerprint);
+});
+
+test("unknown decisive facts are classified separately from model coverage gaps", () => {
+  const answers = { rowEntitled: "unknown" };
+  const decision = decidePlay("row", "outdoor", answers, "en");
+  const audit = auditPlayDecision("row", "outdoor", answers, decision);
+  const record = buildLearningGapRecord({
+    source: "match", discipline: "outdoor", topic: "row", answers,
+    decision, audit, rulebookVersion: "2026", appVersion: "0.28.0", language: "en",
+  });
+  assert.equal(record?.reason, "unknown-fact");
+  assert.ok(record?.unknownFactKeys.includes("rowEntitled"));
+});
+
+test("Arena insufficient coverage is explicitly classified as an Arena coverage gap", () => {
+  const decision = decidePlay("row", "arena", {}, "en");
+  const audit = auditPlayDecision("row", "arena", {}, decision);
+  const record = buildLearningGapRecord({
+    source: "analysis", discipline: "arena", topic: "row", answers: {},
+    decision, audit, rulebookVersion: "2026", appVersion: "0.28.0", language: "en",
+  });
+  assert.equal(record?.reason, "arena-coverage");
+});
+
+test("direct-rule-support decisions do not enter the learning queue", () => {
+  const answers = { balance: "yes" };
+  const decision = decidePlay("dangerous", "outdoor", answers, "en");
+  const audit = auditPlayDecision("dangerous", "outdoor", answers, decision);
+  const record = buildLearningGapRecord({
+    source: "analysis", discipline: "outdoor", topic: "dangerous", answers,
+    decision, audit, rulebookVersion: "2026", appVersion: "0.28.0", language: "en",
+  });
+  assert.equal(record, null);
 });
 
 test("natural-language collision traps stay out of the wrong family", () => {
