@@ -161,7 +161,7 @@ const naturalTopicCues: Record<TopicId, NaturalTopicCue[]> = {
     { pattern: /(?:^| )(?:screened|screens|screening) (?:the )?defender(?: |$)/, score: 7 },
     { pattern: /(?:^| )(?:picked|picks|picking) (?:off )?(?:the )?defender(?: |$)/, score: 7 },
     { pattern: /(?:^| )(?:kept|stopped|prevented|prevents) (?:the )?defender from (?:marking|getting to|playing)(?: |$)/, score: 7 },
-    { pattern: /(?:^| )(?:stood|rode|stayed) between (?:the )?defender and (?:his|the) teammate(?: |$)/, score: 6 },
+    { pattern: /(?:^| )(?:stood|rode|stayed) between (?:the )?defender and (?:(?:his|the) )?teammate(?: |$)/, score: 6 },
     { pattern: /(?:^| )(?:le hizo pantalla|le puso una pantalla|no lo dejo marcar|no la dejo marcar|lo bloqueo para liberar|la bloqueo para liberar)(?: |$)/, score: 7 },
   ],
   mallet: [
