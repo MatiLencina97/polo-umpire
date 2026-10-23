@@ -31,6 +31,31 @@ type ReviewItem = {
   reviewStatus: "open" | "reviewed" | "dismissed";
 };
 
+type LearningGapItem = {
+  fingerprint: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  occurrences: number;
+  source: "match" | "analysis";
+  discipline: "outdoor" | "arena";
+  topic: string;
+  reason: string;
+  decisionStatus: string;
+  validationLevel: string;
+  rulebookVersion: string;
+  ruleRefs: string[];
+  factState: Record<string,string>;
+  missingFactKeys: string[];
+  unknownFactKeys: string[];
+  nextDecisiveFact: string | null;
+  appVersion: string;
+  hypothesis: string;
+  testPlan: string[];
+  learningStatus: "observed" | "candidate" | "investigating" | "dismissed";
+  reviewNote: string | null;
+  autoPromotion: boolean;
+};
+
 type Dashboard = {
   totals: {
     useful: number;
@@ -45,6 +70,7 @@ type Dashboard = {
   byReason: GroupMetric[];
   byRule: GroupMetric[];
   reviews: ReviewItem[];
+  learningGaps: LearningGapItem[];
 };
 
 function pct(value: number) {
@@ -128,6 +154,19 @@ export default function FeedbackAdminDashboard() {
         authorization: "Bearer " + token.trim(),
       },
       body: JSON.stringify({ id, status: reviewStatus }),
+      cache: "no-store",
+    });
+    if (response.ok) await load(token);
+  }
+
+  async function updateLearningGap(fingerprint: string, learningStatus: LearningGapItem["learningStatus"]) {
+    const response = await fetch("/api/admin/feedback", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer " + token.trim(),
+      },
+      body: JSON.stringify({ kind: "learning-gap", id: fingerprint, status: learningStatus }),
       cache: "no-store",
     });
     if (response.ok) await load(token);
@@ -236,6 +275,45 @@ export default function FeedbackAdminDashboard() {
             ))}
           </div>
         ) : <p className="muted">Todavía no hay solicitudes de revisión.</p>}
+      </section>
+
+      <section className="feedbackAdminPanel feedbackReviewQueue">
+        <div className="feedbackReviewHeading">
+          <div>
+            <p className="eyebrow">LEARNING QUEUE</p>
+            <h2>Huecos de cobertura detectados por el motor</h2>
+          </div>
+          <span>{dashboard.learningGaps.filter((item) => item.learningStatus !== "dismissed").length} activos</span>
+        </div>
+        <p className="muted">Se agrupan por huella estructurada; no se guarda la descripción original de la jugada. Tres apariciones convierten automáticamente un hueco observado en candidato, pero nunca se promueve una regla sin revisión.</p>
+
+        {dashboard.learningGaps.length ? (
+          <div className="feedbackReviewList">
+            {dashboard.learningGaps.map((item) => (
+              <article key={item.fingerprint} className={"feedbackReviewItem " + item.learningStatus}>
+                <div className="feedbackReviewMeta">
+                  <span>{item.discipline}</span>
+                  <span>{item.topic}</span>
+                  <span>{item.reason}</span>
+                  <span>{item.occurrences} aparición(es)</span>
+                  <span>{item.learningStatus}</span>
+                </div>
+                <h3>{item.hypothesis}</h3>
+                <p><strong>Reglas:</strong> {item.ruleRefs.length ? item.ruleRefs.join(" · ") : "—"}</p>
+                <p><strong>Faltantes:</strong> {item.missingFactKeys.length ? item.missingFactKeys.join(", ") : "—"}</p>
+                <p><strong>Desconocidos:</strong> {item.unknownFactKeys.length ? item.unknownFactKeys.join(", ") : "—"}</p>
+                <p><strong>Próximo dato decisivo:</strong> {item.nextDecisiveFact ?? "—"}</p>
+                <ul>{item.testPlan.map((step, index) => <li key={index}>{step}</li>)}</ul>
+                <div className="feedbackReviewActions">
+                  <button className={item.learningStatus === "observed" ? "selected" : ""} onClick={() => void updateLearningGap(item.fingerprint, "observed")}>Observed</button>
+                  <button className={item.learningStatus === "candidate" ? "selected" : ""} onClick={() => void updateLearningGap(item.fingerprint, "candidate")}>Candidate</button>
+                  <button className={item.learningStatus === "investigating" ? "selected" : ""} onClick={() => void updateLearningGap(item.fingerprint, "investigating")}>Investigating</button>
+                  <button className={item.learningStatus === "dismissed" ? "selected" : ""} onClick={() => void updateLearningGap(item.fingerprint, "dismissed")}>Dismiss</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : <p className="muted">Todavía no hay huecos de cobertura registrados.</p>}
       </section>
     </main>
   );
