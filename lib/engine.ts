@@ -29,7 +29,7 @@ export const topicDefs: Record<TopicId, TopicDefinition> = {
   restart: {
     label: "Reanudación / pelota muerta",
     outdoor: ["20", "21", "22", "36"], arena: ["7", "8", "16"],
-    terms: ["knock in", "knock-in", "throw in", "throw-in", "bowl in", "restart", "reanudar", "reanudacion", "pelota muerta", "dead ball", "called play", "call play", "before play", "antes de play", "llamar play", "llamo play", "penalty hit", "free hit", "taking a penalty", "took the penalty", "penalty was taken", "during a penalty", "durante una penalidad", "durante un penalty", "tiro penal", "penalty 5"],
+    terms: ["knock in", "knock-in", "throw in", "throw-in", "bowl in", "restart", "reanudar", "reanudacion", "pelota muerta", "dead ball", "called play", "call play", "before play", "antes de play", "llamar play", "llamo play", "penalty hit", "free hit", "taking a penalty", "took the penalty", "penalty was taken", "during a penalty", "durante una penalidad", "durante un penalty", "tiro penal", "penalty 5", "out of bounds", "over the boards", "over boards", "went over the boards", "goes over the boards", "crossed the boards", "crosses the boards", "crossed the side boards", "crosses the side boards", "crossed the sideline", "crosses the sideline", "over the sideline", "ball went out", "ball goes out", "ball is out", "ball out of play", "pelota afuera", "bocha afuera", "fuera de la cancha", "salio por las tablas", "sale por las tablas", "salio por la linea lateral", "sale por la linea lateral", "salio por el lateral", "sale por el lateral", "cruzo la linea lateral", "cruza la linea lateral"],
   },
 };
 
