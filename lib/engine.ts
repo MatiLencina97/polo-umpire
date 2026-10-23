@@ -87,6 +87,11 @@ function containsTopicTerm(text: string, term: string) {
   if (normalizedTerm === "play" || normalizedTerm === "row" || normalizedTerm === "cross" || normalizedTerm === "linea") {
     const haystack = searchableTopicText(normalizedText);
     const needle = searchableTopicText(normalizedTerm);
+
+    // "línea lateral" is an out-of-bounds / Rule 22 cue, not a Line of the Ball
+    // cue. Do not let the generic Spanish ROW token create an artificial tie.
+    if (normalizedTerm === "linea" && (" " + haystack + " ").includes(" linea lateral ")) return false;
+
     return (" " + haystack + " ").includes(" " + needle + " ");
   }
 
