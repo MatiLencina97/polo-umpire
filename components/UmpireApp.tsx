@@ -7,6 +7,8 @@ import {
   bestMatchingApplication,
   classifyTopic,
   classifyScenario,
+  playClarifierCandidates,
+  playClarifierLabel,
   questions,
   relatedRuleNumbers,
   scenarioApplicationText,
@@ -1326,25 +1328,28 @@ export default function UmpireApp() {
 
           {resolverMode === "play" && !topic && rankedTopics.length > 0 ? (
             <div className="card" id="questions">
-              <p className="eyebrow">{tr("RULE FAMILY NEEDED", "FALTA DEFINIR LA FAMILIA")}</p>
-              <h2>{tr("I don't have enough signal to choose the rule family safely", "No tengo suficiente señal para elegir la familia de reglas con seguridad")}</h2>
+              <p className="eyebrow">{tr("CLARIFY THE PLAY", "ACLARÁ LA JUGADA")}</p>
+              <h2>{tr("Which part of the play needs the ruling?", "¿Qué parte de la jugada necesitás resolver?")}</h2>
               <p className="muted">{rankedTopics.some((item) => item.score > 0)
-                ? tr("Two or more rule families are equally plausible from the wording. Choose the one that best matches what you observed.", "Dos o más familias de reglas son igual de plausibles por la redacción. Elegí la que mejor coincida con lo que observaste.")
-                : tr("The description did not contain a reliable rule-family cue. Choose the closest family instead of defaulting silently to Right of Way.", "La descripción no contiene una señal confiable de familia. Elegí la más cercana en vez de caer silenciosamente en Right of Way.")}</p>
+                ? tr(
+                    "The description can lead to more than one rule path. Choose the observable action that matters and the app will continue the ruling from there.",
+                    "La descripción puede llevar a más de un camino reglamentario. Elegí el hecho observable que importa y la app continúa la resolución desde ahí.",
+                  )
+                : tr(
+                    "Choose what actually happened on the field. You do not need to identify the rule family yourself.",
+                    "Elegí qué ocurrió realmente en cancha. No necesitás identificar vos la familia de reglas.",
+                  )}</p>
               <div className="quickchips">
-                {(rankedTopics.some((item) => item.score > 0)
-                  ? rankedTopics.filter((item) => item.score === rankedTopics[0]?.score)
-                  : rankedTopics
-                ).map((item) => (
+                {playClarifierCandidates(rankedTopics).map((id) => (
                   <button
-                    key={item.id}
+                    key={id}
                     onClick={() => {
-                      setTopic(item.id);
+                      setTopic(id);
                       setAnswers({});
                       setShowResolution(false);
                     }}
                   >
-                    {topicLabel(item.id, item.label)}
+                    {playClarifierLabel(id, language)}
                   </button>
                 ))}
               </div>

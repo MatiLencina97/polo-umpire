@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { classify, classifyTopic, questions, scoreRule } from "../lib/engine";
+import { classify, classifyTopic, playClarifierCandidates, playClarifierLabel, questions, scoreRule } from "../lib/engine";
 import { decidePlay } from "../lib/play-decision";
 import { parseRuleProvisions, bestProvisionsForRules, resolveProvisions } from "../lib/subarticles";
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
@@ -66,6 +66,33 @@ test("generic use of the word play does not classify as a restart", () => {
   assert.equal(detected.ambiguous, false);
 });
 
+test("English crosses/crossed/crossing variants classify as ROW without matching across", () => {
+  for (const text of [
+    "Red crosses in front of Blue.",
+    "Red crossed in front of Blue.",
+    "Red is crossing in front of Blue.",
+  ]) {
+    assert.equal(classifyTopic(text).topic, "row", text);
+  }
+  assert.equal(classifyTopic("He rode across the field.").topic, null);
+});
+
+test("ambiguous classifier output becomes observable-action clarification choices", () => {
+  const detected = classifyTopic("Dangerous hook.");
+  assert.equal(detected.topic, null);
+  assert.deepEqual(playClarifierCandidates(detected.ranked), ["dangerous", "mallet"]);
+  assert.equal(playClarifierLabel("dangerous", "en"), "Dangerous contact / ride-off");
+});
+
+test("zero-signal descriptions still get a complete guided clarification path", () => {
+  const detected = classifyTopic("Something happened near midfield.");
+  assert.equal(detected.topic, null);
+  assert.deepEqual(
+    playClarifierCandidates(detected.ranked),
+    ["restart", "row", "dangerous", "blocking", "mallet", "conduct"],
+  );
+});
+
 test("unknown play descriptions do not silently default to ROW", () => {
   const detected = classifyTopic("The weather changed during the chukker.");
   assert.equal(detected.topic, null);
@@ -94,6 +121,17 @@ test("crossed-the-sideline wording classifies as Restart", () => {
   const detected = classifyTopic("The ball crossed the sideline after glancing off an opposing player.");
   assert.equal(detected.topic, "restart");
   assert.equal(detected.ambiguous, false);
+});
+
+test("crossing boards remains out-of-bounds and does not create a ROW tie", () => {
+  for (const text of [
+    "The ball crossed the boards after touching Red's horse.",
+    "The ball crosses the boards off an opponent.",
+  ]) {
+    const detected = classifyTopic(text);
+    assert.equal(detected.topic, "restart", text);
+    assert.equal(detected.ranked.find((item) => item.id === "row")?.score, 0, text);
+  }
 });
 
 test("Spanish tablas wording classifies as Restart", () => {

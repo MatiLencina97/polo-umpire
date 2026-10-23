@@ -92,6 +92,14 @@ function containsTopicTerm(text: string, term: string) {
     // cue. Do not let the generic Spanish ROW token create an artificial tie.
     if (normalizedTerm === "linea" && (" " + haystack + " ").includes(" linea lateral ")) return false;
 
+    // Match English cross/crossed/crosses/crossing as whole words without
+    // reviving the old false positive where "cross" matched inside "across".
+    // Crossing a field boundary is an out-of-bounds cue, not a ROW cue.
+    if (normalizedTerm === "cross") {
+      if (/(?:^| )cross(?:ed|es|ing)? (?:the )?(?:sideline|side line|boards?|boundary)(?: |$)/.test(haystack)) return false;
+      return /(?:^| )cross(?:ed|es|ing)?(?: |$)/.test(haystack);
+    }
+
     return (" " + haystack + " ").includes(" " + needle + " ");
   }
 
@@ -132,6 +140,53 @@ export function classifyTopic(text: string) {
   );
   const topic = first && first.score > 0 && !ambiguous ? first.id : null;
   return { topic, ranked, ambiguous };
+}
+
+const playClarifierOrder: TopicId[] = ["restart", "row", "dangerous", "blocking", "mallet", "conduct"];
+
+const playClarifierLabels: Record<TopicId, Record<Language, string>> = {
+  restart: {
+    en: "Ball out / dead ball / restart",
+    es: "Pelota afuera / pelota muerta / reanudación",
+  },
+  row: {
+    en: "Crossing / line interference",
+    es: "Cruce / interferencia con la línea",
+  },
+  dangerous: {
+    en: "Dangerous contact / ride-off",
+    es: "Contacto peligroso / ride-off",
+  },
+  blocking: {
+    en: "Blocking / preventing a mark",
+    es: "Bloqueo / impedir una marca",
+  },
+  mallet: {
+    en: "Mallet / hook / swing",
+    es: "Mallet / hook / swing",
+  },
+  conduct: {
+    en: "Arguing / abuse / misconduct",
+    es: "Protesta / abuso / conducta",
+  },
+};
+
+export function playClarifierLabel(topic: TopicId, language: Language) {
+  return playClarifierLabels[topic][language];
+}
+
+export function playClarifierCandidates(
+  ranked: Array<{ id: TopicId; score: number; label: string }>,
+) {
+  const positive = ranked.filter((item) => item.score > 0);
+  if (!positive.length) return [...playClarifierOrder];
+
+  const topScore = positive[0].score;
+  const nearTop = positive
+    .filter((item) => topScore - item.score <= 1)
+    .map((item) => item.id);
+
+  return nearTop.length ? nearTop : [positive[0].id];
 }
 
 export function scoreRule(rule: Rule, query: string) {
