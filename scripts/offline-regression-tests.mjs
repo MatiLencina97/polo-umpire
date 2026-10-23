@@ -8,7 +8,7 @@ const appVersion = fs.readFileSync("lib/app-version.ts", "utf8");
 
 assert.match(sw, /const CACHE_PREFIX = "polo-umpire-assistant-"/);
 assert.ok(sw.includes('const CACHE = "polo-umpire-assistant-v0.27.3-r1-2026";'));
-assert.ok(appVersion.includes('APP_VERSION = "0.27.2"'));
+assert.ok(appVersion.includes('APP_VERSION = "0.27.3"'));
 assert.ok(sw.includes('const OFFLINE_INDEX = "/__polo-umpire-offline-index.json";'));
 assert.match(sw, /REPAIR_OFFLINE/);
 assert.match(sw, /keepCurrentAndPreviousCache/);
