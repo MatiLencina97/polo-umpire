@@ -262,6 +262,21 @@ test("play graph detects restart-context blocking", () => {
   assert.ok(edge.ruleRefs.includes("26A"));
 });
 
+test("play graph recommends dependency-aware review order", () => {
+  const restartBlocking = buildPlayGraph(
+    "During the knock-in the attacker screened the defender so his teammate could play the ball.",
+    "outdoor",
+  );
+  assert.equal(restartBlocking.recommendedReviewOrder[0], "restart");
+
+  const malletConduct = buildPlayGraph(
+    "He hooked from the wrong side. Then he hit the ball after the whistle.",
+    "outdoor",
+  );
+  assert.equal(malletConduct.recommendedReviewOrder[0], "mallet");
+  assert.ok(malletConduct.recommendedReviewOrder.indexOf("conduct") > malletConduct.recommendedReviewOrder.indexOf("mallet"));
+});
+
 test("play graph detects improper hook plus post-whistle conduct", () => {
   const graph = buildPlayGraph(
     "He hooked from the wrong side. Then he hit the ball after the whistle.",
