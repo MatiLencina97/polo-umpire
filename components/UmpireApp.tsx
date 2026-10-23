@@ -65,6 +65,7 @@ import { localStore, safeStorageGet, safeStorageRemove, safeStorageSet } from "@
 import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
 import { extractExplicitPlayFacts, type ExtractedPlayFact } from "@/lib/play-fact-extractor";
 import { buildCompoundPlayGraph } from "@/lib/compound-play-graph";
+import { nextDecisiveQuestion } from "@/lib/decision-intelligence";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -685,6 +686,10 @@ export default function UmpireApp() {
           })
         : [])
     : (scenario ? scenarioQuestions[scenario] : []);
+
+  const playNextDecisiveQuestion = resolverMode === "play" && topic
+    ? nextDecisiveQuestion(topic, discipline, answers, language)
+    : null;
 
   const answerCount = activeQuestions.filter((question) => {
     const value = answers[question.key];
@@ -1424,6 +1429,31 @@ export default function UmpireApp() {
                 ))}
               </div>
 
+              {compoundPlayGraph.nextDecisiveQuestion ? (() => {
+                const next = compoundPlayGraph.nextDecisiveQuestion;
+                const question = questions[next.topic].find((item) => item.key === next.key);
+                return question ? (
+                  <div className="nextFactCard">
+                    <p className="eyebrow">{tr("NEXT DECISIVE FACT", "PRÓXIMO DATO DECISIVO")}</p>
+                    <h3>{topicLabel(next.topic, topicDefs[next.topic].label)} · {questionLabel(next.key, question.label)}</h3>
+                    <p className="muted">{language === "en" ? next.reasonEn : next.reasonEs}</p>
+                    <button
+                      className="primaryAction"
+                      onClick={() => {
+                        const extracted = extractExplicitPlayFacts(situation, next.topic);
+                        setTopic(next.topic);
+                        setAnswers(extracted.answers);
+                        setAutoDetectedFacts(extracted.facts);
+                        setShowResolution(false);
+                        setTimeout(() => document.getElementById("questions")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
+                      }}
+                    >
+                      {tr("Review this fact", "Revisar este dato")}
+                    </button>
+                  </div>
+                ) : null;
+              })() : null}
+
               <div className="callout secondaryCallout">
                 <strong>{tr("Penalty selection stays separate", "La selección de penalidad queda separada")}</strong>
                 <p>{tr(
@@ -1677,6 +1707,16 @@ export default function UmpireApp() {
                   </div>
                 </div>
               ) : null}
+              {resolverMode === "play" && playNextDecisiveQuestion ? (() => {
+                const question = questions[playNextDecisiveQuestion.topic].find((item) => item.key === playNextDecisiveQuestion.key);
+                return question ? (
+                  <div className="nextFactCard">
+                    <p className="eyebrow">{tr("MOST DECISIVE OPEN FACT", "DATO ABIERTO MÁS DECISIVO")}</p>
+                    <h3>{questionLabel(question.key, question.label)}</h3>
+                    <p className="muted">{language === "en" ? playNextDecisiveQuestion.reasonEn : playNextDecisiveQuestion.reasonEs}</p>
+                  </div>
+                ) : null;
+              })() : null}
               <div className="questionList">
                 {activeQuestions.map((question) => (
                   <div className="question" key={question.key}>
