@@ -72,6 +72,54 @@ test("unknown play descriptions do not silently default to ROW", () => {
   assert.equal(detected.ranked[0].score, 0);
 });
 
+test("out-over-boards wording classifies as Restart / Dead Ball", () => {
+  const detected = classifyTopic("The ball is hit over the boards of opponents horse");
+  assert.equal(detected.topic, "restart");
+  assert.equal(detected.ambiguous, false);
+});
+
+test("ball over the boards off an opponent horse classifies as Restart", () => {
+  const detected = classifyTopic("The ball went over the boards off an opponent's horse.");
+  assert.equal(detected.topic, "restart");
+  assert.equal(detected.ambiguous, false);
+});
+
+test("out-of-bounds wording classifies as Restart", () => {
+  const detected = classifyTopic("The ball went out of bounds after touching Blue's pony.");
+  assert.equal(detected.topic, "restart");
+  assert.equal(detected.ambiguous, false);
+});
+
+test("crossed-the-sideline wording classifies as Restart", () => {
+  const detected = classifyTopic("The ball crossed the sideline after glancing off an opposing player.");
+  assert.equal(detected.topic, "restart");
+  assert.equal(detected.ambiguous, false);
+});
+
+test("Spanish tablas wording classifies as Restart", () => {
+  const detected = classifyTopic("La pelota salió por las tablas después de tocar el caballo rival.");
+  assert.equal(detected.topic, "restart");
+  assert.equal(detected.ambiguous, false);
+});
+
+test("Spanish línea lateral wording classifies as Restart", () => {
+  const detected = classifyTopic("La bocha salió por la línea lateral después de rebotar en un rival.");
+  assert.equal(detected.topic, "restart");
+  assert.equal(detected.ambiguous, false);
+});
+
+test("scoreboard and nearby boards do not create a Restart false positive", () => {
+  const detected = classifyTopic("The scoreboard shows 7-6 near the boards.");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ranked.find((item) => item.id === "restart")?.score, 0);
+});
+
+test("being near the sideline without an out-of-bounds event does not trigger Restart", () => {
+  const detected = classifyTopic("A player rides along the sideline while the ball remains in play.");
+  assert.equal(detected.topic, null);
+  assert.equal(detected.ranked.find((item) => item.id === "restart")?.score, 0);
+});
+
 test("tied rule-family signals require an explicit family choice", () => {
   const detected = classifyTopic("Dangerous hook.");
   assert.equal(detected.topic, null);
