@@ -94,7 +94,11 @@ function containsTopicTerm(text: string, term: string) {
 
     // Match English cross/crossed/crosses/crossing as whole words without
     // reviving the old false positive where "cross" matched inside "across".
-    if (normalizedTerm === "cross") return /(?:^| )cross(?:ed|es|ing)?(?: |$)/.test(haystack);
+    // Crossing a field boundary is an out-of-bounds cue, not a ROW cue.
+    if (normalizedTerm === "cross") {
+      if (/(?:^| )cross(?:ed|es|ing)? (?:the )?(?:sideline|side line|boards?|boundary)(?: |$)/.test(haystack)) return false;
+      return /(?:^| )cross(?:ed|es|ing)?(?: |$)/.test(haystack);
+    }
 
     return (" " + haystack + " ").includes(" " + needle + " ");
   }
