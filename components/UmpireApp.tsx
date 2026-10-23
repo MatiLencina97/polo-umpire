@@ -66,6 +66,7 @@ import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
 import { extractExplicitPlayFacts, type ExtractedPlayFact } from "@/lib/play-fact-extractor";
 import { buildCompoundPlayGraph } from "@/lib/compound-play-graph";
 import { nextDecisiveQuestion } from "@/lib/decision-intelligence";
+import { buildLearningGapRecord, submitLearningGap } from "@/lib/learning-gap";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -742,6 +743,22 @@ export default function UmpireApp() {
   const effectivePlayStatus = playDecision && playDecisionAudit?.level === "insufficient-coverage" && playDecision.status !== "needs-info"
     ? "needs-info"
     : playDecision?.status;
+
+  useEffect(() => {
+    if (resolverMode !== "play" || !topic || !playDecision || !playDecisionAudit || playDecisionAudit.level !== "insufficient-coverage") return;
+    const record = buildLearningGapRecord({
+      source: "analysis",
+      discipline,
+      topic,
+      answers,
+      decision: playDecision,
+      audit: playDecisionAudit,
+      rulebookVersion: manifest?.activeVersion ?? "2026",
+      appVersion: APP_VERSION,
+      language,
+    });
+    if (record) void submitLearningGap(record);
+  }, [resolverMode, topic, discipline, answers, playDecision, playDecisionAudit, manifest?.activeVersion, language]);
 
   const guidanceMetrics = db ? officialGuidanceMetrics(db) : null;
 
