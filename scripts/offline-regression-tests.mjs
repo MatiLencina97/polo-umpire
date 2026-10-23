@@ -5,10 +5,16 @@ const sw = fs.readFileSync("public/sw.js", "utf8");
 const css = fs.readFileSync("app/globals.css", "utf8");
 const rowHelper = fs.readFileSync("components/RowEntitlementHelper.tsx", "utf8");
 const appVersion = fs.readFileSync("lib/app-version.ts", "utf8");
+const umpireApp = fs.readFileSync("components/UmpireApp.tsx", "utf8");
+const matchMode = fs.readFileSync("components/MatchMode.tsx", "utf8");
 
 assert.match(sw, /const CACHE_PREFIX = "polo-umpire-assistant-"/);
-assert.ok(sw.includes('const CACHE = "polo-umpire-assistant-v0.27.3-r1-2026";'));
-assert.ok(appVersion.includes('APP_VERSION = "0.27.3"'));
+assert.ok(sw.includes('const CACHE = "polo-umpire-assistant-v0.27.4-r1-2026";'));
+assert.ok(appVersion.includes('APP_VERSION = "0.27.4"'));
+
+assert.equal(umpireApp.includes("I don't have enough signal to choose the rule family safely"), false);
+assert.equal(umpireApp.includes("RULE FAMILY NEEDED"), false);
+assert.equal(matchMode.includes("Choose the closest rule family"), false);
 assert.ok(sw.includes('const OFFLINE_INDEX = "/__polo-umpire-offline-index.json";'));
 assert.match(sw, /REPAIR_OFFLINE/);
 assert.match(sw, /keepCurrentAndPreviousCache/);
