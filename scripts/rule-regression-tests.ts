@@ -6,6 +6,7 @@ import { parseRuleProvisions, bestProvisionsForRules, resolveProvisions } from "
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "../lib/match-flow";
 import { extractExplicitPlayFacts } from "../lib/play-fact-extractor";
+import { buildCompoundPlayGraph } from "../lib/compound-play-graph";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
 import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
 import { appendTranscript, speechLocale } from "../lib/voice";
@@ -220,6 +221,86 @@ test("explicit dead-ball wording changes restart question order", () => {
   const decision = decidePlay("restart", "outdoor", restartFacts.answers, "en");
   assert.equal(decision.status, "procedure");
   assert.ok(decision.references.some((ref) => ref.startsWith("22")));
+});
+
+test("compound play graph keeps ROW and Dangerous Riding as separate branches", () => {
+  const graph = buildCompoundPlayGraph(
+    "Red crossed in front of Blue and forced him to pull up, then hit him hard from the blind side and the pony lost balance.",
+    "outdoor",
+    "en",
+  );
+  assert.equal(graph.compound, true);
+  assert.ok(graph.nodes.some((node) => node.topic === "row"));
+  assert.ok(graph.nodes.some((node) => node.topic === "dangerous"));
+  const dangerous = graph.nodes.find((node) => node.topic === "dangerous");
+  assert.equal(dangerous?.answers.balance, "yes");
+  assert.equal(dangerous?.decision.status, "foul");
+  const row = graph.nodes.find((node) => node.topic === "row");
+  assert.equal(row?.answers.rowEntitled, undefined);
+  assert.equal(row?.decision.status, "needs-info");
+  assert.ok(graph.relations.some((relation) => relation.ruleRefs.includes("24") && relation.ruleRefs.includes("26")));
+});
+
+test("compound play graph treats Blocking plus Dangerous Riding according to Rule 26A", () => {
+  const graph = buildCompoundPlayGraph(
+    "The attacker screened the defender and then rode him off hard enough that the pony lost balance.",
+    "outdoor",
+    "en",
+  );
+  assert.equal(graph.compound, true);
+  assert.ok(graph.nodes.some((node) => node.topic === "blocking"));
+  assert.ok(graph.nodes.some((node) => node.topic === "dangerous"));
+  const relation = graph.relations.find((item) =>
+    new Set([item.from, item.to]).has("blocking")
+    && new Set([item.from, item.to]).has("dangerous")
+  );
+  assert.ok(relation);
+  assert.ok(relation.ruleRefs.includes("26A"));
+  assert.ok(relation.ruleRefs.includes("26"));
+});
+
+test("compound play graph adds conduct as an overlay instead of replacing the underlying mallet branch", () => {
+  const graph = buildCompoundPlayGraph(
+    "He hooked from the wrong side and then kept arguing with the umpire after the whistle.",
+    "outdoor",
+    "en",
+  );
+  assert.equal(graph.compound, true);
+  assert.ok(graph.nodes.some((node) => node.topic === "mallet"));
+  assert.ok(graph.nodes.some((node) => node.topic === "conduct"));
+  const overlay = graph.relations.find((item) => item.kind === "overlay");
+  assert.ok(overlay);
+  assert.ok(overlay.ruleRefs.includes("33"));
+  assert.ok(overlay.ruleRefs.includes("35"));
+});
+
+test("compound play graph keeps restart administration separate from conduct", () => {
+  const graph = buildCompoundPlayGraph(
+    "The ball went out over the boards for a knock-in and the player then yelled at the umpire.",
+    "outdoor",
+    "en",
+  );
+  assert.equal(graph.compound, true);
+  assert.ok(graph.nodes.some((node) => node.topic === "restart"));
+  assert.ok(graph.nodes.some((node) => node.topic === "conduct"));
+  assert.equal(graph.penaltySelectionRef, "35");
+});
+
+test("ambiguous generic wording does not manufacture a compound play graph", () => {
+  const graph = buildCompoundPlayGraph("Dangerous hook.", "outdoor", "en");
+  assert.equal(graph.compound, false);
+  assert.ok(graph.nodes.length <= 1);
+});
+
+test("Arena compound graph points penalty selection to Rule 10", () => {
+  const graph = buildCompoundPlayGraph(
+    "He screened the defender and then argued with the umpire.",
+    "arena",
+    "en",
+  );
+  assert.equal(graph.compound, true);
+  assert.equal(graph.penaltySelectionRef, "10");
+  assert.ok(graph.relations.some((relation) => relation.ruleRefs.includes("10")));
 });
 
 test("natural-language collision traps stay out of the wrong family", () => {
