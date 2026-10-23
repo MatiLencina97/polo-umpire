@@ -1,4 +1,5 @@
 import type { ChoiceValue, Discipline, Language, QuestionDefinition, Rule, TopicDefinition, TopicId } from "./types";
+import { playPrototypeScore, playTopicContextPenalty } from "./play-language-model";
 
 export const topicDefs: Record<TopicId, TopicDefinition> = {
   row: {
@@ -203,8 +204,9 @@ function naturalTopicScore(text: string, topic: TopicId) {
 export function classify(text: string) {
   const n = normalize(text);
   return (Object.entries(topicDefs) as Array<[TopicId, TopicDefinition]>).map(([id, t]) => {
-    let score = naturalTopicScore(n, id);
+    let score = naturalTopicScore(n, id) + playPrototypeScore(n, id);
     for (const term of t.terms) if (containsTopicTerm(n, term)) score += term.includes(" ") ? 3 : 2;
+    score = Math.max(0, score + playTopicContextPenalty(n, id));
     return { id, score, label: t.label };
   }).sort((a, b) => b.score - a.score);
 }
