@@ -211,6 +211,8 @@ export function classify(text: string) {
   }).sort((a, b) => b.score - a.score);
 }
 
+const MIN_AUTOMATIC_TOPIC_SCORE = 3;
+
 export function classifyTopic(text: string) {
   const ranked = classify(text);
   const first = ranked[0];
@@ -220,8 +222,9 @@ export function classifyTopic(text: string) {
     second && second.score > 0 &&
     first.score - second.score <= 1
   );
-  const topic = first && first.score > 0 && !ambiguous ? first.id : null;
-  return { topic, ranked, ambiguous };
+  const weakSignal = Boolean(first && first.score > 0 && first.score < MIN_AUTOMATIC_TOPIC_SCORE);
+  const topic = first && first.score >= MIN_AUTOMATIC_TOPIC_SCORE && !ambiguous ? first.id : null;
+  return { topic, ranked, ambiguous, weakSignal };
 }
 
 const playClarifierOrder: TopicId[] = ["restart", "row", "dangerous", "blocking", "mallet", "conduct"];
