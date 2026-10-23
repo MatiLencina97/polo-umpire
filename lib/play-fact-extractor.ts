@@ -148,7 +148,7 @@ const factRules: Record<TopicId, FactRule[]> = {
       key: "hookPosition",
       value: "no",
       source: "canonical",
-      pattern: /\bhook (?:from )?(?:wrong|far|other) side\b|\bhook (?:under|across) horse\b/,
+      pattern: /\bhook (?:from )?(?:the )?(?:wrong|far|other) side\b|\bhook (?:under|across) (?:the )?horse\b/,
       reasonEn: "The description explicitly says the hook came from a prohibited side or across/under the mount.",
       reasonEs: "La descripción dice explícitamente que el hook se hizo desde un lado prohibido o cruzando/pasando por debajo del caballo.",
     },
