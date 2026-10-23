@@ -103,6 +103,18 @@ function containsTopicTerm(text: string, term: string) {
     return (" " + haystack + " ").includes(" " + needle + " ");
   }
 
+  if (normalizedTerm === "pick") {
+    const haystack = searchableTopicText(normalizedText);
+    return /(?:^| )pick(?: |$)/.test(haystack)
+      || /(?:^| )pick(?:ed|ing|s)? off(?: |$)/.test(haystack);
+  }
+
+  if (normalizedTerm === "marcar") {
+    const haystack = searchableTopicText(normalizedText);
+    if (/(?:^| )marcar (?:un )?gol(?: |$)/.test(haystack)) return false;
+    return /(?:^| )marcar(?: |$)/.test(haystack);
+  }
+
   return normalizedText.includes(normalizedTerm);
 }
 
