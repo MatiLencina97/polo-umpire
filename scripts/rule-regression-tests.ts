@@ -184,6 +184,27 @@ test("natural-language collision traps stay out of the wrong family", () => {
   }
 });
 
+test("single weak cue asks for clarification instead of overcommitting", () => {
+  for (const description of ["contact", "hook", "block", "linea"]) {
+    const detected = classifyTopic(description);
+    assert.equal(detected.topic, null, description);
+    assert.equal(detected.weakSignal, true, description);
+  }
+});
+
+test("strong contextual phrasing still routes automatically", () => {
+  for (const [description, expected] of [
+    ["The pony lost its balance during a hard ride-off.", "dangerous"],
+    ["Red cut Blue off and forced him to check.", "row"],
+    ["He hooked from the wrong side.", "mallet"],
+    ["The attacker screened the defender.", "blocking"],
+  ] as const) {
+    const detected = classifyTopic(description);
+    assert.equal(detected.topic, expected, description);
+    assert.equal(detected.weakSignal, false, description);
+  }
+});
+
 test("ambiguous classifier output becomes observable-action clarification choices", () => {
   const detected = classifyTopic("Dangerous hook.");
   assert.equal(detected.topic, null);
