@@ -64,6 +64,7 @@ import { flushPendingFeedback } from "@/lib/decision-feedback";
 import { localStore, safeStorageGet, safeStorageRemove, safeStorageSet } from "@/lib/browser-storage";
 import { applyMatchAnswer, relevantMatchKeys } from "@/lib/match-flow";
 import { extractExplicitPlayFacts, type ExtractedPlayFact } from "@/lib/play-fact-extractor";
+import { buildCompoundPlayGraph } from "@/lib/compound-play-graph";
 import {
   bestProvisionsForRules,
   getProvision,
@@ -644,6 +645,13 @@ export default function UmpireApp() {
   const searchedExternal = useMemo(
     () => search.trim() ? searchExternalSections(externalDb, search, 12) : [],
     [externalDb, search],
+  );
+
+  const compoundPlayGraph = useMemo(
+    () => resolverMode === "play" && situation.trim()
+      ? buildCompoundPlayGraph(situation, discipline, language)
+      : null,
+    [resolverMode, situation, discipline, language],
   );
 
   const resolutionRules = useMemo(() => {
@@ -1364,6 +1372,63 @@ export default function UmpireApp() {
                     {playClarifierLabel(id, language)}
                   </button>
                 ))}
+              </div>
+            </div>
+          ) : null}
+
+          {resolverMode === "play" && compoundPlayGraph?.compound ? (
+            <div className="card">
+              <div className="ruleGraphHeader">
+                <div>
+                  <p className="eyebrow">{tr("COMPOUND PLAY GRAPH", "GRAFO DE JUGADA COMPUESTA")}</p>
+                  <h2>{tr("The description activates multiple rule paths", "La descripción activa múltiples ramas reglamentarias")}</h2>
+                  <p className="muted">{tr(
+                    "Each branch is evaluated from its own explicit facts. A supported branch does not automatically prove the others, and penalties are not stacked automatically.",
+                    "Cada rama se evalúa con sus propios hechos explícitos. Que una rama esté respaldada no prueba automáticamente las demás y las penalidades no se suman automáticamente.",
+                  )}</p>
+                </div>
+                <span className="graphCoverageBadge">{compoundPlayGraph.nodes.length} {tr("paths", "ramas")}</span>
+              </div>
+
+              <div className="ruleGraphNodes universalNodes">
+                {compoundPlayGraph.nodes.map((node) => (
+                  <button
+                    className="ruleGraphNode graphRuleButton"
+                    key={node.topic}
+                    onClick={() => {
+                      const extracted = extractExplicitPlayFacts(situation, node.topic);
+                      setTopic(node.topic);
+                      setAnswers(extracted.answers);
+                      setAutoDetectedFacts(extracted.facts);
+                      setShowResolution(false);
+                    }}
+                  >
+                    <b>{topicLabel(node.topic, node.label)}{node.primary ? " · " + tr("primary", "principal") : ""}</b>
+                    <span>{node.decision.headline}</span>
+                    <small>{node.decision.references.slice(0, 4).map((ref) => "Rule " + ref).join(" · ")}</small>
+                  </button>
+                ))}
+              </div>
+
+              <div className="crossChecks">
+                {compoundPlayGraph.relations.map((relation, index) => (
+                  <div className="crossCheck warning" key={relation.from + "-" + relation.to + "-" + index}>
+                    <div>
+                      <span className="crossCheckSource">{tr("RULE INTERACTION", "INTERACCIÓN DE REGLAS")}</span>
+                      <strong>{topicLabel(relation.from, topicDefs[relation.from].label)} ↔ {topicLabel(relation.to, topicDefs[relation.to].label)}</strong>
+                    </div>
+                    <p>{language === "en" ? relation.summaryEn : relation.summaryEs}</p>
+                    <small>{relation.ruleRefs.map((ref) => "Rule " + ref).join(" · ")}</small>
+                  </div>
+                ))}
+              </div>
+
+              <div className="callout secondaryCallout">
+                <strong>{tr("Penalty selection stays separate", "La selección de penalidad queda separada")}</strong>
+                <p>{tr(
+                  "The graph identifies concurrent rule issues, but the final sanction must be selected after the violations are characterized under the controlling penalty rule.",
+                  "El grafo identifica cuestiones reglamentarias concurrentes, pero la sanción final debe seleccionarse después de caracterizar las infracciones bajo la regla de penalidades aplicable.",
+                )} {"Rule " + compoundPlayGraph.penaltySelectionRef}.</p>
               </div>
             </div>
           ) : null}
