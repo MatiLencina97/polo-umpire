@@ -266,6 +266,7 @@ test("play graph detects restart-context blocking", () => {
   const edge = graph.edges.find((item) => new Set([item.from, item.to]).has("restart") && new Set([item.from, item.to]).has("blocking"));
   assert.ok(edge);
   assert.equal(edge.kind, "context");
+  assert.equal(edge.reviewFirst, "restart");
   assert.ok(edge.ruleRefs.includes("26A"));
 });
 
