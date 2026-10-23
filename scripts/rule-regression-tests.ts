@@ -6,6 +6,7 @@ import { parseRuleProvisions, bestProvisionsForRules, resolveProvisions } from "
 import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "../lib/cross-rule";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "../lib/match-flow";
 import { extractExplicitPlayFacts } from "../lib/play-fact-extractor";
+import { buildPlayGraph, splitPlayEvents } from "../lib/play-graph";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
 import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
 import { appendTranscript, speechLocale } from "../lib/voice";
@@ -220,6 +221,75 @@ test("explicit dead-ball wording changes restart question order", () => {
   const decision = decidePlay("restart", "outdoor", restartFacts.answers, "en");
   assert.equal(decision.status, "procedure");
   assert.ok(decision.references.some((ref) => ref.startsWith("22")));
+});
+
+test("play graph separates sequential events without splitting a single causal event", () => {
+  assert.deepEqual(
+    splitPlayEvents("Red crossed in front and forced Blue to pull up. Then the hard contact knocked the pony off balance."),
+    ["Red crossed in front and forced Blue to pull up", "the hard contact knocked the pony off balance"],
+  );
+  assert.deepEqual(
+    splitPlayEvents("A hard ride-off and the pony lost balance."),
+    ["A hard ride-off and the pony lost balance"],
+  );
+});
+
+test("play graph detects ROW plus Dangerous Riding as separate branches", () => {
+  const graph = buildPlayGraph(
+    "Red crossed in front and forced Blue to pull up. Then the hard contact knocked the pony off balance.",
+    "outdoor",
+  );
+  assert.equal(graph.multiFamily, true);
+  assert.ok(graph.nodes.some((node) => node.topic === "row"));
+  assert.ok(graph.nodes.some((node) => node.topic === "dangerous"));
+  const edge = graph.edges.find((item) => new Set([item.from, item.to]).has("row") && new Set([item.from, item.to]).has("dangerous"));
+  assert.ok(edge);
+  assert.equal(edge.kind, "overlap");
+  assert.ok(edge.ruleRefs.includes("24"));
+  assert.ok(edge.ruleRefs.includes("26"));
+});
+
+test("play graph detects restart-context blocking", () => {
+  const graph = buildPlayGraph(
+    "During the knock-in the attacker screened the defender so his teammate could play the ball.",
+    "outdoor",
+  );
+  assert.ok(graph.nodes.some((node) => node.topic === "restart"));
+  assert.ok(graph.nodes.some((node) => node.topic === "blocking"));
+  const edge = graph.edges.find((item) => new Set([item.from, item.to]).has("restart") && new Set([item.from, item.to]).has("blocking"));
+  assert.ok(edge);
+  assert.equal(edge.kind, "context");
+  assert.ok(edge.ruleRefs.includes("26A"));
+});
+
+test("play graph detects improper hook plus post-whistle conduct", () => {
+  const graph = buildPlayGraph(
+    "He hooked from the wrong side. Then he hit the ball after the whistle.",
+    "outdoor",
+  );
+  assert.ok(graph.nodes.some((node) => node.topic === "mallet"));
+  assert.ok(graph.nodes.some((node) => node.topic === "conduct"));
+  const mallet = graph.nodes.find((node) => node.topic === "mallet");
+  assert.equal(mallet?.facts.find((fact) => fact.key === "hookPosition")?.value, "no");
+  const edge = graph.edges.find((item) => new Set([item.from, item.to]).has("mallet") && new Set([item.from, item.to]).has("conduct"));
+  assert.ok(edge);
+  assert.ok(edge.ruleRefs.includes("33"));
+});
+
+test("play graph respects negation and does not invent suppressed branches", () => {
+  const graph = buildPlayGraph(
+    "The ball stayed in play and there was no hook, but the pony lost its balance after a hard bump.",
+    "outdoor",
+  );
+  assert.deepEqual(graph.nodes.map((node) => node.topic), ["dangerous"]);
+  assert.equal(graph.multiFamily, false);
+});
+
+test("play graph stays empty for descriptions with no rule signal", () => {
+  const graph = buildPlayGraph("The weather changed during the chukker.", "outdoor");
+  assert.equal(graph.primaryTopic, null);
+  assert.equal(graph.nodes.length, 0);
+  assert.equal(graph.edges.length, 0);
 });
 
 test("natural-language collision traps stay out of the wrong family", () => {
