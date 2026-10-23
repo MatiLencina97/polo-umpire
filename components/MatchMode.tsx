@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { APP_VERSION } from "@/lib/app-version";
 import { classifyTopic, playClarifierCandidates, playClarifierLabel, questions } from "@/lib/engine";
 import { extractExplicitPlayFacts } from "@/lib/play-fact-extractor";
+import { buildCompoundPlayGraph } from "@/lib/compound-play-graph";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "@/lib/match-flow";
@@ -114,6 +115,10 @@ export default function MatchMode({
   );
   const activeDetectedFacts = extractedFacts.facts.filter(
     (fact) => answers[fact.key] === undefined || answers[fact.key] === fact.value,
+  );
+  const compoundGraph = useMemo(
+    () => buildCompoundPlayGraph(situation, discipline, language),
+    [situation, discipline, language],
   );
 
   const progress = topic ? matchProgress(topic, effectiveAnswers) : null;
@@ -339,6 +344,55 @@ export default function MatchMode({
                   {topic ? topicNames[id][language] : playClarifierLabel(id, language)}
                 </button>
               ))}
+            </div>
+          ) : null}
+
+          {compoundGraph.compound ? (
+            <div className="ruleGraph compactRuleGraph">
+              <div className="ruleGraphHeader">
+                <div>
+                  <p className="eyebrow">{tr("COMPOUND PLAY", "JUGADA COMPUESTA")}</p>
+                  <h3>{tr("More than one rule path is active", "Hay más de una rama reglamentaria activa")}</h3>
+                </div>
+                <span className="graphCoverageBadge">{compoundGraph.nodes.length} {tr("paths", "ramas")}</span>
+              </div>
+              <div className="ruleGraphNodes">
+                {compoundGraph.nodes.map((node) => (
+                  <button
+                    className="ruleGraphNode graphRuleButton"
+                    key={node.topic}
+                    onClick={() => chooseTopic(node.topic)}
+                  >
+                    <b>{topicNames[node.topic][language]}{node.primary ? " · " + tr("primary", "principal") : ""}</b>
+                    <span>
+                      {node.decision.status === "needs-info"
+                        ? tr("Needs decisive facts", "Faltan datos decisivos")
+                        : node.decision.status === "foul"
+                          ? tr("Foul branch supported", "Rama de falta respaldada")
+                          : node.decision.status === "no-foul"
+                            ? tr("No-foul branch supported", "Rama no-foul respaldada")
+                            : tr("Procedure branch", "Rama de procedimiento")}
+                      {" · "}
+                      {node.decision.references.slice(0, 3).map((ref) => "Rule " + ref).join(" · ")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="crossChecks">
+                {compoundGraph.relations.map((relation, index) => (
+                  <div className="crossCheck warning" key={relation.from + "-" + relation.to + "-" + index}>
+                    <div>
+                      <span className="crossCheckSource">{tr("RELATION", "RELACIÓN")}</span>
+                      <strong>{topicNames[relation.from][language]} ↔ {topicNames[relation.to][language]}</strong>
+                    </div>
+                    <p>{language === "en" ? relation.summaryEn : relation.summaryEs}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="muted">{tr(
+                "The app keeps each branch separate. It does not automatically stack penalties; final penalty selection remains with the Umpire under the controlling penalty rule.",
+                "La app mantiene cada rama separada. No suma penalidades automáticamente; la selección final de penalidad sigue correspondiendo al Umpire bajo la regla de penalidades aplicable.",
+              )} {"Rule " + compoundGraph.penaltySelectionRef}.</p>
             </div>
           ) : null}
 
