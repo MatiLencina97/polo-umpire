@@ -3,7 +3,7 @@ import type { TopicId } from "./types";
 const stopWords = new Set([
   "a","an","and","at","after","before","by","for","from","in","into","is","it","of","on","or","the","to","was","were","with",
   "al","con","de","del","el","en","la","las","lo","los","por","que","se","su","un","una","y",
-  "blue","red","player","jugador","jugadora","opponent","oponente","rival","team","equipo","ball","horse",
+  "blue","red","player","jugador","jugadora","opponent","oponente","rival","team","equipo","ball",
 ]);
 
 const tokenAliases: Record<string, string> = {
@@ -74,6 +74,14 @@ const tokenAliases: Record<string, string> = {
   insulto: "abuse",
   puteo: "abuse",
   abusive: "abuse",
+  abused: "abuse",
+  closed: "close",
+  closes: "close",
+  route: "line",
+  path: "line",
+  unbalanced: "balance",
+  outside: "out",
+  area: "field",
   stopped: "stop",
   stops: "stop",
   detuvo: "stop",
@@ -238,6 +246,7 @@ const playLanguageExamples: Record<TopicId, string[]> = {
     "Ball crossed the sideline",
     "Ball crossed the end line",
     "Whistle stopped play",
+    "Ball left the playing area",
     "Knock in before the umpire called Play",
     "La bocha salio por las tablas",
     "La pelota se fue por el lateral",
