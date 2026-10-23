@@ -21,6 +21,7 @@
     "lib/play-language-model.ts",
     "lib/play-fact-extractor.ts",
     "lib/compound-play-graph.ts",
+    "lib/decision-intelligence.ts",
     "lib/play-decision.ts",
     "lib/subarticles.ts",
     "lib/cross-rule.ts",
