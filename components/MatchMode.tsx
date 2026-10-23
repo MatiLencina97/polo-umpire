@@ -5,6 +5,7 @@ import { APP_VERSION } from "@/lib/app-version";
 import { classifyTopic, playClarifierCandidates, playClarifierLabel, questions } from "@/lib/engine";
 import { extractExplicitPlayFacts } from "@/lib/play-fact-extractor";
 import { buildCompoundPlayGraph } from "@/lib/compound-play-graph";
+import { nextDecisiveQuestion } from "@/lib/decision-intelligence";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "@/lib/match-flow";
@@ -129,8 +130,13 @@ export default function MatchMode({
         return question ? [question] : [];
       })
     : [];
-  const currentQuestion = progress?.currentKey
-    ? topicQuestions.find((question) => question.key === progress.currentKey) ?? null
+  const decisiveQuestion = useMemo(
+    () => topic ? nextDecisiveQuestion(topic, discipline, effectiveAnswers, language) : null,
+    [topic, discipline, effectiveAnswers, language],
+  );
+  const currentQuestionKey = decisiveQuestion?.key ?? progress?.currentKey ?? null;
+  const currentQuestion = currentQuestionKey
+    ? questions[topic as TopicId]?.find((question) => question.key === currentQuestionKey) ?? null
     : null;
   const answeredCount = progress?.answeredKeys.length ?? 0;
   const complete = Boolean(progress?.complete);
@@ -390,6 +396,15 @@ export default function MatchMode({
                   </div>
                 ))}
               </div>
+              {compoundGraph.nextDecisiveQuestion ? (() => {
+                const next = compoundGraph.nextDecisiveQuestion;
+                const question = questions[next.topic].find((item) => item.key === next.key);
+                return question ? (
+                  <button className="matchBackButton" onClick={() => chooseTopic(next.topic)}>
+                    {tr("NEXT DECISIVE FACT", "PRÓXIMO DATO DECISIVO")}: {topicNames[next.topic][language]} · {labelForQuestion(next.key, question.label, language)}
+                  </button>
+                ) : null;
+              })() : null}
               <p className="muted">{tr(
                 "The app keeps each branch separate. It does not automatically stack penalties; final penalty selection remains with the Umpire under the controlling penalty rule.",
                 "La app mantiene cada rama separada. No suma penalidades automáticamente; la selección final de penalidad sigue correspondiendo al Umpire bajo la regla de penalidades aplicable.",
@@ -416,10 +431,13 @@ export default function MatchMode({
           {!complete && currentQuestion ? (
             <section className="matchQuestionCard" id="match-question">
               <div className="matchQuestionMeta">
-                <span>{tr("QUESTION", "PREGUNTA")} {answeredCount + 1}</span>
+                <span>{decisiveQuestion ? tr("MOST DECISIVE FACT", "DATO MÁS DECISIVO") : tr("QUESTION", "PREGUNTA")} {decisiveQuestion ? "" : answeredCount + 1}</span>
                 <span>{topic ? topicNames[topic][language] : ""}</span>
               </div>
               <h3>{labelForQuestion(currentQuestion.key, currentQuestion.label, language)}</h3>
+              {decisiveQuestion ? (
+                <p className="matchDirectAnswerHint">{language === "en" ? decisiveQuestion.reasonEn : decisiveQuestion.reasonEs}</p>
+              ) : null}
               {topic === "row" && currentQuestion.key === "rowEntitled" ? (
                 <RowEntitlementHelper
                   language={language}
