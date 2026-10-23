@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { APP_VERSION } from "@/lib/app-version";
 import { classifyTopic, playClarifierCandidates, playClarifierLabel, questions } from "@/lib/engine";
 import { extractExplicitPlayFacts } from "@/lib/play-fact-extractor";
+import { buildPlayGraph } from "@/lib/play-graph";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "@/lib/match-flow";
@@ -104,6 +105,11 @@ export default function MatchMode({
   const [savedCaseId, setSavedCaseId] = useState("");
   const [caseSaveError, setCaseSaveError] = useState(false);
 
+  const playGraph = useMemo(
+    () => buildPlayGraph(situation, discipline),
+    [situation, discipline],
+  );
+
   const extractedFacts = useMemo(
     () => topic ? extractExplicitPlayFacts(situation, topic) : { answers: {}, facts: [] },
     [situation, topic],
@@ -161,12 +167,13 @@ export default function MatchMode({
   function begin() {
     if (!situation.trim()) return;
     const detected = classifyTopic(situation);
-    setTopic(detected.topic);
+    const initialTopic = detected.topic ?? (!playGraph.multiFamily ? playGraph.primaryTopic : null);
+    setTopic(initialTopic);
     setRankedTopics(detected.ranked);
     setAnswers({});
     setStarted(true);
     setShowWhy(false);
-    setShowTopics(!detected.topic);
+    setShowTopics(!initialTopic);
     setSavedCaseId("");
     setCaseSaveError(false);
     setTimeout(() => document.getElementById("match-question")?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
@@ -333,11 +340,43 @@ export default function MatchMode({
             <div className="matchTopicPicker">
               {(topic
                 ? (Object.keys(topicNames) as TopicId[])
-                : playClarifierCandidates(rankedTopics)
+                : playGraph.multiFamily
+                  ? playGraph.recommendedReviewOrder
+                  : playClarifierCandidates(rankedTopics)
               ).map((id) => (
                 <button key={id} className={topic === id ? "selected" : ""} onClick={() => chooseTopic(id)}>
                   {topic ? topicNames[id][language] : playClarifierLabel(id, language)}
                 </button>
+              ))}
+            </div>
+          ) : null}
+
+          {playGraph.multiFamily ? (
+            <div className="matchContext">
+              <span>{tr("MULTI-RULE PLAY", "JUGADA CON VARIAS REGLAS")}</span>
+              <strong>{tr(
+                "The engine detected more than one rule path. Review them separately before combining the final call.",
+                "El motor detectó más de un camino reglamentario. Revisalos por separado antes de combinar la decisión final.",
+              )}</strong>
+              <div className="matchTopicPicker">
+                {playGraph.recommendedReviewOrder.map((id, index) => {
+                  const node = playGraph.nodes.find((item) => item.topic === id);
+                  return (
+                    <button
+                      key={id}
+                      className={topic === id ? "selected" : ""}
+                      onClick={() => chooseTopic(id)}
+                    >
+                      {index + 1}. {topicNames[id][language]}{node ? " · " + node.rules.map((rule) => "Rule " + rule).join("/") : ""}
+                    </button>
+                  );
+                })}
+              </div>
+              {playGraph.edges.map((edge) => (
+                <p className="muted" key={edge.from + "-" + edge.to}>
+                  {language === "en" ? edge.explanationEn : edge.explanationEs}
+                  {edge.ruleRefs.length ? " · " + edge.ruleRefs.map((ref) => "Rule " + ref).join(" · ") : ""}
+                </p>
               ))}
             </div>
           ) : null}
