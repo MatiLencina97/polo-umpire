@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { APP_VERSION } from "@/lib/app-version";
 import { classifyTopic, playClarifierCandidates, playClarifierLabel, questions } from "@/lib/engine";
 import { extractExplicitPlayFacts } from "@/lib/play-fact-extractor";
 import { buildCompoundPlayGraph } from "@/lib/compound-play-graph";
 import { nextDecisiveQuestion } from "@/lib/decision-intelligence";
+import { buildLearningGapRecord, submitLearningGap } from "@/lib/learning-gap";
 import { decidePlay } from "@/lib/play-decision";
 import { getProvision, resolveProvisions } from "@/lib/subarticles";
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "@/lib/match-flow";
@@ -143,6 +144,22 @@ export default function MatchMode({
 
   const decision = topic ? decidePlay(topic, discipline, effectiveAnswers, language) : null;
   const decisionAudit = topic && decision ? auditPlayDecision(topic, discipline, effectiveAnswers, decision) : null;
+
+  useEffect(() => {
+    if (!topic || !decision || !decisionAudit || decisionAudit.level !== "insufficient-coverage") return;
+    const record = buildLearningGapRecord({
+      source: "match",
+      discipline,
+      topic,
+      answers: effectiveAnswers,
+      decision,
+      audit: decisionAudit,
+      rulebookVersion,
+      appVersion: APP_VERSION,
+      language,
+    });
+    if (record) void submitLearningGap(record);
+  }, [topic, discipline, effectiveAnswers, decision, decisionAudit, rulebookVersion, language]);
   const hasCriticalUnknown = topicQuestions.some((question) => effectiveAnswers[question.key] === "unknown");
   const displayedStatus = hasCriticalUnknown && decision && decision.status !== "needs-info"
     ? "needs-info"
