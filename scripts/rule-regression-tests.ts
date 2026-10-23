@@ -257,6 +257,7 @@ test("compound play graph treats Blocking plus Dangerous Riding according to Rul
   assert.ok(relation);
   assert.ok(relation.ruleRefs.includes("26A"));
   assert.ok(relation.ruleRefs.includes("26"));
+  assert.ok(relation.priorityEn.includes("blocking"));
 });
 
 test("compound play graph adds conduct as an overlay instead of replacing the underlying mallet branch", () => {
