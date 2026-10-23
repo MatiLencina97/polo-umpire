@@ -7,6 +7,7 @@ import { defaultSubstitutionCrossFacts, buildSubstitutionCrossRuleState } from "
 import { applyMatchAnswer, matchProgress, rewindLastMatchAnswer } from "../lib/match-flow";
 import { extractExplicitPlayFacts } from "../lib/play-fact-extractor";
 import { buildCompoundPlayGraph } from "../lib/compound-play-graph";
+import { nextDecisiveQuestion, rankDecisiveQuestions } from "../lib/decision-intelligence";
 import { externalMatchesForLabels, searchExternalSections } from "../lib/external-resources";
 import { buildCaseRecord, mergeCaseRecord, normalizeCaseHistory } from "../lib/case-history";
 import { appendTranscript, speechLocale } from "../lib/voice";
@@ -302,6 +303,56 @@ test("Arena compound graph points penalty selection to Rule 10", () => {
   assert.equal(graph.compound, true);
   assert.equal(graph.penaltySelectionRef, "10");
   assert.ok(graph.relations.some((relation) => relation.ruleRefs.includes("10")));
+});
+
+test("counterfactual engine asks ROW entitlement before lower-impact facts", () => {
+  const next = nextDecisiveQuestion("row", "outdoor", {}, "en");
+  assert.ok(next);
+  assert.equal(next.key, "rowEntitled");
+  assert.equal(next.changesStatus, true);
+  assert.ok(next.score > 0);
+});
+
+test("counterfactual engine recognizes mount balance as the decisive Dangerous Riding fact", () => {
+  const next = nextDecisiveQuestion("dangerous", "outdoor", {}, "en");
+  assert.ok(next);
+  assert.equal(next.key, "balance");
+  assert.equal(next.changesStatus, true);
+  assert.equal(next.canResolveBranch, true);
+});
+
+test("counterfactual engine respects adaptive dead-ball flow", () => {
+  const ranked = rankDecisiveQuestions("restart", "outdoor", { dead: "yes" }, "en");
+  assert.ok(ranked.length >= 1);
+  assert.equal(ranked[0].key, "restartType");
+  assert.equal(ranked.some((item) => item.key === "early"), false);
+});
+
+test("counterfactual engine does not manufacture precision for Arena", () => {
+  assert.deepEqual(rankDecisiveQuestions("row", "arena", {}, "en"), []);
+});
+
+test("compound graph exposes a global next decisive fact", () => {
+  const graph = buildCompoundPlayGraph(
+    "Red crossed in front of Blue and forced him to pull up, then hit him hard from the blind side and the pony lost balance.",
+    "outdoor",
+    "en",
+  );
+  assert.equal(graph.compound, true);
+  assert.ok(graph.nextDecisiveQuestion);
+  assert.equal(graph.nextDecisiveQuestion?.topic, "row");
+  assert.equal(graph.nextDecisiveQuestion?.key, "rowEntitled");
+});
+
+test("compound conduct overlay does not outrank an unresolved underlying play fact", () => {
+  const graph = buildCompoundPlayGraph(
+    "He hooked from the wrong side and then kept arguing with the umpire after the whistle.",
+    "outdoor",
+    "en",
+  );
+  assert.equal(graph.compound, true);
+  assert.ok(graph.nextDecisiveQuestion);
+  assert.notEqual(graph.nextDecisiveQuestion?.topic, "conduct");
 });
 
 test("natural-language collision traps stay out of the wrong family", () => {
