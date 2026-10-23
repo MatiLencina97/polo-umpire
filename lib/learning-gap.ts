@@ -3,7 +3,7 @@ import { relevantMatchKeys } from "./match-flow";
 import type { DecisionAudit } from "./decision-audit";
 import type { PlayDecision } from "./play-decision";
 import type { ChoiceValue, Discipline, Language, TopicId } from "./types";
-import { localStore, safeStorageGet, safeStorageSet } from "./browser-storage";
+import { safeStorageGet, safeStorageSet, sessionStore } from "./browser-storage";
 
 export type LearningGapReason = "missing-fact" | "unknown-fact" | "model-coverage" | "arena-coverage";
 
@@ -122,7 +122,7 @@ export function buildLearningGapRecord(args: {
 }
 
 function readSentFingerprints() {
-  const raw = safeStorageGet(localStore(), SENT_KEY);
+  const raw = safeStorageGet(sessionStore(), SENT_KEY);
   if (!raw) return [] as string[];
   try {
     const parsed = JSON.parse(raw);
@@ -134,7 +134,7 @@ function readSentFingerprints() {
 
 function rememberFingerprint(fingerprint: string) {
   const current = readSentFingerprints().filter((item) => item !== fingerprint);
-  safeStorageSet(localStore(), SENT_KEY, JSON.stringify([fingerprint, ...current].slice(0, MAX_SENT)));
+  safeStorageSet(sessionStore(), SENT_KEY, JSON.stringify([fingerprint, ...current].slice(0, MAX_SENT)));
 }
 
 export async function submitLearningGap(record: LearningGapRecord) {
