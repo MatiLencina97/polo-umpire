@@ -135,6 +135,39 @@ test("natural field-language corpus routes common umpire descriptions without cl
   }
 });
 
+test("prototype learner generalizes to held-out paraphrases and common typos", () => {
+  const samples: Array<[string, string]> = [
+    ["His route was shut and he checked hard.", "row"],
+    ["The pony got unbalanced after a heavy bump.", "dangerous"],
+    ["The attacker stayed between the defender and teammate so he could not get through.", "blocking"],
+    ["The malet clipped the pony during the swing.", "mallet"],
+    ["The official was abused verbally after the call.", "conduct"],
+    ["The shot finished outside the playing area.", "restart"],
+  ];
+
+  for (const [description, expected] of samples) {
+    const detected = classifyTopic(description);
+    assert.equal(detected.topic, expected, description + " => " + JSON.stringify(detected.ranked.slice(0, 3)));
+    assert.equal(detected.ambiguous, false, description);
+  }
+});
+
+test("negated family cues are suppressed instead of creating false ties", () => {
+  const cases: Array<[string, string, string]> = [
+    ["The ball stayed in play and Red crossed in front, forcing Blue to check.", "row", "restart"],
+    ["There was no hook; Red hit the opponent hard from the blind side.", "dangerous", "mallet"],
+    ["No hubo bloqueo; el caballo perdió el equilibrio por el contacto.", "dangerous", "blocking"],
+    ["He did not argue; he hooked from the wrong side.", "mallet", "conduct"],
+    ["La pelota no salió afuera; Red se le cruzó y lo obligó a frenar.", "row", "restart"],
+  ];
+
+  for (const [description, expected, suppressed] of cases) {
+    const detected = classifyTopic(description);
+    assert.equal(detected.topic, expected, description + " => " + JSON.stringify(detected.ranked.slice(0, 3)));
+    assert.equal(detected.ranked.find((item) => item.id === suppressed)?.score, 0, description);
+  }
+});
+
 test("natural-language collision traps stay out of the wrong family", () => {
   const cases: Array<[string, string | null, string]> = [
     ["Red picked up the ball and continued.", null, "blocking"],
