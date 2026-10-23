@@ -234,6 +234,13 @@ test("play graph separates sequential events without splitting a single causal e
   );
 });
 
+test("play graph keeps tied short-family signals as separate branches", () => {
+  const graph = buildPlayGraph("Dangerous hook.", "outdoor");
+  assert.ok(graph.nodes.some((node) => node.topic === "dangerous"));
+  assert.ok(graph.nodes.some((node) => node.topic === "mallet"));
+  assert.equal(graph.multiFamily, true);
+});
+
 test("play graph detects ROW plus Dangerous Riding as separate branches", () => {
   const graph = buildPlayGraph(
     "Red crossed in front and forced Blue to pull up. Then the hard contact knocked the pony off balance.",
